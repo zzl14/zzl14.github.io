@@ -20,10 +20,9 @@
 <meta property="og:image" content="http://yoursite.com/2019/08/08/p/2.png">
 <meta property="og:image" content="http://yoursite.com/2019/08/08/p/1.jpg">
 <meta property="og:image" content="http://yoursite.com/2019/08/08/p/3.png">
-<meta property="og:image" content="https://i.imgur.com/mSdA2Xf.png">
 <meta property="og:image" content="http://yoursite.com/2019/08/08/p/4.png">
 <meta property="og:image" content="http://yoursite.com/2019/08/08/p/5.png">
-<meta property="og:updated_time" content="2019-09-11T10:15:06.007Z">
+<meta property="og:updated_time" content="2019-09-11T11:19:37.591Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="drops做题收获">
 <meta name="twitter:description" content="攻防世界  CGfsb格式化字符串漏洞因为当时做这个题时候不太懂，所以拿出来说说 分析伪代码，发现修改pwnme的值为8 得到flag 在.bss段的全局变量，因为没有开启PIE，那就好办了，pwnme这个全局变量的地址是不会变的。改值方法，格式化输出漏洞  利用printf格式化字符串漏洞addr+%N$n修改任意地址的值，其中%N$n是以printf第N+1个参数位置的值为地址（pr">
@@ -245,7 +244,7 @@ payload += &apos;aaaa&apos;
 payload += &apos;%10$n&apos;
 p.sendline(payload)
 p.interactive()</code></pre><h1 id="guess-num-和-进阶-dice-game"><a href="#guess-num-和-进阶-dice-game" class="headerlink" title="guess_num  和 进阶 dice_game"></a>guess_num  和 进阶 dice_game</h1><p>猜随机数的两题，种子是seed[0]，循环n次，均对即可跳到sub_C3E函数执行system(“cat flag”)</p>
-<p><img src="/2019/08/08/p/3.png" alt><img src="https://i.imgur.com/mSdA2Xf.png" alt></p>
+<p><img src="/2019/08/08/p/3.png" alt></p>
 <p>开启了canary,不能直接栈溢出到sub_C3E函数，</p>
 <p>但是区别在于</p>
 <p>一</p>
@@ -335,11 +334,15 @@ print p.recvall()</code></pre><p> 这题中收获还是不小的，起码读懂�
     
 <nav id="article-nav">
   
-  
-    <a href="/2019/08/08/python/" id="article-nav-older" class="article-nav-link-wrap">
-      <div class="article-nav-title">python基本数据类型</div>
-      <strong class="article-nav-caption">&gt;</strong>
+    <a href="/2019/08/08/python/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">&lt;</strong>
+      <div class="article-nav-title">
+        
+          python基本数据类型
+        
+      </div>
     </a>
+  
   
 </nav>
 
