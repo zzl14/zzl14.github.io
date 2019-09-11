@@ -3,7 +3,7 @@
 <head><meta name="generator" content="Hexo 3.9.0">
   <meta charset="utf-8">
   
-  <title>level0 | study</title>
+  <title>level0 | wolcome</title>
 
   <!-- keywords -->
   
@@ -14,19 +14,19 @@
 <meta property="og:type" content="article">
 <meta property="og:title" content="level0">
 <meta property="og:url" content="http://yoursite.com/2019/08/08/level0/index.html">
-<meta property="og:site_name" content="study">
+<meta property="og:site_name" content="wolcome">
 <meta property="og:description" content="1.首先要用到 &amp;apos;file&amp;apos;  ，来查看用多少位的ida打开。 &amp;apos;checksec&amp;apos; ，用来查看文件的保护机制 Stack 的作用是防止栈的溢出 NX    的作用为防止栈中的可执行代码   其他的我还不太了解，以后再说2.ida基本操作 首先打开文件后可以按空格键，查看地址与汇编指令 在功能表里找到main,便于分析程序 按tab键会出现伪代码，我们分">
 <meta property="og:locale" content="default">
-<meta property="og:image" content="http://yoursite.com/2019/08/08/level0/level0_/checksec.png">
-<meta property="og:image" content="http://yoursite.com/2019/08/08/level0/level0_/z.png">
-<meta property="og:image" content="http://yoursite.com/2019/08/08/level0/level0_/rop.png">
-<meta property="og:updated_time" content="2019-08-08T11:10:33.377Z">
+<meta property="og:image" content="http://yoursite.com/2019/08/08/level0/checksec.png">
+<meta property="og:image" content="http://yoursite.com/2019/08/08/level0/z.png">
+<meta property="og:image" content="http://yoursite.com/2019/08/08/level0/rop.png">
+<meta property="og:updated_time" content="2019-09-11T11:09:03.312Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="level0">
 <meta name="twitter:description" content="1.首先要用到 &amp;apos;file&amp;apos;  ，来查看用多少位的ida打开。 &amp;apos;checksec&amp;apos; ，用来查看文件的保护机制 Stack 的作用是防止栈的溢出 NX    的作用为防止栈中的可执行代码   其他的我还不太了解，以后再说2.ida基本操作 首先打开文件后可以按空格键，查看地址与汇编指令 在功能表里找到main,便于分析程序 按tab键会出现伪代码，我们分">
-<meta name="twitter:image" content="http://yoursite.com/2019/08/08/level0/level0_/checksec.png">
+<meta name="twitter:image" content="http://yoursite.com/2019/08/08/level0/checksec.png">
   
-    <link rel="alternative" href="/atom.xml" title="study" type="application/atom+xml">
+    <link rel="alternative" href="/atom.xml" title="wolcome" type="application/atom+xml">
   
   
     <link rel="icon" href="http://7xkj1z.com1.z0.glb.clouddn.com/head.jpg">
@@ -49,7 +49,7 @@
 	<header id="header" class="inner">
 		<a href="/" class="profilepic">
 			
-			<img lazy-src="http://7xkj1z.com1.z0.glb.clouddn.com/head.jpg" class="js-avatar">
+			<img lazy-src="/1.jpg" class="js-avatar">
 			
 		</a>
 
@@ -146,7 +146,7 @@
 	<div class="intrude-less">
 		<header id="header" class="inner">
 			<div class="profilepic">
-				<img lazy-src="http://7xkj1z.com1.z0.glb.clouddn.com/head.jpg" class="js-avatar">
+				<img lazy-src="/1.jpg" class="js-avatar">
 			</div>
 			<hgroup>
 			  <h1 class="header-author">zzl</h1>
@@ -213,7 +213,7 @@
 
 <p>1.首先要用到</p>
 <pre><code>&apos;file&apos;  ，来查看用多少位的ida打开。
-&apos;checksec&apos; ，用来查看文件的保护机制</code></pre><p><img src="level0_/checksec.png" alt></p>
+&apos;checksec&apos; ，用来查看文件的保护机制</code></pre><p><img src="/2019/08/08/level0/checksec.png" alt></p>
 <pre><code>Stack 的作用是防止栈的溢出
 NX    的作用为防止栈中的可执行代码
   其他的我还不太了解，以后再说</code></pre><p>2.ida基本操作</p>
@@ -225,7 +225,7 @@ ctrl+F 可以出现查找框
 想查找某个变量的地址，只需点击后按tab键</code></pre><p>3.本题所涉及的知识</p>
 <pre><code>首先查找漏洞在read函数，可以通过栈的溢出来覆盖函数的返回地址
 这里要了解一下栈的基本结构以及如何传递内容
-然后调用callsystem函数来获取shell</code></pre><p><img src="level0_/z.png" alt></p>
+然后调用callsystem函数来获取shell</code></pre><p><img src="/2019/08/08/level0/z.png" alt></p>
 <p>4.脚本的书写</p>
 <pre><code>1.from pwn import *
     (导入pwn里的内容)
@@ -244,7 +244,7 @@ ctrl+F 可以出现查找框
     payload=0x88*&apos;a&apos;+p64(addr_system)+p64(0)+p64(addr_binsh)
 2.为什么呢？原来是因为64位的传参并不是由直接栈传入，而是储存在寄存器里，所以payload的构建也要改变。
 当参数少于7个时， 参数从左到右放入寄存器: rdi, rsi, rdx, rcx, r8, r9
-当参数为7个以上时， 前 6 个与前面一样， 但后面的依次从 “右向左” 放入栈中，即和32位汇编一样。</code></pre><p><img src="level0_/rop.png" alt></p>
+当参数为7个以上时， 前 6 个与前面一样， 但后面的依次从 “右向左” 放入栈中，即和32位汇编一样。</code></pre><p><img src="/2019/08/08/level0/rop.png" alt></p>
 <pre><code>3.所以构建的payload为
     payload=0x88*&apos;a&apos;+p64(rdi)+p64(0x0400684)+p64(0x00400460)+p64(0)</code></pre><p>7.两种脚本：</p>
 <p>一</p>
@@ -270,11 +270,15 @@ p.interactive()</code></pre><p>`</p>
     
 <nav id="article-nav">
   
-  
-    <a href="/2019/08/08/python/" id="article-nav-older" class="article-nav-link-wrap">
-      <div class="article-nav-title">python基本数据类型</div>
-      <strong class="article-nav-caption">&gt;</strong>
+    <a href="/2019/08/08/python/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">&lt;</strong>
+      <div class="article-nav-title">
+        
+          python基本数据类型
+        
+      </div>
     </a>
+  
   
 </nav>
 
@@ -282,7 +286,7 @@ p.interactive()</code></pre><p>`</p>
 </article>
 
 
-<div class="ds-share share" data-thread-key="level0" data-title="level0" data-url="http://yoursite.com/2019/08/08/level0/"  data-images="http://7xkj1z.com1.z0.glb.clouddn.com/head.jpg" data-content="level0">
+<div class="ds-share share" data-thread-key="level0" data-title="level0" data-url="http://yoursite.com/2019/08/08/level0/"  data-images="/1.jpg" data-content="level0">
     <div class="ds-share-inline">
       <ul  class="ds-share-icons-16">
       	<li data-toggle="ds-share-icons-more"><a class="ds-more" href="javascript:void(0);">分享到：</a></li>

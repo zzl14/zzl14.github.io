@@ -3,7 +3,7 @@
 <head><meta name="generator" content="Hexo 3.9.0">
   <meta charset="utf-8">
   
-  <title>drops做题收获 | study</title>
+  <title>drops做题收获 | wolcome</title>
 
   <!-- keywords -->
   
@@ -14,22 +14,22 @@
 <meta property="og:type" content="article">
 <meta property="og:title" content="drops做题收获">
 <meta property="og:url" content="http://yoursite.com/2019/08/08/p/index.html">
-<meta property="og:site_name" content="study">
+<meta property="og:site_name" content="wolcome">
 <meta property="og:description" content="攻防世界  CGfsb格式化字符串漏洞因为当时做这个题时候不太懂，所以拿出来说说 分析伪代码，发现修改pwnme的值为8 得到flag 在.bss段的全局变量，因为没有开启PIE，那就好办了，pwnme这个全局变量的地址是不会变的。改值方法，格式化输出漏洞  利用printf格式化字符串漏洞addr+%N$n修改任意地址的值，其中%N$n是以printf第N+1个参数位置的值为地址（pr">
 <meta property="og:locale" content="default">
-<meta property="og:image" content="http://yoursite.com/2019/08/08/p/p/2.png">
-<meta property="og:image" content="http://yoursite.com/2019/08/08/p/p/1.jpg">
+<meta property="og:image" content="http://yoursite.com/2019/08/08/p/2.png">
+<meta property="og:image" content="http://yoursite.com/2019/08/08/p/1.jpg">
 <meta property="og:image" content="http://yoursite.com/2019/08/08/p/3.png">
 <meta property="og:image" content="https://i.imgur.com/mSdA2Xf.png">
-<meta property="og:image" content="http://yoursite.com/2019/08/08/p/p/4.png">
-<meta property="og:image" content="http://yoursite.com/2019/08/08/p/p/5.png">
+<meta property="og:image" content="http://yoursite.com/2019/08/08/p/4.png">
+<meta property="og:image" content="http://yoursite.com/2019/08/08/p/5.png">
 <meta property="og:updated_time" content="2019-09-11T10:15:06.007Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="drops做题收获">
 <meta name="twitter:description" content="攻防世界  CGfsb格式化字符串漏洞因为当时做这个题时候不太懂，所以拿出来说说 分析伪代码，发现修改pwnme的值为8 得到flag 在.bss段的全局变量，因为没有开启PIE，那就好办了，pwnme这个全局变量的地址是不会变的。改值方法，格式化输出漏洞  利用printf格式化字符串漏洞addr+%N$n修改任意地址的值，其中%N$n是以printf第N+1个参数位置的值为地址（pr">
-<meta name="twitter:image" content="http://yoursite.com/2019/08/08/p/p/2.png">
+<meta name="twitter:image" content="http://yoursite.com/2019/08/08/p/2.png">
   
-    <link rel="alternative" href="/atom.xml" title="study" type="application/atom+xml">
+    <link rel="alternative" href="/atom.xml" title="wolcome" type="application/atom+xml">
   
   
     <link rel="icon" href="http://7xkj1z.com1.z0.glb.clouddn.com/head.jpg">
@@ -52,7 +52,7 @@
 	<header id="header" class="inner">
 		<a href="/" class="profilepic">
 			
-			<img lazy-src="http://7xkj1z.com1.z0.glb.clouddn.com/head.jpg" class="js-avatar">
+			<img lazy-src="/1.jpg" class="js-avatar">
 			
 		</a>
 
@@ -149,7 +149,7 @@
 	<div class="intrude-less">
 		<header id="header" class="inner">
 			<div class="profilepic">
-				<img lazy-src="http://7xkj1z.com1.z0.glb.clouddn.com/head.jpg" class="js-avatar">
+				<img lazy-src="/1.jpg" class="js-avatar">
 			</div>
 			<hgroup>
 			  <h1 class="header-author">zzl</h1>
@@ -225,10 +225,10 @@
 <p><strong>用法说明</strong></p>
 <pre><code>%n：将%n之前printf已经打印的字符个数赋值给**偏移处指针**所指向的地址
 位置，如%100×10$n表示将0x64写入偏移10处保存的指针所指向的地址</code></pre><p><strong>疑问：%n的使用方法，偏移量是谁与谁之间的，偏移量为什么不会变</strong></p>
-<p>一<br><img src="p/2.png" alt><br>利用%x泄露内容</p>
+<p>一<br><img src="/2019/08/08/p/2.png" alt><br>利用%x泄露内容</p>
 <p>可以看到输入的aaaa也就是0x61616161是位于输出的第11位</p>
 <p>然后根据addr+%N$n  可以在<strong>偏移处储存的地址</strong>写入内容</p>
-<p>二<br><img src="p/1.jpg" alt><br>经过gdb调试查看栈，可以观察到输入的aaaa距离栈顶也正好10个参数</p>
+<p>二<br><img src="/2019/08/08/p/1.jpg" alt><br>经过gdb调试查看栈，可以观察到输入的aaaa距离栈顶也正好10个参数</p>
 <p>所以说偏移处指针会不会是指</p>
 <pre><code>猜测。。。。
 原本printf读取参数的指针指向了栈顶，然后用%n改变指针的指向。。</code></pre><p>最后，此题的最大难点在于获取 %n 所需要的偏移量</p>
@@ -245,7 +245,7 @@ payload += &apos;aaaa&apos;
 payload += &apos;%10$n&apos;
 p.sendline(payload)
 p.interactive()</code></pre><h1 id="guess-num-和-进阶-dice-game"><a href="#guess-num-和-进阶-dice-game" class="headerlink" title="guess_num  和 进阶 dice_game"></a>guess_num  和 进阶 dice_game</h1><p>猜随机数的两题，种子是seed[0]，循环n次，均对即可跳到sub_C3E函数执行system(“cat flag”)</p>
-<p><img src="3.png" alt><img src="https://i.imgur.com/mSdA2Xf.png" alt></p>
+<p><img src="/2019/08/08/p/3.png" alt><img src="https://i.imgur.com/mSdA2Xf.png" alt></p>
 <p>开启了canary,不能直接栈溢出到sub_C3E函数，</p>
 <p>但是区别在于</p>
 <p>一</p>
@@ -302,9 +302,9 @@ print p.recvuntil(&quot;&gt; &quot;)
 p.sendline(payload)
 print p.recvall()</code></pre><p>只看脚本时候好像是特别简单，不就是覆盖函数返回地址吗？</p>
 <p>但是在 ida 打开后会产生疑问了，为什么是“A”*32<br>有两次输入</p>
-<p><img src="p/4.png" alt></p>
+<p><img src="/2019/08/08/p/4.png" alt></p>
 <p>第一次输入使用fgets(&amp;s,32,stdin)<br>从缓冲区输入32位给字符串 s  并不能溢出到函数返回地址</p>
-<p><img src="p/5.png" alt></p>
+<p><img src="/2019/08/08/p/5.png" alt></p>
 <p>第二次输入为scanf(“%s”,v2)<br>这一次可以溢出到函数返回地址了</p>
 <p>不过v2距离栈底 0x74 所以构造函数不应该是0x78*”a”+p32(adress)吗<br>但我试过之后发现并不能得到flag</p>
 <p>为什么呢？<br>我也不太清楚。</p>
@@ -335,15 +335,11 @@ print p.recvall()</code></pre><p> 这题中收获还是不小的，起码读懂�
     
 <nav id="article-nav">
   
-    <a href="/2019/08/08/python/" id="article-nav-newer" class="article-nav-link-wrap">
-      <strong class="article-nav-caption">&lt;</strong>
-      <div class="article-nav-title">
-        
-          python基本数据类型
-        
-      </div>
-    </a>
   
+    <a href="/2019/08/08/python/" id="article-nav-older" class="article-nav-link-wrap">
+      <div class="article-nav-title">python基本数据类型</div>
+      <strong class="article-nav-caption">&gt;</strong>
+    </a>
   
 </nav>
 
@@ -351,7 +347,7 @@ print p.recvall()</code></pre><p> 这题中收获还是不小的，起码读懂�
 </article>
 
 
-<div class="ds-share share" data-thread-key="p" data-title="drops做题收获" data-url="http://yoursite.com/2019/08/08/p/"  data-images="http://7xkj1z.com1.z0.glb.clouddn.com/head.jpg" data-content="drops做题收获">
+<div class="ds-share share" data-thread-key="p" data-title="drops做题收获" data-url="http://yoursite.com/2019/08/08/p/"  data-images="/1.jpg" data-content="drops做题收获">
     <div class="ds-share-inline">
       <ul  class="ds-share-icons-16">
       	<li data-toggle="ds-share-icons-more"><a class="ds-more" href="javascript:void(0);">分享到：</a></li>
