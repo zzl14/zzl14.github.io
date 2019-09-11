@@ -9,23 +9,24 @@
   
 
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <meta name="description" content="格式化字符串漏洞 攻防世界  CGfsb因为当时做这个题时候不太懂，所以拿出来说说 分析伪代码，发现修改pwnme的值为8 得到flag 在.bss段的全局变量，因为没有开启PIE，那就好办了，pwnme这个全局变量的地址是不会变的。改值方法，格式化输出漏洞  利用printf格式化字符串漏洞addr+%N$n修改任意地址的值，其中%N$n是以printf第N+1个参数位置的值为地址（prin">
-<meta name="keywords" content="。。">
+  <meta name="description" content="攻防世界  CGfsb格式化字符串漏洞因为当时做这个题时候不太懂，所以拿出来说说 分析伪代码，发现修改pwnme的值为8 得到flag 在.bss段的全局变量，因为没有开启PIE，那就好办了，pwnme这个全局变量的地址是不会变的。改值方法，格式化输出漏洞  利用printf格式化字符串漏洞addr+%N$n修改任意地址的值，其中%N$n是以printf第N+1个参数位置的值为地址（pr">
+<meta name="keywords" content="写的挺乱的，大家理解着看一下，讲的都是简单的。">
 <meta property="og:type" content="article">
 <meta property="og:title" content="drops做题收获">
 <meta property="og:url" content="http://yoursite.com/2019/08/08/p/index.html">
 <meta property="og:site_name" content="study">
-<meta property="og:description" content="格式化字符串漏洞 攻防世界  CGfsb因为当时做这个题时候不太懂，所以拿出来说说 分析伪代码，发现修改pwnme的值为8 得到flag 在.bss段的全局变量，因为没有开启PIE，那就好办了，pwnme这个全局变量的地址是不会变的。改值方法，格式化输出漏洞  利用printf格式化字符串漏洞addr+%N$n修改任意地址的值，其中%N$n是以printf第N+1个参数位置的值为地址（prin">
+<meta property="og:description" content="攻防世界  CGfsb格式化字符串漏洞因为当时做这个题时候不太懂，所以拿出来说说 分析伪代码，发现修改pwnme的值为8 得到flag 在.bss段的全局变量，因为没有开启PIE，那就好办了，pwnme这个全局变量的地址是不会变的。改值方法，格式化输出漏洞  利用printf格式化字符串漏洞addr+%N$n修改任意地址的值，其中%N$n是以printf第N+1个参数位置的值为地址（pr">
 <meta property="og:locale" content="default">
 <meta property="og:image" content="http://yoursite.com/2019/08/08/p/p/2.png">
 <meta property="og:image" content="http://yoursite.com/2019/08/08/p/p/1.jpg">
 <meta property="og:image" content="http://yoursite.com/2019/08/08/p/3.png">
+<meta property="og:image" content="https://i.imgur.com/mSdA2Xf.png">
 <meta property="og:image" content="http://yoursite.com/2019/08/08/p/p/4.png">
 <meta property="og:image" content="http://yoursite.com/2019/08/08/p/p/5.png">
-<meta property="og:updated_time" content="2019-09-09T08:55:27.470Z">
+<meta property="og:updated_time" content="2019-09-11T10:15:06.007Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="drops做题收获">
-<meta name="twitter:description" content="格式化字符串漏洞 攻防世界  CGfsb因为当时做这个题时候不太懂，所以拿出来说说 分析伪代码，发现修改pwnme的值为8 得到flag 在.bss段的全局变量，因为没有开启PIE，那就好办了，pwnme这个全局变量的地址是不会变的。改值方法，格式化输出漏洞  利用printf格式化字符串漏洞addr+%N$n修改任意地址的值，其中%N$n是以printf第N+1个参数位置的值为地址（prin">
+<meta name="twitter:description" content="攻防世界  CGfsb格式化字符串漏洞因为当时做这个题时候不太懂，所以拿出来说说 分析伪代码，发现修改pwnme的值为8 得到flag 在.bss段的全局变量，因为没有开启PIE，那就好办了，pwnme这个全局变量的地址是不会变的。改值方法，格式化输出漏洞  利用printf格式化字符串漏洞addr+%N$n修改任意地址的值，其中%N$n是以printf第N+1个参数位置的值为地址（pr">
 <meta name="twitter:image" content="http://yoursite.com/2019/08/08/p/p/2.png">
   
     <link rel="alternative" href="/atom.xml" title="study" type="application/atom+xml">
@@ -118,7 +119,7 @@
 				
 				<section class="switch-part switch-part2">
 					<div class="widget tagcloud" id="js-tagcloud">
-						<a href="/tags/level0做题收获/" style="font-size: 10px;">level0做题收获</a> <a href="/tags/。。/" style="font-size: 10px;">。。</a>
+						<a href="/tags/level0做题收获/" style="font-size: 10px;">level0做题收获</a> <a href="/tags/写的挺乱的，大家理解着看一下，讲的都是简单的。/" style="font-size: 10px;">写的挺乱的，大家理解着看一下，讲的都是简单的。</a> <a href="/tags/学习python/" style="font-size: 10px;">学习python</a>
 					</div>
 				</section>
 				
@@ -199,7 +200,7 @@
       <div class="article-info article-info-post">
         
 	<div class="article-tag tagcloud">
-		<ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/。。/">。。</a></li></ul>
+		<ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/写的挺乱的，大家理解着看一下，讲的都是简单的。/">写的挺乱的，大家理解着看一下，讲的都是简单的。</a></li></ul>
 	</div>
 
         
@@ -213,9 +214,11 @@
       
         <a id="more"></a>
 
-<p>格式化字符串漏洞</p>
+
+
+
 <p>攻防世界 </p>
-<h1 id="CGfsb"><a href="#CGfsb" class="headerlink" title="CGfsb"></a>CGfsb</h1><p>因为当时做这个题时候不太懂，所以拿出来说说</p>
+<h1 id="CGfsb"><a href="#CGfsb" class="headerlink" title="CGfsb"></a>CGfsb</h1><p>格式化字符串漏洞<br>因为当时做这个题时候不太懂，所以拿出来说说</p>
 <p>分析伪代码，发现修改pwnme的值为8 得到flag</p>
 <p>在.bss段的全局变量，因为没有开启PIE，那就好办了，pwnme这个全局变量的地址是不会变的。<br>改值方法，格式化输出漏洞</p>
 <p> 利用printf格式化字符串漏洞addr+%N$n修改任意地址的值，<br>其中%N$n是以printf第N+1个参数位置的值为地址（printf中格式化字符串是第0个参数），将输出过的字符数量的值写入这个地址中</p>
@@ -242,7 +245,7 @@ payload += &apos;aaaa&apos;
 payload += &apos;%10$n&apos;
 p.sendline(payload)
 p.interactive()</code></pre><h1 id="guess-num-和-进阶-dice-game"><a href="#guess-num-和-进阶-dice-game" class="headerlink" title="guess_num  和 进阶 dice_game"></a>guess_num  和 进阶 dice_game</h1><p>猜随机数的两题，种子是seed[0]，循环n次，均对即可跳到sub_C3E函数执行system(“cat flag”)</p>
-<p><img src="3.png" alt></p>
+<p><img src="3.png" alt><img src="https://i.imgur.com/mSdA2Xf.png" alt></p>
 <p>开启了canary,不能直接栈溢出到sub_C3E函数，</p>
 <p>但是区别在于</p>
 <p>一</p>
@@ -298,19 +301,19 @@ payload=&apos;A&apos;*32+p32(0x080486cc)
 print p.recvuntil(&quot;&gt; &quot;)
 p.sendline(payload)
 print p.recvall()</code></pre><p>只看脚本时候好像是特别简单，不就是覆盖函数返回地址吗？</p>
-<p>但是在 ida 打开后会产生疑问了，为什么是“a”*32<br>有两次输入</p>
+<p>但是在 ida 打开后会产生疑问了，为什么是“A”*32<br>有两次输入</p>
 <p><img src="p/4.png" alt></p>
 <p>第一次输入使用fgets(&amp;s,32,stdin)<br>从缓冲区输入32位给字符串 s  并不能溢出到函数返回地址</p>
 <p><img src="p/5.png" alt></p>
 <p>第二次输入为scanf(“%s”,v2)<br>这一次可以溢出到函数返回地址了</p>
 <p>不过v2距离栈底 0x74 所以构造函数不应该是0x78*”a”+p32(adress)吗<br>但我试过之后发现并不能得到flag</p>
 <p>为什么呢？<br>我也不太清楚。</p>
-<p>下面是为什么用32*”a”的原因</p>
+<p>下面是为什么用32*”A”的原因</p>
 <p>重点</p>
 <h3 id="代码的最后有-amp-v3-–v14"><a href="#代码的最后有-amp-v3-–v14" class="headerlink" title="代码的最后有(*(&amp;v3+ –v14))();"></a>代码的最后有(*(&amp;v3+ –v14))();</h3><pre><code>v3是int型指针  v14是int数据
 所以这句代码就是 执行 v3加上 v14-1后  所指向的  函数
 因此我们可以用这一句来进行溢出，执行我们找到的 后门函数
-分析代码当v2的值等于‘a’ 时 v14等于 1 所以最后执行v3指向的函数
+分析代码当v2的值等于‘A’ 时 v14等于 1 所以最后执行v3指向的函数
 可以发现v3距离v2 0x20 也就是32，然后将v3覆盖为后门函数</code></pre><p>后面为了验证正确性，我将v2改为字符’9’ 得到v14为 2</p>
 <p>因此我用下面的脚本验证发现也可行</p>
 <pre><code>#coding:utf-8
@@ -332,11 +335,11 @@ print p.recvall()</code></pre><p> 这题中收获还是不小的，起码读懂�
     
 <nav id="article-nav">
   
-    <a href="/2019/08/08/level0/" id="article-nav-newer" class="article-nav-link-wrap">
+    <a href="/2019/08/08/python/" id="article-nav-newer" class="article-nav-link-wrap">
       <strong class="article-nav-caption">&lt;</strong>
       <div class="article-nav-title">
         
-          level0
+          python基本数据类型
         
       </div>
     </a>
