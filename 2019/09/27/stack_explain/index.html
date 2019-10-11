@@ -3,19 +3,24 @@
 <head><meta name="generator" content="Hexo 3.9.0">
   <meta charset="utf-8">
   
-  <title>Tag: level0做题收获 | wolcome</title>
+  <title>stack | wolcome</title>
 
   <!-- keywords -->
   
 
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <meta property="og:type" content="website">
-<meta property="og:title" content="wolcome">
-<meta property="og:url" content="http://yoursite.com/tags/level0做题收获/index.html">
+  <meta name="description" content="这段时间看了不少的东西。下面写一下对栈的一些理解： Stack 是由内存区域的结束地址开始，从高位（地址）向低位（地址）分配。栈顶：esp栈底：ebp 在函数运行时，会开辟栈帧，一些数据被存进去 push   ebp       压栈 esp减小 存入ebp内容 mov    ebp,esp        根据约定，程序从_main标签开始执行，这时会在 Stack 上为main建立一个栈帧">
+<meta name="keywords" content="对栈的一些理解">
+<meta property="og:type" content="article">
+<meta property="og:title" content="stack">
+<meta property="og:url" content="http://yoursite.com/2019/09/27/stack_explain/index.html">
 <meta property="og:site_name" content="wolcome">
+<meta property="og:description" content="这段时间看了不少的东西。下面写一下对栈的一些理解： Stack 是由内存区域的结束地址开始，从高位（地址）向低位（地址）分配。栈顶：esp栈底：ebp 在函数运行时，会开辟栈帧，一些数据被存进去 push   ebp       压栈 esp减小 存入ebp内容 mov    ebp,esp        根据约定，程序从_main标签开始执行，这时会在 Stack 上为main建立一个栈帧">
 <meta property="og:locale" content="default">
+<meta property="og:updated_time" content="2019-09-27T10:28:56.804Z">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="wolcome">
+<meta name="twitter:title" content="stack">
+<meta name="twitter:description" content="这段时间看了不少的东西。下面写一下对栈的一些理解： Stack 是由内存区域的结束地址开始，从高位（地址）向低位（地址）分配。栈顶：esp栈底：ebp 在函数运行时，会开辟栈帧，一些数据被存进去 push   ebp       压栈 esp减小 存入ebp内容 mov    ebp,esp        根据约定，程序从_main标签开始执行，这时会在 Stack 上为main建立一个栈帧">
   
     <link rel="alternative" href="/atom.xml" title="wolcome" type="application/atom+xml">
   
@@ -161,57 +166,92 @@
 		</header>				
 	</div>
 </nav>
-      <div class="body-wrap">
+      <div class="body-wrap"><article id="post-stack_explain" class="article article-type-post" itemscope itemprop="blogPost">
   
-  
-    
-    
-      
-      
-      <section class="archives-wrap">
-        <div class="archive-year-wrap">
-          <a href="/archives/2019" class="archive-year">2019</a>
-        </div>
-        <div class="archives">
-    
-    <article class="archive-article archive-type-post">
-  <div class="archive-article-inner">
-    <header class="archive-article-header">
-      	<div class="article-meta">
-	      	<a href="/2019/08/08/level0/" class="archive-article-date">
-  	<time datetime="2019-08-08T07:25:16.000Z" itemprop="datePublished">Aug 8</time>
+    <div class="article-meta">
+      <a href="/2019/09/27/stack_explain/" class="article-date">
+  	<time datetime="2019-09-27T09:46:16.000Z" itemprop="datePublished">2019-09-27</time>
 </a>
-        </div>
-    	 
+    </div>
   
-    <h1 itemprop="name">
-      <a class="archive-article-title" href="/2019/08/08/level0/">
-        level0
+  <div class="article-inner">
+    
+      <input type="hidden" class="isFancy" />
+    
+    
+      <header class="article-header">
         
-      </a>
+  
+    <h1 class="article-title" itemprop="name">
+      stack
+      
     </h1>
   
 
-        <div class="article-info info-on-left">
-          
+      </header>
+      
+      <div class="article-info article-info-post">
+        
 	<div class="article-tag tagcloud">
-		<ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/level0做题收获/">level0做题收获</a></li></ul>
+		<ul class="article-tag-list"><li class="article-tag-list-item"><a class="article-tag-list-link" href="/tags/对栈的一些理解/">对栈的一些理解</a></li></ul>
 	</div>
 
-          
+        
 
-          
-        </div>
+        
         <div class="clearfix"></div>
-    </header>
-  </div>
-</article>
-  
-  
-    </div></section>
-  
-
+      </div>
+      
     
+    <div class="article-entry" itemprop="articleBody">
+      
+        <a id="more"></a>
+
+
+<p>这段时间看了不少的东西。<br>下面写一下对栈的一些理解：</p>
+<pre><code>Stack 是由内存区域的结束地址开始，从高位（地址）向低位（地址）分配。</code></pre><p>栈顶：esp<br>栈底：ebp</p>
+<p>在函数运行时，会开辟栈帧，一些数据被存进去</p>
+<pre><code>push   ebp       压栈 esp减小 存入ebp内容
+mov    ebp,esp        </code></pre><p>根据约定，程序从_main标签开始执行，这时会在 Stack 上为main建立一个栈帧，<br>并将 Stack 所指向的地址，写入 ESP 寄存器。<br>后面如果有数据要写入main这个帧，就会写在 ESP 寄存器所保存的地址。</p>
+<p>一个栈帧从高地址到低地址应该是</p>
+<pre><code>函数参数
+函数返回地址
+ebp                #这里到下面是一个栈帧，执行完后会执行返回地址里的内容
+栈内数据
+esp  </code></pre><p>待更新。。</p>
+
+      
+    </div>
+    
+  </div>
+  
+    
+<nav id="article-nav">
+  
+    <a href="/2019/10/09/shell/" id="article-nav-newer" class="article-nav-link-wrap">
+      <strong class="article-nav-caption">&lt;</strong>
+      <div class="article-nav-title">
+        
+          shell
+        
+      </div>
+    </a>
+  
+  
+    <a href="/2019/08/08/level0/" id="article-nav-older" class="article-nav-link-wrap">
+      <div class="article-nav-title">level0</div>
+      <strong class="article-nav-caption">&gt;</strong>
+    </a>
+  
+</nav>
+
+  
+</article>
+
+
+
+
+
 
 </div>
       <footer id="footer">
@@ -237,9 +277,9 @@
 		mathjax: true,
 		animate: true,
 		isHome: false,
-		isPost: false,
+		isPost: true,
 		isArchive: false,
-		isTag: true,
+		isTag: false,
 		isCategory: false,
 		open_in_new: false
 	}
