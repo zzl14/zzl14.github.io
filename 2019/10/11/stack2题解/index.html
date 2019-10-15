@@ -22,7 +22,7 @@
 <meta property="og:image" content="http://yoursite.com/2019/10/11/stack2题解/4.png">
 <meta property="og:image" content="http://yoursite.com/2019/10/11/stack2题解/5.png">
 <meta property="og:image" content="http://yoursite.com/2019/10/11/stack2题解/6.png">
-<meta property="og:updated_time" content="2019-10-14T12:55:49.723Z">
+<meta property="og:updated_time" content="2019-10-15T04:44:27.552Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="stack2题解">
 <meta name="twitter:description" content="1.file命令查看为32位 2.checksec命令查看保护机制 由保护机制我想到的做本题的方法（1）绕过canary保护（2）rop链控制执行流 3.做题首先运行一下，查看程序的运行过程  因为做题的关键就在输入输出，本题的输入的作用显而易见，5个选项输入。因此我们可以查看伪c代码并多多观察输入的位置，查看是否有漏洞可以利用。  查看字符串列表发现了熟悉的system函数与、bin/bash可">
@@ -218,7 +218,7 @@
 <p><img src="/2019/10/11/stack2题解/4.png" alt></p>
 <p>在这里可以看到，没有限制v5的值，也就是我们可以通过这个更改距离v13任意位置的值设为v7，即通过两次输入更改值，那我们是否可以直接找到返回地址的位置并且改为system 的地址呢？<br>很明显是可以的。那么偏移是多少呢？</p>
 <p><img src="/2019/10/11/stack2题解/5.png" alt></p>
-<p>v13距离栈底0x70<br>所以距离是不是就是0x70+0x4呢？</p>
+<p>v13距离栈底0x70<br>所以距离是不是就是0x70+0x4呢？<br>大家可以先思考一下。</p>
 <p>这里查询到返回地址和输入的地址。就可以利用差值得出结果0x84<br>但是不知道为什么0x74却不行</p>
 <p>这一题在覆盖返回地址时因为更改的数组的单个字节。是所以要用到多次写入。</p>
 <p>本题需要知道小端模式，现代计算机通常使用的一种内存排列格式</p>
