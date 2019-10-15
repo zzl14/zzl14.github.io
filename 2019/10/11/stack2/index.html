@@ -3,7 +3,7 @@
 <head><meta name="generator" content="Hexo 3.9.0">
   <meta charset="utf-8">
   
-  <title>stack2题解 | wolcome</title>
+  <title>stack2 | wolcome</title>
 
   <!-- keywords -->
   
@@ -11,22 +11,22 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
   <meta name="description" content="1.file命令查看为32位 2.checksec命令查看保护机制 由保护机制我想到的做本题的方法（1）绕过canary保护（2）rop链控制执行流 3.做题首先运行一下，查看程序的运行过程  因为做题的关键就在输入输出，本题的输入的作用显而易见，5个选项输入。因此我们可以查看伪c代码并多多观察输入的位置，查看是否有漏洞可以利用。  查看字符串列表发现了熟悉的system函数与、bin/bash可">
 <meta property="og:type" content="article">
-<meta property="og:title" content="stack2题解">
-<meta property="og:url" content="http://yoursite.com/2019/10/11/stack2题解/index.html">
+<meta property="og:title" content="stack2">
+<meta property="og:url" content="http://yoursite.com/2019/10/11/stack2/index.html">
 <meta property="og:site_name" content="wolcome">
 <meta property="og:description" content="1.file命令查看为32位 2.checksec命令查看保护机制 由保护机制我想到的做本题的方法（1）绕过canary保护（2）rop链控制执行流 3.做题首先运行一下，查看程序的运行过程  因为做题的关键就在输入输出，本题的输入的作用显而易见，5个选项输入。因此我们可以查看伪c代码并多多观察输入的位置，查看是否有漏洞可以利用。  查看字符串列表发现了熟悉的system函数与、bin/bash可">
 <meta property="og:locale" content="default">
-<meta property="og:image" content="http://yoursite.com/2019/10/11/stack2题解/2.png">
-<meta property="og:image" content="http://yoursite.com/2019/10/11/stack2题解/1.png">
-<meta property="og:image" content="http://yoursite.com/2019/10/11/stack2题解/3.png">
-<meta property="og:image" content="http://yoursite.com/2019/10/11/stack2题解/4.png">
-<meta property="og:image" content="http://yoursite.com/2019/10/11/stack2题解/5.png">
-<meta property="og:image" content="http://yoursite.com/2019/10/11/stack2题解/6.png">
-<meta property="og:updated_time" content="2019-10-15T04:44:27.552Z">
+<meta property="og:image" content="http://yoursite.com/2019/10/11/stack2/2.png">
+<meta property="og:image" content="http://yoursite.com/2019/10/11/stack2/1.png">
+<meta property="og:image" content="http://yoursite.com/2019/10/11/stack2/3.png">
+<meta property="og:image" content="http://yoursite.com/2019/10/11/stack2/4.png">
+<meta property="og:image" content="http://yoursite.com/2019/10/11/stack2/5.png">
+<meta property="og:image" content="http://yoursite.com/2019/10/11/stack2/6.png">
+<meta property="og:updated_time" content="2019-10-15T04:50:25.341Z">
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="stack2题解">
+<meta name="twitter:title" content="stack2">
 <meta name="twitter:description" content="1.file命令查看为32位 2.checksec命令查看保护机制 由保护机制我想到的做本题的方法（1）绕过canary保护（2）rop链控制执行流 3.做题首先运行一下，查看程序的运行过程  因为做题的关键就在输入输出，本题的输入的作用显而易见，5个选项输入。因此我们可以查看伪c代码并多多观察输入的位置，查看是否有漏洞可以利用。  查看字符串列表发现了熟悉的system函数与、bin/bash可">
-<meta name="twitter:image" content="http://yoursite.com/2019/10/11/stack2题解/2.png">
+<meta name="twitter:image" content="http://yoursite.com/2019/10/11/stack2/2.png">
   
     <link rel="alternative" href="/atom.xml" title="wolcome" type="application/atom+xml">
   
@@ -172,10 +172,10 @@
 		</header>				
 	</div>
 </nav>
-      <div class="body-wrap"><article id="post-stack2题解" class="article article-type-post" itemscope itemprop="blogPost">
+      <div class="body-wrap"><article id="post-stack2" class="article article-type-post" itemscope itemprop="blogPost">
   
     <div class="article-meta">
-      <a href="/2019/10/11/stack2题解/" class="article-date">
+      <a href="/2019/10/11/stack2/" class="article-date">
   	<time datetime="2019-10-11T14:06:49.000Z" itemprop="datePublished">2019-10-11</time>
 </a>
     </div>
@@ -189,7 +189,7 @@
         
   
     <h1 class="article-title" itemprop="name">
-      stack2题解
+      stack2
       
     </h1>
   
@@ -208,21 +208,21 @@
     <div class="article-entry" itemprop="articleBody">
       
         <p>1.file命令查看为32位</p>
-<p>2.checksec命令查看保护机制<br><img src="/2019/10/11/stack2题解/2.png" alt></p>
+<p>2.checksec命令查看保护机制<br><img src="/2019/10/11/stack2/2.png" alt></p>
 <p>由保护机制我想到的做本题的方法<br>（1）绕过canary保护<br>（2）rop链控制执行流</p>
 <p>3.做题首先运行一下，查看程序的运行过程</p>
-<p><img src="/2019/10/11/stack2题解/1.png" alt></p>
+<p><img src="/2019/10/11/stack2/1.png" alt></p>
 <p>因为做题的关键就在输入输出，本题的输入的作用显而易见，5个选项输入。因此我们可以查看伪c代码并多多观察输入的位置，查看是否有漏洞可以利用。</p>
-<p><img src="/2019/10/11/stack2题解/3.png" alt></p>
+<p><img src="/2019/10/11/stack2/3.png" alt></p>
 <p>查看字符串列表发现了熟悉的system函数与、bin/bash<br>可以考虑使用覆盖返回地址，但本题开了保护，不能直接栈溢出，所以接着看伪代码。</p>
-<p><img src="/2019/10/11/stack2题解/4.png" alt></p>
+<p><img src="/2019/10/11/stack2/4.png" alt></p>
 <p>在这里可以看到，没有限制v5的值，也就是我们可以通过这个更改距离v13任意位置的值设为v7，即通过两次输入更改值，那我们是否可以直接找到返回地址的位置并且改为system 的地址呢？<br>很明显是可以的。那么偏移是多少呢？</p>
-<p><img src="/2019/10/11/stack2题解/5.png" alt></p>
+<p><img src="/2019/10/11/stack2/5.png" alt></p>
 <p>v13距离栈底0x70<br>所以距离是不是就是0x70+0x4呢？<br>大家可以先思考一下。</p>
 <p>这里查询到返回地址和输入的地址。就可以利用差值得出结果0x84<br>但是不知道为什么0x74却不行</p>
 <p>这一题在覆盖返回地址时因为更改的数组的单个字节。是所以要用到多次写入。</p>
 <p>本题需要知道小端模式，现代计算机通常使用的一种内存排列格式</p>
-<p><img src="/2019/10/11/stack2题解/6.png" alt><br>下面是脚本</p>
+<p><img src="/2019/10/11/stack2/6.png" alt><br>下面是脚本</p>
 <pre><code>#!/usr/bin/python
 #coding:utf-8
 
