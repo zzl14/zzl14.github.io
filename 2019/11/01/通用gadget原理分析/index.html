@@ -22,18 +22,18 @@
 <meta name="keywords" content="pwn学习">
 <meta property="og:type" content="article">
 <meta property="og:title" content="通用gadget原理分析">
-<meta property="og:url" content="http://yoursite.com/2019/11/01/通用gadget原理分析/index.html">
+<meta property="og:url" content="https://www.zzl14.xyz/2019/11/01/通用gadget原理分析/index.html">
 <meta property="og:site_name" content="try">
 <meta property="og:description" content="通用 gadget __libc_csu_init() 我们知道在程序编译的过程中，会自动加入一些通用函数做初始化的工作，这些初始化函数都是相同的，所以我们可以考虑在这些函数中找到一些通用的 gadget，在 x64 程序中，就存在这样的 gadget。x64 程序的前六个参数依次通过寄存器 rdi、rsi、rdx、rcx、r8、r9 进行传递，我们所找的 gadget 自然也是针对这些寄存器进行">
 <meta property="og:locale" content="default">
-<meta property="og:image" content="http://yoursite.com/2019/11/01/通用gadget原理分析/1.jpg">
+<meta property="og:image" content="https://www.zzl14.xyz/2019/11/01/通用gadget原理分析/1.jpg">
 <meta property="og:updated_time" content="2019-11-01T14:03:03.115Z">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="通用gadget原理分析">
 <meta name="twitter:description" content="通用 gadget __libc_csu_init() 我们知道在程序编译的过程中，会自动加入一些通用函数做初始化的工作，这些初始化函数都是相同的，所以我们可以考虑在这些函数中找到一些通用的 gadget，在 x64 程序中，就存在这样的 gadget。x64 程序的前六个参数依次通过寄存器 rdi、rsi、rdx、rcx、r8、r9 进行传递，我们所找的 gadget 自然也是针对这些寄存器进行">
-<meta name="twitter:image" content="http://yoursite.com/2019/11/01/通用gadget原理分析/1.jpg">
+<meta name="twitter:image" content="https://www.zzl14.xyz/2019/11/01/通用gadget原理分析/1.jpg">
   <!-- Canonical links -->
-  <link rel="canonical" href="http://yoursite.com/2019/11/01/通用gadget原理分析/index.html">
+  <link rel="canonical" href="https://www.zzl14.xyz/2019/11/01/通用gadget原理分析/index.html">
   
     <link rel="alternate" href="/atom.xml" title="try" type="application/atom+xml">
   
@@ -440,7 +440,7 @@
     
     <li class="post-copyright-link hidden-xs">
       <strong>本文链接：</strong>
-      <a href="http://yoursite.com/2019/11/01/通用gadget原理分析/" title="通用gadget原理分析" target="_blank" rel="external">http://yoursite.com/2019/11/01/通用gadget原理分析/</a>
+      <a href="https://www.zzl14.xyz/2019/11/01/通用gadget原理分析/" title="通用gadget原理分析" target="_blank" rel="external">https://www.zzl14.xyz/2019/11/01/通用gadget原理分析/</a>
     </li>
     
     <li class="post-copyright-license">
@@ -614,7 +614,7 @@ window.jQuery || document.write('<script src="js/jquery.min.js"><\/script>')
 (function ($) {
     $('.search-form').on('submit', function (e) {
         var keyword = $('.search-form-input[name="wd"]').val();
-        window.location = 'https://www.baidu.com/s?wd=site:yoursite.com ' + keyword;
+        window.location = 'https://www.baidu.com/s?wd=site:www.zzl14.xyz ' + keyword;
         return false;
     });
 })(jQuery);
