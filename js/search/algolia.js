@@ -1,14 +1,21 @@
 $(function () {
   $('a.social-icon.search').on('click', function () {
-    $('body').css({ width: '100%', overflow: 'hidden' })
-    $('.search-dialog').css('display', 'block')
+    $('body').css('width', '100%')
+    $('body').css('overflow', 'hidden')
+
+    $('.search-dialog').animate({}, function () {
+      $('.search-dialog').css({
+        'display': 'block'
+      }),300
+    })
+
     $('.ais-search-box--input').focus()
-    $('.search-mask').fadeIn()
+    $('.search-mask').fadeIn();
     // shortcut: ESC
-    document.addEventListener('keydown', function f (event) {
-      if (event.code === 'Escape') {
-        closeSearch()
-        document.removeEventListener('keydown', f)
+    document.addEventListener('keydown', function f(event) {
+      if (event.code == "Escape") {
+        closeSearch();
+        document.removeEventListener('keydown', f);
       }
     })
   })
@@ -17,21 +24,23 @@ $(function () {
     $('body').css('width', '')
     $('body').css('overflow', '')
     $('.search-dialog').css({
-      animation: 'search_close .5s'
+      'animation': 'search_close .5s'
     })
 
     $('.search-dialog').animate({}, function () {
+
       setTimeout(function () {
         $('.search-dialog').css({
-          animation: '',
-          display: 'none'
+          'animation': '',
+          'display': 'none'
         })
-      }, 500)
+      },500)
     })
 
-    $('.search-mask').fadeOut()
+    $('.search-mask').fadeOut();
   }
-  $('.search-mask, .search-close-button').on('click touchstart', closeSearch)
+  $('.search-mask, .search-close-button').on('click', closeSearch)
+
 
   var algolia = GLOBAL_CONFIG.algolia
   var isAlgoliaValid = algolia.appId && algolia.apiKey && algolia.indexName
@@ -129,5 +138,6 @@ $(function () {
       }
     })
   )
+
   search.start()
 })
