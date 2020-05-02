@@ -2,9 +2,23 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   
   <url>
+    <loc>https://www.zzl14.xyz/2020/02/16/docker%E5%9F%BA%E7%A1%80/</loc>
+    
+    <lastmod>2020-05-02T10:00:44.886Z</lastmod>
+    
+  </url>
+  
+  <url>
     <loc>https://www.zzl14.xyz/2020/04/13/malloc%E6%B5%81%E7%A8%8B/</loc>
     
-    <lastmod>2020-04-19T05:51:59.762Z</lastmod>
+    <lastmod>2020-04-26T07:38:12.191Z</lastmod>
+    
+  </url>
+  
+  <url>
+    <loc>https://www.zzl14.xyz/2019/10/11/ubuntu16-04%E9%85%8D%E7%BD%AE/</loc>
+    
+    <lastmod>2020-04-26T01:27:30.389Z</lastmod>
     
   </url>
   
@@ -65,13 +79,6 @@
   </url>
   
   <url>
-    <loc>https://www.zzl14.xyz/2020/02/16/docker%E9%85%8D%E7%BD%AE/</loc>
-    
-    <lastmod>2020-04-06T13:19:12.926Z</lastmod>
-    
-  </url>
-  
-  <url>
     <loc>https://www.zzl14.xyz/2020/04/06/hexo%E4%B8%BB%E9%A2%98%E6%90%AD%E5%BB%BA/</loc>
     
     <lastmod>2020-04-06T13:03:03.102Z</lastmod>
@@ -124,13 +131,6 @@
     <loc>https://www.zzl14.xyz/2019/10/09/shell/</loc>
     
     <lastmod>2019-11-01T12:15:00.189Z</lastmod>
-    
-  </url>
-  
-  <url>
-    <loc>https://www.zzl14.xyz/2019/10/11/ubuntu16-04%E9%85%8D%E7%BD%AE/</loc>
-    
-    <lastmod>2019-10-30T09:15:43.345Z</lastmod>
     
   </url>
   
