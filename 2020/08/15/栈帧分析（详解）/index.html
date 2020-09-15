@@ -1,0 +1,211 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta name="generator" content="Hexo 3.9.0"><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"><title>虚拟机配置 | try</title><meta name="description" content="虚拟机配置"><meta name="keywords" content="ctf,栈帧"><meta name="author" content="zzl"><meta name="copyright" content="zzl"><meta name="format-detection" content="telephone=no"><link rel="shortcut icon" href="https://i.loli.net/2020/04/03/cJIRnMom8DrsUCz.jpg"><link rel="preconnect" href="//cdn.jsdelivr.net"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="虚拟机配置"><meta name="twitter:description" content="虚拟机配置"><meta name="twitter:image" content="http://img0.imgtn.bdimg.com/it/u=125435587,4013182379&amp;fm=26&amp;gp=0.jpg"><meta property="og:type" content="article"><meta property="og:title" content="虚拟机配置"><meta property="og:url" content="https://www.zzl14.xyz/2020/08/15/栈帧分析（详解）/"><meta property="og:site_name" content="try"><meta property="og:description" content="虚拟机配置"><meta property="og:image" content="http://img0.imgtn.bdimg.com/it/u=125435587,4013182379&amp;fm=26&amp;gp=0.jpg"><meta http-equiv="Cache-Control" content="no-transform"><meta http-equiv="Cache-Control" content="no-siteapp"><script src="https://cdn.jsdelivr.net/npm/js-cookie/dist/js.cookie.min.js"></script><script>const autoChangeMode = 'false'
+var t = Cookies.get("theme");
+if (autoChangeMode == '1'){
+const isDarkMode = window.matchMedia("(prefers-color-scheme: dark)").matches
+const isLightMode = window.matchMedia("(prefers-color-scheme: light)").matches
+const isNotSpecified = window.matchMedia("(prefers-color-scheme: no-preference)").matches
+const hasNoSupport = !isDarkMode && !isLightMode && !isNotSpecified
+
+if (t === undefined){
+  if (isLightMode) activateLightMode()
+  else if (isDarkMode) activateDarkMode()
+  else if (isNotSpecified || hasNoSupport){
+    console.log('You specified no preference for a color scheme or your browser does not support it. I Schedule dark mode during night time.')
+    now = new Date();
+    hour = now.getHours();
+    isNight = hour < 6 || hour >= 18
+    isNight ? activateDarkMode() : activateLightMode()
+}
+} else if (t == 'light') activateLightMode()
+else activateDarkMode()
+
+
+} else if (autoChangeMode == '2'){
+  now = new Date();
+  hour = now.getHours();
+  isNight = hour < 6 || hour >= 18
+  if(t === undefined) isNight? activateDarkMode() : activateLightMode()
+  else if (t === 'light') activateLightMode()
+  else activateDarkMode() 
+} else {
+  if ( t == 'dark' ) activateDarkMode()
+  else if ( t == 'light') activateLightMode()
+}
+
+function activateDarkMode(){
+  document.documentElement.setAttribute('data-theme', 'dark')
+  if (document.querySelector('meta[name="theme-color"]') !== null){
+    document.querySelector('meta[name="theme-color"]').setAttribute('content','#000')
+  }
+}
+function activateLightMode(){
+  document.documentElement.setAttribute('data-theme', 'light')
+  if (document.querySelector('meta[name="theme-color"]') !== null){
+  document.querySelector('meta[name="theme-color"]').setAttribute('content','#fff')
+  }
+}</script><link rel="stylesheet" href="/css/index.css"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/font-awesome@latest/css/font-awesome.min.css"><link rel="canonical" href="https://www.zzl14.xyz/2020/08/15/栈帧分析（详解）/"><link rel="prev" title="ubuntu ghidra" href="https://www.zzl14.xyz/2020/08/16/ghidra安装/"><link rel="next" title="一些命令添加sudo后找不到" href="https://www.zzl14.xyz/2020/08/02/一些命令添加sudo后找不到/"><link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Titillium+Web"><script>var GLOBAL_CONFIG = { 
+  root: '/',
+  algolia: undefined,
+  localSearch: {"path":"search.xml","languages":{"hits_empty":"找不到您查询的内容:${query}"}},
+  translate: {"defaultEncoding":2,"translateDelay":0,"cookieDomain":"https://xxx/","msgToTraditionalChinese":"繁","msgToSimplifiedChinese":"简"},
+  highlight_copy: 'true',
+  highlight_lang: 'true',
+  highlight_shrink: 'false',
+  copy: {
+    success: '复制成功',
+    error: '复制错误',
+    noSupport: '浏览器不支持'
+  },
+  bookmark: {
+    title: 'Snackbar.bookmark.title',
+    message_prev: '按',
+    message_next: '键将本页加入书签'
+  },
+  runtime_unit: '天',
+  copyright: undefined,
+  copy_copyright_js: false,
+  ClickShowText: undefined,
+  medium_zoom: 'true',
+  Snackbar: undefined
+  
+}</script><link rel="alternate" href="/atom.xml" title="try" type="application/atom+xml">
+</head><body><div id="header"> <div id="page-header"><span class="pull_left" id="blog_name"><a class="blog_title" id="site-name" href="/">try</a></span><i class="fa fa-bars fa-fw toggle-menu pull_right close" aria-hidden="true"></i><span class="pull_right menus"><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fa fa-home"></i><span> 主页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fa fa-archive"></i><span> 时间轴</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fa fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fa fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw fa fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fa fa-heart"></i><span> 关于</span></a></div></div></span><span class="pull_right" id="search_button"><a class="site-page social-icon search"><i class="fa fa-search fa-fw"></i><span> 搜索</span></a></span></div></div><div id="mobile-sidebar"><div id="menu_mask"></div><div id="mobile-sidebar-menus"><div class="mobile_author_icon"><img class="lazyload avatar_img" src="https://cdn.jsdelivr.net/gh/zzl14/picBed@master/shadow.jpg" onerror="onerror=null;src='/img/friend_404.gif'"></div><div class="mobile_post_data"><div class="mobile_data_item is_center"><div class="mobile_data_link"><a href="/archives/"><div class="headline">文章</div><div class="length_num">21</div></a></div></div><div class="mobile_data_item is_center">      <div class="mobile_data_link"><a href="/tags/"><div class="headline">标签</div><div class="length_num">26</div></a></div></div><div class="mobile_data_item is_center">     <div class="mobile_data_link"><a href="/categories/"><div class="headline">分类</div><div class="length_num">7</div></a></div></div></div><hr><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fa fa-home"></i><span> 主页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fa fa-archive"></i><span> 时间轴</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fa fa-tags"></i><span> 标签</span></a></div><div class="menus_item"><a class="site-page" href="/categories/"><i class="fa-fw fa fa-folder-open"></i><span> 分类</span></a></div><div class="menus_item"><a class="site-page" href="/link/"><i class="fa-fw fa fa-link"></i><span> 友链</span></a></div><div class="menus_item"><a class="site-page" href="/about/"><i class="fa-fw fa fa-heart"></i><span> 关于</span></a></div></div></div><div id="mobile-sidebar-toc"><div class="toc_mobile_headline">目录</div><ol class="toc_mobile_items"><li class="toc_mobile_items-item toc_mobile_items-level-1"><a class="toc_mobile_items-link" href="#栈帧开辟原理（详解）"><span class="toc_mobile_items-number">1.</span> <span class="toc_mobile_items-text">栈帧开辟原理（详解）</span></a><ol class="toc_mobile_items-child"><li class="toc_mobile_items-item toc_mobile_items-level-2"><a class="toc_mobile_items-link" href="#汇编指令"><span class="toc_mobile_items-number">1.1.</span> <span class="toc_mobile_items-text">汇编指令</span></a></li><li class="toc_mobile_items-item toc_mobile_items-level-2"><a class="toc_mobile_items-link" href="#begin"><span class="toc_mobile_items-number">1.2.</span> <span class="toc_mobile_items-text">begin</span></a></li><li class="toc_mobile_items-item toc_mobile_items-level-2"><a class="toc_mobile_items-link" href="#call-进入函数"><span class="toc_mobile_items-number">1.3.</span> <span class="toc_mobile_items-text">call(进入函数)</span></a></li><li class="toc_mobile_items-item toc_mobile_items-level-2"><a class="toc_mobile_items-link" href="#开辟栈帧"><span class="toc_mobile_items-number">1.4.</span> <span class="toc_mobile_items-text">开辟栈帧</span></a></li><li class="toc_mobile_items-item toc_mobile_items-level-2"><a class="toc_mobile_items-link" href="#返回上层函数"><span class="toc_mobile_items-number">1.5.</span> <span class="toc_mobile_items-text">返回上层函数</span></a></li></ol></li></ol></div></div><div id="body-wrap"><i class="fa fa-arrow-right" id="toggle-sidebar" aria-hidden="true">     </i><div class="auto_open" id="sidebar"><div class="sidebar-toc"><div class="sidebar-toc__title">目录</div><div class="sidebar-toc__progress"><span class="progress-notice">你已经读了</span><span class="progress-num">0</span><span class="progress-percentage">%</span><div class="sidebar-toc__progress-bar">     </div></div><div class="sidebar-toc__content"><ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#栈帧开辟原理（详解）"><span class="toc-number">1.</span> <span class="toc-text">栈帧开辟原理（详解）</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#汇编指令"><span class="toc-number">1.1.</span> <span class="toc-text">汇编指令</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#begin"><span class="toc-number">1.2.</span> <span class="toc-text">begin</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#call-进入函数"><span class="toc-number">1.3.</span> <span class="toc-text">call(进入函数)</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#开辟栈帧"><span class="toc-number">1.4.</span> <span class="toc-text">开辟栈帧</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#返回上层函数"><span class="toc-number">1.5.</span> <span class="toc-text">返回上层函数</span></a></li></ol></li></ol></div></div></div><div id="content-outer"><div id="top-container" style="background-image: url(http://img0.imgtn.bdimg.com/it/u=125435587,4013182379&amp;fm=26&amp;gp=0.jpg)"><div id="post-info"><div id="post-title"><div class="posttitle">虚拟机配置</div></div><div id="post-meta"><time class="post-meta__date"><i class="fa fa-calendar" aria-hidden="true"></i> 发表于 2020-08-15<span class="post-meta__separator">|</span><i class="fa fa-history" aria-hidden="true"></i> 更新于 2020-08-22</time><div class="post-meta-wordcount"><i class="fa fa-file-word-o post-meta__icon" aria-hidden="true"></i><span>字数总计: </span><span class="word-count">643</span><span class="post-meta__separator">|</span><i class="fa fa-clock-o post-meta__icon" aria-hidden="true"></i><span>阅读时长: 2 分钟</span><span class="post-meta__separator">|</span><i class="fa fa-eye post-meta__icon" aria-hidden="true">       </i><span>阅读量: </span><span id="busuanzi_value_page_pv"></span></div></div></div></div><div class="layout layout_post" id="content-inner">   <article id="post"><div class="article-container" id="post-content"><h1 id="栈帧开辟原理（详解）"><a href="#栈帧开辟原理（详解）" class="headerlink" title="栈帧开辟原理（详解）"></a>栈帧开辟原理（详解）</h1><p>将此程序（hello.c）编译后调试</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="meta-keyword">include</span> <span class="meta-string">&lt;stdio.h&gt;</span></span></span><br><span class="line"> </span><br><span class="line"><span class="function"><span class="keyword">void</span> <span class="title">fun</span><span class="params">(<span class="keyword">int</span> a)</span></span>&#123;</span><br><span class="line"><span class="keyword">int</span> b= a*<span class="number">2</span>;</span><br><span class="line"><span class="keyword">return</span> </span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">int</span> main(<span class="keyword">void</span>) &#123;</span><br><span class="line">    <span class="built_in">printf</span>(<span class="string">"hello\n"</span>);</span><br><span class="line">    fun(<span class="number">10</span>);</span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>main汇编</p>
+<p><img alt="image-20200820180923508" data-src="/2020/08/15/栈帧分析（详解）/C:%5CUsers%5CDELL%5CAppData%5CRoaming%5CTypora%5Ctypora-user-images%5Cimage-20200820180923508.png" class="lazyload"></p>
+<p>fun汇编</p>
+<p><img alt="image-20200820181212451" data-src="/2020/08/15/栈帧分析（详解）/C:%5CUsers%5CDELL%5CAppData%5CRoaming%5CTypora%5Ctypora-user-images%5Cimage-20200820181212451.png" class="lazyload"></p>
+<h2 id="汇编指令"><a href="#汇编指令" class="headerlink" title="汇编指令"></a>汇编指令</h2><ul>
+<li><p>push rbp   栈顶rsp-=8   并将<code>rbp的地址</code>传给rsp</p>
+<ul>
+<li><blockquote>
+<p>sub  rsp  8</p>
+<p>mov  rsp  rbp </p>
+<p>减完再赋值</p>
+</blockquote>
+</li>
+</ul>
+</li>
+<li><p>pop rbp   将<code>栈顶rsp的值</code>赋给 rbp   并栈顶rsp+=8</p>
+<ul>
+<li><blockquote>
+<p>mov  rbp rsp </p>
+<p>add rsp 8</p>
+<p>赋值后再加</p>
+</blockquote>
+</li>
+</ul>
+</li>
+<li><p>call 0x400526 &lt; fun&gt;  将 push   0x400550(call指令下一条指令的地址) 并将0x400526 &lt; fun&gt;赋值给rip</p>
+<ul>
+<li><blockquote>
+<p>push 0x400550</p>
+<p>mov rip  0x400526</p>
+</blockquote>
+</li>
+</ul>
+</li>
+<li><p>leave    结果：rsp指向rbp+8 , rbp指向rbp 的内容,</p>
+<ul>
+<li><blockquote>
+<p>move rsp rbp  （<code>rbp的地址</code>赋值给rsp的地址,即<code>rsp指向rbp</code>）</p>
+<p>pop  rbp            (<code>rbp指向rsp的内容(rbp的内容)</code>，rsp+=8)</p>
+</blockquote>
+</li>
+</ul>
+</li>
+<li><p>ret        rip指向rsp的内容，rsp+=8</p>
+<ul>
+<li><blockquote>
+<p>pop rip</p>
+</blockquote>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="begin"><a href="#begin" class="headerlink" title="begin"></a>begin</h2><p>编译后调试，在main函数下断点</p>
+<p><img alt="image-20200820182841864" data-src="/2020/08/15/栈帧分析（详解）/C:%5CUsers%5CDELL%5CAppData%5CRoaming%5CTypora%5Ctypora-user-images%5Cimage-20200820182841864.png" class="lazyload"></p>
+<p>可以发现，调用fun函数前</p>
+<p><code>MOV edi  0x4005e4</code></p>
+<p>将 <code>0xa(10) 传给edi</code>    &lt;rdi传递第一个参数&gt;</p>
+<h2 id="call-进入函数"><a href="#call-进入函数" class="headerlink" title="call(进入函数)"></a>call(进入函数)</h2><blockquote>
+<p>call指令调用地址进入fun函数，并将返回地址压入栈中</p>
+</blockquote>
+<p>call fun 之前        <code>rip指向 main+19</code></p>
+<p><img alt="image-20200820194725221" data-src="/2020/08/15/栈帧分析（详解）/C:%5CUsers%5CDELL%5CAppData%5CRoaming%5CTypora%5Ctypora-user-images%5Cimage-20200820194725221.png" class="lazyload"></p>
+<p>call fun之后  <code>rip指向&lt;fun&gt;</code></p>
+<p><img alt="image-20200820194558518" data-src="/2020/08/15/栈帧分析（详解）/C:%5CUsers%5CDELL%5CAppData%5CRoaming%5CTypora%5Ctypora-user-images%5Cimage-20200820194558518.png" class="lazyload"></p>
+<p>且<code>call指令将main+24压入栈中，便于之后接着执行main</code></p>
+<p><img alt="image-20200820194846557" data-src="/2020/08/15/栈帧分析（详解）/C:%5CUsers%5CDELL%5CAppData%5CRoaming%5CTypora%5Ctypora-user-images%5Cimage-20200820194846557.png" class="lazyload"></p>
+<h2 id="开辟栈帧"><a href="#开辟栈帧" class="headerlink" title="开辟栈帧"></a>开辟栈帧</h2><p>进入fan函数之后，<code>要开辟栈帧</code></p>
+<p>​                                <code>push   rbp</code></p>
+<p>​                                <code>mov    rbp, rsp</code></p>
+<p>​                                &gt;  一般情况下，会<code>sub rsp n</code>(增加栈帧空间)</p>
+<p><img alt="image-20200820195123628" data-src="/2020/08/15/栈帧分析（详解）/C:%5CUsers%5CDELL%5CAppData%5CRoaming%5CTypora%5Ctypora-user-images%5Cimage-20200820195123628.png" class="lazyload"></p>
+<p>先将<code>rbp的地址</code>压入栈中    <code>方便返回时恢复main函数的栈帧(rbp)</code></p>
+<p>再将<code>rbp指向rsp</code>，<code>将栈帧放在返回地址 main+24 的上面</code></p>
+<p><img alt="image-20200820195316696" data-src="/2020/08/15/栈帧分析（详解）/C:%5CUsers%5CDELL%5CAppData%5CRoaming%5CTypora%5Ctypora-user-images%5Cimage-20200820195316696.png" class="lazyload"></p>
+<p><img alt="image-20200820200052565" data-src="/2020/08/15/栈帧分析（详解）/C:%5CUsers%5CDELL%5CAppData%5CRoaming%5CTypora%5Ctypora-user-images%5Cimage-20200820200052565.png" class="lazyload"></p>
+<blockquote>
+<p>栈帧开辟完成后</p>
+<p>rbp存着上层函数的栈帧（rbp）</p>
+<p>rbp+8存着返回地址<code>上层函数将执行的代码地址</code></p>
+</blockquote>
+<h2 id="返回上层函数"><a href="#返回上层函数" class="headerlink" title="返回上层函数"></a>返回上层函数</h2><ul>
+<li>一般函数结束 </li>
+</ul>
+<p><code>leave</code></p>
+<p><code>ret</code></p>
+<p>leave </p>
+<blockquote>
+<p>先<code>move rsp rbp</code>将栈减小，使  <code>rsp指向rbp</code>，</p>
+<p>再<code>pop rbp</code> 使 <code>rsp 指向 rbp+8(保存返回地址的地方)</code>，<code>rbp指向rbp保存的内容</code></p>
+</blockquote>
+<p>ret</p>
+<blockquote>
+<p>pop rip</p>
+<p>rip指向rsp的内容，rsp+=8</p>
+</blockquote>
+<ul>
+<li>但是本测试，栈帧为0 ，即<code>rsp与rbp指向同一地址</code></li>
+</ul>
+<p>所以不需要用到  leave</p>
+<p><img alt="image-20200820201026881" data-src="/2020/08/15/栈帧分析（详解）/C:%5CUsers%5CDELL%5CAppData%5CRoaming%5CTypora%5Ctypora-user-images%5Cimage-20200820201026881.png" class="lazyload"></p>
+<blockquote>
+<p>可以直接<code>pop rbp</code> <code>ret</code></p>
+<p>最终使rip指向 <code>main+24</code>(先前call指令 压入栈中的地址)</p>
+<p><code>rsp指向fun栈帧rbp+0x10</code></p>
+<p>rbp指向<code>原本main函数的rbp</code>,</p>
+<p>恢复了上层函数的代码执行和栈帧</p>
+</blockquote>
+<p>之后再<code>leave  ret</code>会使rip指向<code>rbp+8</code></p>
+<blockquote>
+<p>所以如果我们更改<code>fun函数的rbp内容为shelladdr-8</code>,会使<code>main函数的rbp地址为shelladdr-8</code></p>
+<p>紧接着在main函数返回时会执行<code>main函数返回地址（rbp+8）</code>–&gt;即shellcode .</p>
+<p>且之后rsp指向<code>shelladdr+8</code></p>
+<p>rbp指向<code>shelladdr-8</code>的内容</p>
+</blockquote>
+</div></article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta">文章作者: </span><span class="post-copyright-info"><a href="mailto:undefined">zzl</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta">文章链接: </span><span class="post-copyright-info"><a href="https://www.zzl14.xyz/2020/08/15/栈帧分析（详解）/">https://www.zzl14.xyz/2020/08/15/栈帧分析（详解）/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta">版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来自 <a href="https://www.zzl14.xyz">try</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/ctf/">ctf    </a><a class="post-meta__tags" href="/tags/栈帧/">栈帧    </a></div><div class="post_share"><div class="social-share" data-image="http://img0.imgtn.bdimg.com/it/u=125435587,4013182379&amp;fm=26&amp;gp=0.jpg" data-sites="facebook,twitter,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/social-share.js@1.0.16/dist/css/share.min.css"><script src="https://cdn.jsdelivr.net/npm/social-share.js@1.0.16/dist/js/social-share.min.js"></script></div></div><div class="post-reward"><a class="reward-button"><i class="fa fa-qrcode"></i> 打赏<div class="reward-main"><ul class="reward-all"><li class="reward-item"><img class="lazyload post-qr-code__img" src="https://i.loli.net/2020/04/03/gSKnl1YFHTLREWj.png"><div class="post-qr-code__desc">微信</div></li><li class="reward-item"><img class="lazyload post-qr-code__img" src="https://i.loli.net/2020/04/03/WAXTCQFIsNqtoGg.png"><div class="post-qr-code__desc">支付宝</div></li></ul></div></a></div><nav class="pagination_post" id="pagination"><div class="prev-post pull_left"><a href="/2020/08/16/ghidra安装/"><img class="prev_cover lazyload" data-src="http://img0.imgtn.bdimg.com/it/u=125435587,4013182379&amp;fm=26&amp;gp=0.jpg" onerror="onerror=null;src='/img/404.jpg'"><div class="label">上一篇</div><div class="prev_info"><span>ubuntu ghidra</span></div></a></div><div class="next-post pull_right"><a href="/2020/08/02/一些命令添加sudo后找不到/"><img class="next_cover lazyload" data-src="https://i.loli.net/2020/04/05/MKRy6413aTgqBwX.png" onerror="onerror=null;src='/img/404.jpg'"><div class="label">下一篇</div><div class="next_info"><span>一些命令添加sudo后找不到</span></div></a></div></nav><hr><div id="post-comment"><div class="comment_headling"><i class="fa fa-comments fa-fw" aria-hidden="true"></i><span> 评论</span></div><div class="vcomment" id="vcomment"></div><script src="https://cdn.jsdelivr.net/npm/valine/dist/Valine.min.js"></script><script>var notify = false == true ? true : false;
+var verify = false == true ? true : false;
+var GUEST_INFO = ['nick','mail','link'];
+var guest_info = 'nick,mail,link'.split(',').filter(function(item){
+  return GUEST_INFO.indexOf(item) > -1
+});
+guest_info = guest_info.length == 0 ? GUEST_INFO :guest_info;
+
+window.valine = new Valine({
+  el:'#vcomment',
+  notify:notify,
+  verify:verify,
+  appId:'5XEbpDeGeLiJGmRTIuu5sQFR-gzGzoHsz',
+  appKey:'oHHQDQDekHpaEQLsM6F86kYH',
+  placeholder:'评论支持markdown格式',
+  avatar:'monsterid',
+  guest_info:guest_info,
+  pageSize:'10',
+  lang:'zh-cn',
+  recordIP: true
+});</script></div></div></div><footer id="footer" style="background-image: url(http://img0.imgtn.bdimg.com/it/u=125435587,4013182379&amp;fm=26&amp;gp=0.jpg)"><div id="footer-wrap"><div class="copyright">&copy;2019 - 2020 By zzl</div><div class="framework-info"><span>驱动 </span><a href="http://hexo.io"><span>Hexo</span></a><span class="footer-separator">|</span><span>主题 </span><a href="https://github.com/jerryc127/hexo-theme-butterfly"><span>Butterfly</span></a></div></div></footer></div><section class="rightside" id="rightside"><div id="rightside-config-hide"><i class="fa fa-book" id="readmode" title="阅读模式"></i><i class="fa fa-plus" id="font_plus" title="放大字体"></i><i class="fa fa-minus" id="font_minus" title="缩小字体"></i><a class="translate_chn_to_cht" id="translateLink" href="javascript:translatePage();" title="简繁转换" target="_self">繁</a><i class="darkmode fa fa-moon-o" id="darkmode" title="夜间模式"></i></div><div id="rightside-config-show"><div id="rightside_config" title="设置"><i class="fa fa-cog" aria-hidden="true"></i></div><a id="to_comment" href="#post-comment" title="直达评论"><i class="scroll_to_comment fa fa-comments">  </i></a><i class="fa fa-list-ul close" id="mobile-toc-button" title="目录" aria-hidden="true"></i><i class="fa fa-arrow-up" id="go-up" title="回到顶部" aria-hidden="true"></i></div></section><script src="https://cdn.jsdelivr.net/npm/jquery@latest/dist/jquery.min.js"></script><script src="/js/utils.js"></script><script src="/js/main.js"></script><script src="https://cdn.jsdelivr.net/npm/medium-zoom/dist/medium-zoom.min.js"></script><script async src="/js/search/local-search.js"></script><script id="ribbon_piao" mobile="true" src="/js/third-party/piao.js"></script><script src="/js/tw_cn.js"></script><script>translateInitilization()
+</script><script async src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script><script src="https://cdn.jsdelivr.net/npm/instant.page@latest/instantpage.min.js" type="module"></script><script src="https://cdn.jsdelivr.net/npm/lazysizes@latest/lazysizes.min.js" async></script><script src="/js/third-party/click_heart.js"></script><div class="search-dialog" id="local-search"><div class="search-dialog__title" id="local-search-title">本地搜索</div><div id="local-input-panel"><div id="local-search-input"><div class="local-search-box"><input class="local-search-box--input" placeholder="搜索文章"></div></div></div><hr><div id="local-search-results"><div id="local-hits"></div><div id="local-stats"><div class="local-search-stats__hr" id="hr"><span>由</span> <a href="https://github.com/wzpan/hexo-generator-search" style="color:#49B1F5;">hexo-generator-search</a>
+ <span>提供支持</span></div></div></div><span class="search-close-button"><i class="fa fa-times"></i></span></div><div class="search-mask"></div></body></html>
